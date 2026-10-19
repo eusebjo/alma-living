@@ -75,7 +75,7 @@ Frontmatter YAML più il testo in Markdown.
 |---|---|---|
 | `titolo` | sì | massimo `LIMITI.pagina.titolo.max` caratteri. È il titolo della pagina nei motori di ricerca |
 | `descrizione` | sì | tra `LIMITI.pagina.descrizione.min` e `LIMITI.pagina.descrizione.max` caratteri. È la descrizione nei risultati di ricerca |
-| `immagine` | sì | percorso relativo a un file in `immagini/` (es. `./immagini/home.webp`) |
+| `immagine` | sì | percorso relativo a un file in `immagini/`: `immagini/home.webp` (come lo scrive il pannello) oppure `./immagini/home.webp`, entrambi validi |
 | `immagine_alt` | sì | testo alternativo che descrive l'immagine, tra `LIMITI.pagina.immagine_alt.min` e `LIMITI.pagina.immagine_alt.max` caratteri |
 | corpo | sì | Markdown dopo il frontmatter |
 
@@ -83,7 +83,7 @@ Frontmatter YAML più il testo in Markdown.
 ---
 titolo: Titolo della pagina
 descrizione: Una descrizione della pagina lunga abbastanza da rispettare il minimo previsto.
-immagine: ./immagini/home.webp
+immagine: immagini/home.webp
 immagine_alt: Descrizione dell'immagine per chi non la vede
 ---
 
