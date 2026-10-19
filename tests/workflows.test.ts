@@ -22,6 +22,7 @@ interface Lavoro {
   'runs-on'?: string;
   permissions?: Record<string, string>;
   env?: Record<string, unknown>;
+  concurrency?: unknown;
   steps: Passo[];
 }
 
@@ -29,6 +30,7 @@ interface Workflow {
   on: Record<string, { types?: string[]; branches?: string[] } | null>;
   permissions?: Record<string, string>;
   env?: Record<string, unknown>;
+  concurrency?: unknown;
   jobs: Record<string, Lavoro>;
 }
 
@@ -119,6 +121,18 @@ describe('verifica-autonomia.yml (pull_request_target)', () => {
     // Se `name` manca, il nome del controllo è l'identificativo del lavoro.
     expect(lavoro.name ?? 'verifica-autonomia').toBe('verifica-autonomia');
     expect(CONTROLLI_OBBLIGATORI).toContain('verifica-autonomia');
+  });
+
+  it('non ferma i controlli precedenti: ogni evento arriva in fondo (niente concurrency)', () => {
+    // Il pannello manda più eventi nello stesso secondo (apertura, etichette,
+    // "pronta"). Con `concurrency` ne sopravvive uno solo: se è stato fermato
+    // quello partito per ultimo, GitHub aspetta per sempre il controllo
+    // obbligatorio ("Expected — Waiting for status to be reported") e la
+    // proposta resta bloccata anche se approvata (proposta #14 del collaudo).
+    expect(workflow.concurrency).toBeUndefined();
+    for (const lavoro of Object.values(workflow.jobs)) {
+      expect(lavoro.concurrency).toBeUndefined();
+    }
   });
 
   it('ha esattamente i permessi contents: read, pull-requests: write, issues: write', () => {

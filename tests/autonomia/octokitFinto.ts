@@ -271,6 +271,13 @@ export function creaOctokitFinto(scenario: ScenarioFinto = {}): {
           commento.body = String(params.body);
           return { data: commento };
         }),
+      deleteComment: (params: Record<string, unknown>) =>
+        registra('issues.deleteComment', params, () => {
+          const indice = stato.commenti.findIndex((c) => c.id === params.comment_id);
+          if (indice === -1) throw erroreHttp(404);
+          stato.commenti.splice(indice, 1);
+          return { data: undefined };
+        }),
       getLabel: (params: Record<string, unknown>) =>
         registra('issues.getLabel', params, () => {
           if (!stato.etichetteDelRepo.includes(String(params.name))) {

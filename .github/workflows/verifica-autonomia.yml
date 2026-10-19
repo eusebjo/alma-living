@@ -35,9 +35,12 @@ permissions:
   pull-requests: write
   issues: write
 
-concurrency:
-  group: verifica-autonomia-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# Niente `concurrency`: ogni evento fa partire un controllo che arriva in fondo.
+# Il pannello manda più eventi nello stesso secondo; fermando quelli
+# precedenti, a volte veniva fermato proprio l'ultimo partito, e GitHub, che
+# guarda l'ultimo, aspettava per sempre il controllo obbligatorio (proposta
+# bloccata anche se approvata). Ogni controllo legge lo stato attuale della
+# proposta e i commenti doppi si sistemano da soli (`upsertReport`).
 
 jobs:
   verifica-autonomia:
