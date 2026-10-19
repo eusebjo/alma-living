@@ -27,5 +27,6 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
-# Sveltia CMS copiato in public/ dallo script di build
+# Sveltia CMS copiato in public/ dallo script di build (scripts/copy-sveltia.mjs)
 public/admin/sveltia-cms.js
+public/admin/chunks/

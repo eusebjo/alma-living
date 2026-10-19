@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -16,6 +16,12 @@ function paginePerFile(cartella = 'dist'): string[] {
 }
 
 const pagine = paginePerFile();
+
+// Il pannello dei contenuti (/admin/) è un file statico di public/, non una
+// pagina Astro: ha le sue regole (vedi "pannello dei contenuti") e non il
+// BaseLayout del sito.
+const PANNELLO = join('dist', 'admin', 'index.html');
+const pagineDelSito = pagine.filter((file) => file !== PANNELLO);
 
 describe('build statica: dist/index.html', () => {
   it('la home esiste ed è in italiano', () => {
@@ -54,7 +60,7 @@ describe('build statica: tutte le pagine', () => {
 });
 
 describe('build locale: non indicizzabile', () => {
-  it.each(pagine)('%s: ha noindex e nessun JSON-LD', (file) => {
+  it.each(pagineDelSito)('%s: ha noindex e nessun JSON-LD', (file) => {
     const html = readFileSync(file, 'utf8');
     expect(html).toContain('<meta name="robots" content="noindex, nofollow"');
     expect(html).not.toContain('application/ld+json');
@@ -70,6 +76,46 @@ describe('build locale: non indicizzabile', () => {
     const file = readdirSync('dist');
     expect(file.filter((nome) => nome.startsWith('sitemap'))).toEqual([]);
     expect(existsSync('dist/sitemap-index.xml')).toBe(false);
+  });
+});
+
+describe('pannello dei contenuti (/admin/)', () => {
+  const html = () => readFileSync(PANNELLO, 'utf8');
+
+  it('esiste ed è in italiano', () => {
+    expect(existsSync(PANNELLO)).toBe(true);
+    expect(html()).toContain('<html lang="it"');
+  });
+
+  it('non si indicizza, anche dopo il lancio', () => {
+    expect(html()).toContain('<meta name="robots" content="noindex">');
+  });
+
+  it('non carica nulla da indirizzi esterni', () => {
+    expect(html()).not.toContain('src="http');
+    expect(html()).not.toMatch(/(src|href)=["']?(https?:)?\/\//i);
+    expect(html()).not.toContain('application/ld+json');
+  });
+
+  it('carica un solo script, dal proprio sito', () => {
+    const script = [...html().matchAll(/<script\b[^>]*>/gi)].map((m) => m[0]);
+    expect(script).toEqual(['<script src="/admin/sveltia-cms.js">']);
+  });
+
+  it('serve lo stesso config.yml di public/admin', () => {
+    expect(readFileSync('dist/admin/config.yml', 'utf8')).toBe(
+      readFileSync('public/admin/config.yml', 'utf8'),
+    );
+  });
+
+  it('serve il bundle di Sveltia copiato da node_modules, con i suoi moduli', () => {
+    const origine = 'node_modules/@sveltia/cms/dist';
+    expect(statSync('dist/admin/sveltia-cms.js').size).toBe(
+      statSync(join(origine, 'sveltia-cms.js')).size,
+    );
+    for (const modulo of ['git', 'qrcode', 'react-dom']) {
+      expect(existsSync(join('dist', 'admin', 'chunks', `${modulo}.js`))).toBe(true);
+    }
   });
 });
 

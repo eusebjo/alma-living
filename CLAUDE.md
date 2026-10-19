@@ -86,7 +86,7 @@ Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LA
 - Output Astro completamente statico: niente parti generate a ogni richiesta in fase 1.
 - Lo schema Astro è l'autorità sui contenuti. I limiti numerici stanno solo in `src/content/limits.ts`.
 - Ogni campo dello schema compare nella configurazione Sveltia: i campi a livello 0 in `autonomia.yml` sono `readonly: true`, gli altri no.
-- Sveltia CMS: versione esatta fissata in `package.json`, backend `github`, `publish_mode: editorial_workflow`, `publish: false`, `create: false`, `delete: false`.
+- Sveltia CMS: versione esatta fissata in `package.json`, backend `github`, `publish_mode: editorial_workflow`, `publish: false` su ogni collection, `create: false` e `delete: false` sulla collection a cartella (`pagine`; le collection a file, come `negozio`, non hanno queste opzioni: i file si modificano soltanto). Il pannello sta in `public/admin/` (`config.yml`, `index.html`); `scripts/copy-sveltia.mjs` copia il bundle da `node_modules` prima di `dev` e `build`. In sviluppo si apre `/admin/index.html`: il server di Astro non serve `index.html` per `/admin/`.
 - Nessun tracciamento. Nessuna risorsa da CDN di terzi, né sul sito né sul pannello. Font di sistema in fase 1.
 - Anteprime e sito pre-lancio con `noindex`; robots, sitemap e JSON-LD solo con `SITE_LAUNCHED=true` e build del ramo `main`.
 - Il testo delle pagine passa da `rehype-sanitize`: l'HTML grezzo scritto nei contenuti non finisce nella pagina.
