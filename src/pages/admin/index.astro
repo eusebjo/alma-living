@@ -1,0 +1,36 @@
+---
+// Pannello dei contenuti (Sveltia CMS), servito su /admin/.
+//
+// Pagina a sé: niente BaseLayout né SeoHead (non è una pagina del sito, non va
+// indicizzata e non ha JSON-LD). Il pannello arriva dal pacchetto npm
+// `@sveltia/cms`, che Astro passa a Vite e impacchetta in `/_astro/`: così
+// font, traduzioni, decoder delle immagini e librerie escono dal nostro sito
+// e non da jsDelivr o unpkg. La build "CDN" (dist/sveltia-cms.js) non si usa.
+//
+// La configurazione sta in `public/admin/config.yml`. Con il pacchetto npm
+// `init()` va chiamato a mano e carica quel file da solo.
+//
+// Nota per lo sviluppo: la documentazione di Sveltia sconsiglia una pagina
+// Astro per il pannello perché `astro dev` la ricarica a ogni modifica di un
+// file, e un salvataggio in "Work with Local Repository" può restare a metà.
+// Per provare il salvataggio in locale usare `npm run build` e
+// `npm run preview` (pagina statica, nessuna ricarica), non `npm run dev`.
+---
+
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link href="/admin/config.yml" type="application/yaml" rel="cms-config-url" />
+    <title>Alma Living, gestione contenuti</title>
+  </head>
+  <body>
+    <script>
+      import CMS from '@sveltia/cms';
+
+      CMS.init();
+    </script>
+  </body>
+</html>

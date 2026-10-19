@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import Ajv from 'ajv';
 import { parse } from 'yaml';
@@ -384,25 +384,43 @@ describe('lo schema JSON di Sveltia', () => {
   });
 });
 
-describe('public/admin/index.html', () => {
-  const html = leggi('public/admin/index.html');
+
+describe('src/pages/admin/index.astro', () => {
+  const pagina = leggi('src/pages/admin/index.astro');
 
   it('non si indicizza', () => {
-    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(pagina).toContain('<meta name="robots" content="noindex" />');
   });
 
-  it('carica un solo script, dal proprio sito', () => {
-    const script = [...html.matchAll(/<script\b[^>]*>/gi)].map((m) => m[0]);
-    expect(script).toEqual(['<script src="/admin/sveltia-cms.js">']);
+  it('è una pagina a sé: né layout del sito né SeoHead', () => {
+    expect(pagina).not.toMatch(/^\s*import\b.*\b(BaseLayout|SeoHead)\b/m);
+    expect(pagina).not.toMatch(/<(BaseLayout|SeoHead)\b/);
+  });
+
+  it('avvia il pannello dal pacchetto npm (build senza CDN), una sola volta', () => {
+    const script = [...pagina.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+    expect(script).toHaveLength(1);
+    const [, attributi, codice] = script[0];
+    // Senza `is:inline` né `src`: Astro lo passa a Vite, che lo impacchetta.
+    expect(attributi.trim()).toBe('');
+    expect(codice).toContain("import CMS from '@sveltia/cms';");
+    expect(codice.match(/CMS\.init\(/g)).toHaveLength(1);
+  });
+
+  it('indica dove sta la configurazione, sullo stesso sito', () => {
+    expect(pagina).toContain(
+      '<link href="/admin/config.yml" type="application/yaml" rel="cms-config-url" />',
+    );
   });
 
   it('non cita nessun indirizzo esterno', () => {
-    expect(html).not.toMatch(/https?:\/\//i);
-    expect(html).not.toMatch(/<link\b/i);
+    expect(pagina).not.toMatch(/https?:\/\//i);
+    const link = [...pagina.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
+    expect(link).toHaveLength(1);
   });
 });
 
-describe('installazione di Sveltia', () => {
+describe('public/admin e installazione di Sveltia', () => {
   const pacchetto = JSON.parse(leggi('package.json')) as {
     dependencies: Record<string, string>;
     scripts: Record<string, string>;
@@ -412,13 +430,12 @@ describe('installazione di Sveltia', () => {
     expect(pacchetto.dependencies['@sveltia/cms']).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it('prebuild e predev copiano il bundle in public/admin', () => {
-    expect(pacchetto.scripts.prebuild).toBe('node scripts/copy-sveltia.mjs');
-    expect(pacchetto.scripts.predev).toBe('node scripts/copy-sveltia.mjs');
-  });
-
-  it('il bundle copiato non è versionato', () => {
-    const righe = leggi('.gitignore').split(/\r?\n/);
-    expect(righe).toContain('public/admin/sveltia-cms.js');
+  it("in public/admin c'è solo config.yml: il pannello non si copia da node_modules", () => {
+    // La copia della build CDN (dist/sveltia-cms.js) carica font, traduzioni e
+    // librerie da jsDelivr e unpkg: il pannello passa da Vite, col pacchetto npm.
+    expect(readdirSync('public/admin')).toEqual(['config.yml']);
+    expect(existsSync('scripts/copy-sveltia.mjs')).toBe(false);
+    expect(pacchetto.scripts).not.toHaveProperty('prebuild');
+    expect(pacchetto.scripts).not.toHaveProperty('predev');
   });
 });

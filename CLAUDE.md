@@ -86,8 +86,10 @@ Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LA
 - Output Astro completamente statico: niente parti generate a ogni richiesta in fase 1.
 - Lo schema Astro è l'autorità sui contenuti. I limiti numerici stanno solo in `src/content/limits.ts`.
 - Ogni campo dello schema compare nella configurazione Sveltia: i campi a livello 0 in `autonomia.yml` sono `readonly: true`, gli altri no.
-- Sveltia CMS: versione esatta fissata in `package.json`, backend `github`, `publish_mode: editorial_workflow`, `publish: false` su ogni collection, `create: false` e `delete: false` sulla collection a cartella (`pagine`; le collection a file, come `negozio`, non hanno queste opzioni: i file si modificano soltanto). Il pannello sta in `public/admin/` (`config.yml`, `index.html`); `scripts/copy-sveltia.mjs` copia il bundle da `node_modules` prima di `dev` e `build`. In sviluppo si apre `/admin/index.html`: il server di Astro non serve `index.html` per `/admin/`.
-- Nessun tracciamento. Nessuna risorsa da CDN di terzi, né sul sito né sul pannello. Font di sistema in fase 1.
+- Sveltia CMS: versione esatta fissata in `package.json`, backend `github`, `publish_mode: editorial_workflow`, `publish: false` su ogni collection, `create: false` e `delete: false` sulla collection a cartella (`pagine`; le collection a file, come `negozio`, non hanno queste opzioni: i file si modificano soltanto). Il pannello è la pagina Astro `src/pages/admin/index.astro` (nessun layout del sito, `noindex`), che importa il pacchetto npm `@sveltia/cms` e chiama `CMS.init()`; la configurazione è `public/admin/config.yml`. Non si usa la build "CDN" (`dist/sveltia-cms.js`) né si copia nulla da `node_modules`: Vite impacchetta il pannello in `/_astro/`. `/admin/` non entra nella sitemap (`src/lib/sitemap.ts`).
+- Il pannello contatta solo questi host esterni: `api.github.com` (e gli indirizzi degli avatar di GitHub) per leggere e salvare i contenuti, `www.githubstatus.com` (stato del servizio, già dalla schermata di accesso, non si disattiva) e, dalla Task 8, il Worker di autenticazione. Font, traduzioni, decoder delle immagini e librerie sono locali. Dopo un aggiornamento di `@sveltia/cms` si ricontrollano le richieste di rete di `/admin/` nel browser: `tests/dist` guarda gli indirizzi scritti nei file ma non può provare cosa il pacchetto carica a runtime.
+- Per provare il pannello sul computer: `npm run build` e `npm run preview`, poi `/admin/`. Con `npm run dev` funziona, ma la documentazione di Sveltia sconsiglia una pagina Astro perché il server di sviluppo la ricarica a ogni modifica di un file e un salvataggio con "Work with Local Repository" può restare a metà.
+- Nessun tracciamento. Nessuna risorsa da CDN di terzi sul sito. Sul pannello nessuna risorsa da CDN (jsDelivr, unpkg): vedi gli host elencati sopra. Font di sistema in fase 1.
 - Anteprime e sito pre-lancio con `noindex`; robots, sitemap e JSON-LD solo con `SITE_LAUNCHED=true` e build del ramo `main`.
 - Il testo delle pagine passa da `rehype-sanitize`: l'HTML grezzo scritto nei contenuti non finisce nella pagina.
 - Messaggi verso la redattrice in italiano, senza gergo di Git (niente "branch", "commit", "merge").
@@ -100,9 +102,9 @@ Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LA
 astro.config.mjs        site e sitemap da getSiteConfig; sanitizer Markdown
 src/config/site.ts      getSiteConfig (stato di lancio), absoluteUrl
 src/content/            schemi Zod, limiti, negozio.json, pagine, immagini
-src/lib/                schemaOrg, robots, llms, markdown
+src/lib/                schemaOrg, robots, llms, markdown, sitemap
 src/components/         SeoHead (title, canonical, Open Graph, noindex, JSON-LD)
 src/layouts/            BaseLayout
-src/pages/              index, robots.txt, llms.txt
+src/pages/              index, admin (pannello), robots.txt, llms.txt
 tests/                  test unitari; tests/dist sui file generati
 ```
