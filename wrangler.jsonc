@@ -4,7 +4,14 @@
   "compatibility_date": "2026-10-19",
   "assets": {
     "directory": "./dist"
-  }
+  },
+
+  // Worker Previews (comando di anteprima predefinito: `npx wrangler preview`, richiede
+  // wrangler >= 4.135.0). Il blocco `previews` e' obbligatorio ma puo' essere vuoto
+  // se l'anteprima non ha impostazioni separate. `assets` e `compatibility_date` restano
+  // al livello superiore. Fonte:
+  // https://developers.cloudflare.com/workers/previews/configuration/#wrangler-configuration-file
+  "previews": {}
 
   // Variabili d'ambiente di Workers Builds (disponibili SOLO durante la build,
   // non a runtime; sovrascrivibili). Fonte ufficiale, sezione "Default variables":
