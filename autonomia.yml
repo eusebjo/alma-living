@@ -1,7 +1,7 @@
 versione: 1
 ruoli:
   sviluppo: [eusebjo]
-  redazione: []
+  redazione: [martina-dimalta]
 proposte:
   # Etichette di Sveltia per "In revisione" e "Pronta" (flusso editoriale, backend GitHub,
   # prefisso predefinito `sveltia-cms/`). La bozza ha `sveltia-cms/draft` ed è una pull
