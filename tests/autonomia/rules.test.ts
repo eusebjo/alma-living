@@ -35,6 +35,7 @@ describe('loadRules', () => {
 
     expect(rules.versione).toBe(1);
     expect(rules.ruoli.sviluppo).toEqual(['eusebjo']);
+    expect(rules.ruoli.redazione).toEqual(['martina-dimalta']);
     expect(rules.proposte.stati_inviati).toEqual([
       'sveltia-cms/pending_review',
       'sveltia-cms/pending_publish',
