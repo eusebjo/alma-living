@@ -47,6 +47,16 @@ const MESSAGGI = {
     'Non puoi rinominare o spostare i file: equivale a eliminare quello originale.',
   formato:
     'Il contenuto di questo file non è leggibile o non è valido, quindi non è possibile verificare la modifica.',
+  tipoNonAmmesso: (estensioni: string[]) => {
+    const formati = estensioni.map((voce) => voce.toUpperCase());
+    const elenco =
+      formati.length > 1
+        ? `${formati.slice(0, -1).join(', ')} o ${formati[formati.length - 1]}`
+        : formati.join('');
+    return formati.length === 0
+      ? 'Questo tipo di file non è ammesso: al momento non si possono caricare immagini.'
+      : `Questo tipo di file non è ammesso: puoi caricare solo immagini ${elenco}.`;
+  },
   dimensione: (kb: number, massimoKb: number) =>
     `Il file pesa ${formattaNumero(kb)} KB, più del massimo consentito di ${formattaNumero(massimoKb)} KB. Riduci le dimensioni dell'immagine e riprova.`,
   dimensioneSconosciuta:
@@ -150,6 +160,40 @@ function conLivello(
     : { violazioni: [], livelli: [livello] };
 }
 
+/** Minuscole solo per le lettere ASCII: niente sorprese con altri alfabeti. */
+const minuscolo = (testo: string): string =>
+  testo.replace(/[A-Z]/g, (lettera) => lettera.toLowerCase());
+
+/** Estensione dopo l'ultimo punto del nome del file ('' se non c'è). */
+function estensioneDi(percorso: string): string {
+  const nome = percorso.slice(percorso.lastIndexOf('/') + 1);
+  const punto = nome.lastIndexOf('.');
+  return punto <= 0 ? '' : nome.slice(punto + 1);
+}
+
+/**
+ * I file caricati devono avere una delle estensioni ammesse (immagini
+ * raster): un SVG o un HTML caricato come "immagine" sarebbe servito dallo
+ * stesso indirizzo del pannello di gestione e potrebbe eseguire codice. La
+ * violazione ha azione `formato`.
+ */
+function controllaEstensione(file: ChangedFile, ctx: Contesto): Violazione[] {
+  const ammesse = ctx.rules.media.estensioni.map(minuscolo);
+  if (ammesse.includes(minuscolo(estensioneDi(file.path)))) return [];
+  return [
+    viola(
+      file.path,
+      'formato',
+      MESSAGGI.tipoNonAmmesso(ctx.rules.media.estensioni),
+    ),
+  ];
+}
+
+/** Controlli sui file media caricati: tipo di file e dimensione. */
+function controllaMedia(file: ChangedFile, ctx: Contesto): Violazione[] {
+  return [...controllaEstensione(file, ctx), ...controllaDimensione(file, ctx)];
+}
+
 function controllaDimensione(file: ChangedFile, ctx: Contesto): Violazione[] {
   const dimensione = file.sizeBytes;
   if (
@@ -214,7 +258,7 @@ function valutaNuovo(
         ctx.rules.media.azioni.carica,
         dopoRinomina ? MESSAGGI.rinominaCrea : MESSAGGI.carica,
       );
-      esito.violazioni.push(...controllaDimensione(file, ctx));
+      esito.violazioni.push(...controllaMedia(file, ctx));
       return esito;
     }
   }
@@ -293,7 +337,7 @@ function valutaModificato(file: ChangedFile, ctx: Contesto): Parziale {
         ctx.rules.media.azioni.carica,
         MESSAGGI.carica,
       );
-      esito.violazioni.push(...controllaDimensione(file, ctx));
+      esito.violazioni.push(...controllaMedia(file, ctx));
       return esito;
     }
   }

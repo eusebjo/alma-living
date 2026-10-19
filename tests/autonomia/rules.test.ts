@@ -24,6 +24,7 @@ contenuti:
     campi: { nome: 0, orari: 1 }
 media:
   percorsi: [src/content/pagine/immagini/**]
+  estensioni: [webp, jpg, jpeg, png, avif]
   dimensione_massima_kb: 1500
   azioni: { carica: 1, elimina: 0 }
 `;
@@ -58,6 +59,7 @@ describe('loadRules', () => {
     });
     expect(rules.media).toEqual({
       percorsi: ['src/content/pagine/immagini/**'],
+      estensioni: ['webp', 'jpg', 'jpeg', 'png', 'avif'],
       dimensione_massima_kb: 1500,
       azioni: { carica: 1, elimina: 0 },
     });
@@ -134,6 +136,27 @@ describe('loadRules', () => {
     expect(() => loadRules(base.replace('formato: json', 'formato: xml'))).toThrow(
       /formato/,
     );
+  });
+
+  it('lancia se mancano le estensioni ammesse per le immagini (senza elenco passerebbe qualsiasi file)', () => {
+    const testo = base.replace('  estensioni: [webp, jpg, jpeg, png, avif]\n', '');
+    expect(() => loadRules(testo)).toThrow(/media\.estensioni/);
+  });
+
+  it('lancia se le estensioni non sono nomi semplici, senza punto né barre', () => {
+    for (const voce of ['.webp', 'we/bp', 'we bp', "''", '7', '[a]']) {
+      const testo = base.replace('estensioni: [webp, jpg, jpeg, png, avif]', `estensioni: [webp, ${voce}]`);
+      expect(() => loadRules(testo), voce).toThrow(/media\.estensioni/);
+    }
+    const nonElenco = base.replace('estensioni: [webp, jpg, jpeg, png, avif]', 'estensioni: webp');
+    expect(() => loadRules(nonElenco)).toThrow(/media\.estensioni/);
+  });
+
+  it('accetta le estensioni in maiuscolo e un elenco vuoto (nessuna immagine ammessa)', () => {
+    const maiuscolo = base.replace('[webp, jpg, jpeg, png, avif]', '[WEBP, Jpg]');
+    expect(loadRules(maiuscolo).media.estensioni).toEqual(['WEBP', 'Jpg']);
+    const vuoto = base.replace('[webp, jpg, jpeg, png, avif]', '[]');
+    expect(loadRules(vuoto).media.estensioni).toEqual([]);
   });
 
   it('lancia se la dimensione massima non è un numero positivo', () => {

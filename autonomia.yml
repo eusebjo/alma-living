@@ -17,5 +17,6 @@ contenuti:
     campi: { titolo: 1, descrizione: 1, immagine: 1, immagine_alt: 1, corpo: 1 }
 media:
   percorsi: [src/content/pagine/immagini/**]
+  estensioni: [webp, jpg, jpeg, png, avif]  # niente svg né html: possono contenere codice
   dimensione_massima_kb: 1500
   azioni: { carica: 1, elimina: 0 }

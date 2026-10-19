@@ -1,3 +1,4 @@
+import { parseFrontmatter } from '@astrojs/markdown-remark';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseContent } from '../../scripts/autonomia/parse';
 
@@ -12,7 +13,7 @@ describe('parseContent, json', () => {
   });
 
   it('ignora un BOM iniziale', () => {
-    expect(parseContent('﻿{"a":1}', 'json')).toEqual({ a: 1 });
+    expect(parseContent('\uFEFF{"a":1}', 'json')).toEqual({ a: 1 });
   });
 
   it('lancia con un JSON malformato', () => {
@@ -58,7 +59,7 @@ describe('parseContent, markdown', () => {
   });
 
   it('gestisce le righe in stile Windows e il BOM', () => {
-    const windows = `﻿${testo.replaceAll('\n', '\r\n')}`;
+    const windows = `\uFEFF${testo.replaceAll('\n', '\r\n')}`;
     expect(parseContent(windows, 'markdown')).toEqual({
       titolo: 'Alma Living',
       immagine: './immagini/home.webp',
@@ -210,6 +211,125 @@ describe('parseContent, frontmatter che non è YAML (sicurezza)', () => {
     expect(parseContent('---   \ntitolo: x\n---\nTesto', 'markdown')).toEqual({
       titolo: 'x',
       corpo: 'Testo',
+    });
+  });
+});
+
+describe('parseContent, frontmatter letto come lo legge la build di Astro', () => {
+  const BOM = String.fromCharCode(0xfeff);
+
+  // Testi in cui la build di Astro vede (o potrebbe vedere) dei campi che
+  // gray-matter non vedrebbe: il controllo li deve rifiutare, non leggerli
+  // come "solo corpo".
+  const nascosti: Record<string, string> = {
+    'una riga vuota prima': '\n---\ntitolo: x\nslug: altra\n---\nTesto',
+    'spazi e a capo prima': '  \n---\ntitolo: x\nslug: altra\n---\nTesto',
+    'tante righe vuote e tabulazioni prima': '\n\n  \n\t\n---\ntitolo: x\nslug: altra\n---\nTesto',
+    'frontmatter TOML': '+++\ntitolo = "x"\nslug = "altra"\n+++\nTesto',
+    'frontmatter TOML dopo una riga vuota': '\n+++\ntitolo = "x"\nslug = "altra"\n+++\nTesto',
+    'due BOM': `${BOM}${BOM}---\ntitolo: x\nslug: altra\n---\nTesto`,
+    'due BOM e un linguaggio': `${BOM}${BOM}---json\n{"slug": "altra"}\n---\nTesto`,
+    'un BOM e una riga vuota': `${BOM}\n---\ntitolo: x\nslug: altra\n---\nTesto`,
+    'chiuso con +++ invece di ---': '---\ntitolo: x\n+++\nslug: altra\n---\nTesto',
+    'quattro trattini in apertura': '----\ntitolo: x\nslug: altra\n---\nTesto',
+    'non chiuso': '---\ntitolo: x\nslug: altra\nTesto',
+  };
+
+  it.each(Object.entries(nascosti))('rifiuta: %s', (_nome, testo) => {
+    expect(() => parseContent(testo, 'markdown')).toThrow(/frontmatter/i);
+  });
+
+  it('con un solo BOM davanti il frontmatter normale è accettato', () => {
+    expect(parseContent(`${BOM}---\ntitolo: x\n---\nTesto`, 'markdown')).toEqual({
+      titolo: 'x',
+      corpo: 'Testo',
+    });
+  });
+
+  it('una riga vuota o una riga di trattini nel corpo, senza frontmatter, non è un problema', () => {
+    expect(parseContent('\nSolo testo.\n', 'markdown')).toEqual({ corpo: 'Solo testo.' });
+    expect(parseContent('Testo\n\n---\n\nAltro testo', 'markdown')).toEqual({
+      corpo: 'Testo\n\n---\n\nAltro testo',
+    });
+  });
+
+  it('i campi che legge il controllo sono quelli che legge Astro (funzione parseFrontmatter della build)', () => {
+    const validi: Record<string, string> = {
+      normale: '---\ntitolo: x\ndescrizione: y\n---\n\nTesto\n',
+      'righe in stile Windows': '---\r\ntitolo: x\r\n---\r\nTesto',
+      'con un BOM': `${BOM}---\ntitolo: x\n---\nTesto`,
+      vuoto: '---\n---\nTesto',
+      'solo commenti': '---\n# niente\n---\nTesto',
+      'spazi dopo i trattini': '---   \ntitolo: x\n---\nTesto',
+      'trattini nel corpo': '---\ntitolo: x\n---\nTesto\n\n---\n\nAltro',
+      'senza frontmatter': 'Solo testo',
+      'trattini senza frontmatter': 'Testo\n\n---\n\nAltro',
+      'quattro trattini senza chiusura': '----\nTesto',
+      'testo vuoto': '',
+    };
+
+    for (const [nome, testo] of Object.entries({ ...validi, ...nascosti })) {
+      let campiAstro: string[] | null;
+      try {
+        campiAstro = Object.keys(parseFrontmatter(testo).frontmatter).sort();
+      } catch {
+        campiAstro = null; // la build fallirebbe da sola
+      }
+
+      let campiControllo: string[] | null;
+      try {
+        campiControllo = Object.keys(parseContent(testo, 'markdown'))
+          .filter((campo) => campo !== 'corpo')
+          .sort();
+      } catch {
+        campiControllo = null; // rifiutato: va bene
+      }
+
+      if (campiControllo !== null && campiAstro !== null) {
+        expect(campiControllo, nome).toEqual(campiAstro);
+      }
+      if (nome in validi) {
+        expect(campiControllo, nome).not.toBeNull();
+      }
+    }
+  });
+});
+
+describe('parseContent, nomi dei campi con punti o vuoti', () => {
+  it.each([
+    ['{"orari.extra": 1}'],
+    ['{"a": {"b.c": 1}}'],
+    ['{"orari": [{"giorno.x": "lunedi"}]}'],
+    ['{"": 1}'],
+    ['{"a": {"": 1}}'],
+    ['{".": 1}'],
+    ['{"a.": 1}'],
+  ])('JSON: rifiuta %s', (testo) => {
+    expect(() => parseContent(testo, 'json')).toThrow(/nome non valido/);
+  });
+
+  it.each([
+    ['corpo.x: 1'],
+    ['"": 1'],
+    ['a:\n  "b.c": 1'],
+    ['a:\n  - "b.c": 1'],
+    ['"orari.extra": 1'],
+  ])('frontmatter: rifiuta %j', (riga) => {
+    expect(() => parseContent(`---\n${riga}\n---\nTesto`, 'markdown')).toThrow(
+      /nome non valido/,
+    );
+  });
+
+  it('i nomi con altri segni di punteggiatura restano ammessi', () => {
+    expect(parseContent('{"immagine_alt": 1, "a-b": 2, "A B": 3}', 'json')).toEqual({
+      immagine_alt: 1,
+      'a-b': 2,
+      'A B': 3,
+    });
+    expect(parseContent('---\nimmagine_alt: x\na-b: y\n---\nT', 'markdown')).toEqual({
+      immagine_alt: 'x',
+      'a-b': 'y',
+      corpo: 'T',
     });
   });
 });

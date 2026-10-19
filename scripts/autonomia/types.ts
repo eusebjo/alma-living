@@ -20,6 +20,8 @@ export interface Rules {
   contenuti: Record<string, CollectionRule>;
   media: {
     percorsi: string[];
+    /** Estensioni ammesse per i file caricati, senza punto, maiuscole indifferenti. */
+    estensioni: string[];
     dimensione_massima_kb: number;
     azioni: { carica: Livello; elimina: Livello };
   };

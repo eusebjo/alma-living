@@ -186,7 +186,7 @@ describe('formatReport', () => {
     const report = formatReport(
       respinto([
         {
-          file: 'src/`x`/@everyone\n<!-- verifica-autonomia -->‮.md',
+          file: 'src/`x`/@everyone\n<!-- verifica-autonomia -->\u202E.md',
           campo: 'campo`\n- finto elemento',
           azione: 'modifica',
           messaggio: 'Messaggio.',
@@ -197,7 +197,7 @@ describe('formatReport', () => {
     // Il marcatore compare solo in testa: quello scritto nel nome del file è neutralizzato.
     expect(report.match(/<!-- verifica-autonomia -->/g)).toHaveLength(1);
     expect(report.slice(MARCATORE.length)).not.toMatch(/[<>]/);
-    expect(report).not.toContain('‮');
+    expect(report).not.toContain('\u202E');
     // Nessuna riga in più: la voce di elenco resta una riga sola.
     const voci = report.split('\n').filter((riga) => riga.startsWith('- '));
     expect(voci).toHaveLength(1);

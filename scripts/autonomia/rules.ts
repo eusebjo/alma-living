@@ -26,6 +26,14 @@ const elencoDiTesti = z.array(testo, {
   error: errore('deve essere un elenco di testi tra parentesi quadre'),
 });
 
+// Un'estensione è un nome semplice: niente punto, barre o spazi.
+const estensione = z
+  .string({ error: errore('deve essere un testo') })
+  .regex(
+    /^[A-Za-z0-9]+$/,
+    "deve essere l'estensione scritta senza punto, per esempio webp",
+  );
+
 const sezione = { error: errore('deve essere una sezione con le sue voci') };
 
 const regolaCollection = z.object(
@@ -52,6 +60,9 @@ const schemaRegole = z.object(
     media: z.object(
       {
         percorsi: elencoDiTesti,
+        estensioni: z.array(estensione, {
+          error: errore('deve essere un elenco di estensioni tra parentesi quadre'),
+        }),
         dimensione_massima_kb: z
           .number({ error: errore('deve essere un numero') })
           .positive('deve essere un numero maggiore di 0'),
