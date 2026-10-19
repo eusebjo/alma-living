@@ -15,9 +15,10 @@ backend:
   name: github
   repo: eusebjo/alma-living
   branch: main
-  # Segnaposto: la Task 8 mette qui l'indirizzo del Worker che gestisce l'accesso
-  # con GitHub (flusso OAuth). Fino ad allora il pannello si usa solo in locale.
-  base_url: https://AUTH_WORKER_URL
+  # Worker `sveltia-cms-auth` (Cloudflare): gestisce l'accesso con GitHub (flusso
+  # OAuth). Indirizzo senza barra finale; `auth_endpoint` resta quello predefinito
+  # (`auth`), che è il percorso del Worker.
+  base_url: https://sveltia-cms-auth.sebjomuho.workers.dev
 
 # Ogni modifica passa da un ramo `cms/<collection>/<id>` e da una pull request,
 # mai da un commit diretto su main. Gli stati sono le etichette

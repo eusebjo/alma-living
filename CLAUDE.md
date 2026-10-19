@@ -40,6 +40,15 @@ Negli script npm non usare la sintassi `VAR=x comando` (non funziona su Windows)
 - **Repository:** https://github.com/eusebjo/alma-living (pubblico)
 - **Anteprima di un branch:** `https://<branch con "/" sostituito da "-">-alma-living.sebjomuho.workers.dev`, per esempio il branch `fase1/2-anteprime` diventa `https://fase1-2-anteprime-alma-living.sebjomuho.workers.dev`. Il link affidabile è nei dettagli del controllo Cloudflare della pull request.
 
+## Accesso al pannello
+
+Il login a `/admin/` passa da GitHub tramite il Worker Cloudflare [`sveltia-cms-auth`](https://github.com/sveltia/sveltia-cms-auth), che custodisce il segreto OAuth fuori dal repository e dal browser.
+
+- **Worker:** https://sveltia-cms-auth.sebjomuho.workers.dev (endpoint `/auth` e `/callback`). È l'unico `backend.base_url` in `public/admin/config.yml`, senza barra finale; `auth_endpoint` non si imposta (il predefinito `auth` coincide col Worker). Un test (`tests/sveltia-config.test.ts`) fissa l'indirizzo.
+- **GitHub OAuth App:** Homepage `https://alma-living.sebjomuho.workers.dev`, Authorization callback URL `https://sveltia-cms-auth.sebjomuho.workers.dev/callback`. Si gestisce da GitHub, Settings → Developer settings → OAuth Apps, a cura di eusebjo.
+- **Variabili del Worker** (dashboard Cloudflare, a cura di eusebjo): `GITHUB_CLIENT_ID` e `GITHUB_CLIENT_SECRET` (segreto), mai nel repository né in chat; `ALLOWED_DOMAINS` = `*.sebjomuho.workers.dev`, che copre produzione e anteprime del sito (`*` vale per qualunque sottodominio, ma non per il dominio nudo). Quando il sito avrà un dominio proprio, va aggiunto qui: altrimenti il Worker rifiuta l'accesso.
+- **Chi entra:** serve un account GitHub con accesso al repository `eusebjo/alma-living`; i permessi sul repository decidono chi può salvare.
+
 ## Stato di lancio
 
 Fino al lancio vero il sito vive su `workers.dev` ed è escluso dai motori di ricerca. Lo decide `getSiteConfig` in `src/config/site.ts`, unica fonte per `astro.config.mjs`, `SeoHead`, `robots.txt` e `llms.txt`.
@@ -87,7 +96,7 @@ Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LA
 - Lo schema Astro è l'autorità sui contenuti. I limiti numerici stanno solo in `src/content/limits.ts`.
 - Ogni campo dello schema compare nella configurazione Sveltia: i campi a livello 0 in `autonomia.yml` sono `readonly: true`, gli altri no.
 - Sveltia CMS: versione esatta fissata in `package.json`, backend `github`, `publish_mode: editorial_workflow`, `publish: false` su ogni collection, `create: false` e `delete: false` sulla collection a cartella (`pagine`; le collection a file, come `negozio`, non hanno queste opzioni: i file si modificano soltanto). Il pannello è la pagina Astro `src/pages/admin/index.astro` (nessun layout del sito, `noindex`), che importa il pacchetto npm `@sveltia/cms` e chiama `CMS.init()`; la configurazione è `public/admin/config.yml`. Non si usa la build "CDN" (`dist/sveltia-cms.js`) né si copia nulla da `node_modules`: Vite impacchetta il pannello in `/_astro/`. `/admin/` non entra nella sitemap (`src/lib/sitemap.ts`).
-- Il pannello contatta solo questi host esterni: `api.github.com` (e gli indirizzi degli avatar di GitHub) per leggere e salvare i contenuti, `www.githubstatus.com` (stato del servizio, già dalla schermata di accesso, non si disattiva) e, dalla Task 8, il Worker di autenticazione. Font, traduzioni, decoder delle immagini e librerie sono locali. Dopo un aggiornamento di `@sveltia/cms` si ricontrollano le richieste di rete di `/admin/` nel browser: `tests/dist` guarda gli indirizzi scritti nei file ma non può provare cosa il pacchetto carica a runtime.
+- Il pannello contatta solo questi host esterni: `api.github.com` (e gli indirizzi degli avatar di GitHub) per leggere e salvare i contenuti, `www.githubstatus.com` (stato del servizio, già dalla schermata di accesso, non si disattiva) e il Worker di autenticazione (`sveltia-cms-auth.sebjomuho.workers.dev`, vedi "Accesso al pannello"). Font, traduzioni, decoder delle immagini e librerie sono locali. Dopo un aggiornamento di `@sveltia/cms` si ricontrollano le richieste di rete di `/admin/` nel browser: `tests/dist` guarda gli indirizzi scritti nei file ma non può provare cosa il pacchetto carica a runtime.
 - Per provare il pannello sul computer: `npm run build` e `npm run preview`, poi `/admin/`. Con `npm run dev` funziona, ma la documentazione di Sveltia sconsiglia una pagina Astro perché il server di sviluppo la ricarica a ogni modifica di un file e un salvataggio con "Work with Local Repository" può restare a metà.
 - Nessun tracciamento. Nessuna risorsa da CDN di terzi sul sito. Sul pannello nessuna risorsa da CDN (jsDelivr, unpkg): vedi gli host elencati sopra. Font di sistema in fase 1.
 - Anteprime e sito pre-lancio con `noindex`; robots, sitemap e JSON-LD solo con `SITE_LAUNCHED=true` e build del ramo `main`.
