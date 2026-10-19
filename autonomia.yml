@@ -3,7 +3,11 @@ ruoli:
   sviluppo: [eusebjo]
   redazione: []
 proposte:
-  stati_inviati: [sveltia-cms/pending_review, sveltia-cms/pending_publish]  # verificare in Task 7
+  # Etichette di Sveltia per "In revisione" e "Pronta" (flusso editoriale, backend GitHub,
+  # prefisso predefinito `sveltia-cms/`). La bozza ha `sveltia-cms/draft` ed è una pull
+  # request draft: non conta come inviata. Verificato sulla documentazione di Sveltia 0.248.0
+  # (https://sveltiacms.app/en/docs/workflows/editorial#statuses).
+  stati_inviati: [sveltia-cms/pending_review, sveltia-cms/pending_publish]
 contenuti:
   negozio:
     file: src/content/negozio/negozio.json

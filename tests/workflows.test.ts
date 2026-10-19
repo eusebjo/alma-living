@@ -466,7 +466,7 @@ describe('rami-sviluppo', () => {
     expect(ruleset.conditions).toEqual({
       ref_name: {
         include: ['~ALL'],
-        exclude: ['refs/heads/main', 'refs/heads/cms/**'],
+        exclude: ['refs/heads/main', 'refs/heads/cms/**', 'refs/heads/cms/**/*'],
       },
     });
   });

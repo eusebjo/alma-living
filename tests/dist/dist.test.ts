@@ -17,6 +17,11 @@ function paginePerFile(cartella = 'dist'): string[] {
 
 const pagine = paginePerFile();
 
+// Il pannello dei contenuti (/admin/) è una pagina Astro a sé, senza il
+// BaseLayout del sito: ha le sue regole (vedi "pannello dei contenuti").
+const PANNELLO = join('dist', 'admin', 'index.html');
+const pagineDelSito = pagine.filter((file) => file !== PANNELLO);
+
 describe('build statica: dist/index.html', () => {
   it('la home esiste ed è in italiano', () => {
     const html = readFileSync('dist/index.html', 'utf8');
@@ -54,7 +59,7 @@ describe('build statica: tutte le pagine', () => {
 });
 
 describe('build locale: non indicizzabile', () => {
-  it.each(pagine)('%s: ha noindex e nessun JSON-LD', (file) => {
+  it.each(pagineDelSito)('%s: ha noindex e nessun JSON-LD', (file) => {
     const html = readFileSync(file, 'utf8');
     expect(html).toContain('<meta name="robots" content="noindex, nofollow"');
     expect(html).not.toContain('application/ld+json');
@@ -70,6 +75,115 @@ describe('build locale: non indicizzabile', () => {
     const file = readdirSync('dist');
     expect(file.filter((nome) => nome.startsWith('sitemap'))).toEqual([]);
     expect(existsSync('dist/sitemap-index.xml')).toBe(false);
+  });
+});
+
+describe('pannello dei contenuti (/admin/)', () => {
+  const html = () => readFileSync(PANNELLO, 'utf8');
+
+  // Percorso di un file dentro dist/ a partire da un indirizzo del sito
+  // (`/_astro/x.js` diventa `dist/_astro/x.js`).
+  const nelSito = (indirizzo: string) => join('dist', ...indirizzo.split('/'));
+
+  const sorgentiAstro = (): string[] =>
+    readdirSync(join('dist', '_astro')).filter((nome) => /\.(js|css)$/.test(nome));
+  const leggiAstro = (nome: string) => readFileSync(join('dist', '_astro', nome), 'utf8');
+
+  it('esiste ed è in italiano', () => {
+    expect(existsSync(PANNELLO)).toBe(true);
+    expect(html()).toContain('<html lang="it"');
+  });
+
+  it('non si indicizza, anche dopo il lancio, e non ha JSON-LD', () => {
+    expect(html()).toContain('<meta name="robots" content="noindex">');
+    expect(html()).not.toContain('application/ld+json');
+  });
+
+  it('carica un solo script, un modulo di /_astro/ del proprio sito, senza codice inline', () => {
+    const script = [...html().matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+    expect(script).toHaveLength(1);
+    const [, attributi, codice] = script[0];
+    expect(codice).toBe('');
+    expect(attributi).toMatch(/^\s*type="module"\s+src="\/_astro\/[^"/]+\.js"\s*$/);
+    const src = /src="([^"]+)"/.exec(attributi)?.[1] ?? '';
+    expect(existsSync(nelSito(src))).toBe(true);
+  });
+
+  it('ogni script, link, immagine e frame ha un indirizzo del proprio sito', () => {
+    // Un indirizzo del sito comincia con una sola barra: niente http(s):,
+    // niente //host, niente data: o blob:.
+    const indirizzi = [
+      ...html().matchAll(/<(?:script|link|img|iframe|source|video|audio)\b[^>]*?\s(?:src|href)="([^"]*)"/gi),
+    ].map((m) => m[1]);
+    expect(indirizzi.length).toBeGreaterThan(0);
+    for (const indirizzo of indirizzi) {
+      expect(indirizzo, indirizzo).toMatch(/^\/(?!\/)/);
+    }
+  });
+
+  it('l\'unico link è la configurazione, sullo stesso sito', () => {
+    const link = [...html().matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
+    expect(link).toEqual([
+      '<link href="/admin/config.yml" type="application/yaml" rel="cms-config-url">',
+    ]);
+  });
+
+  it('serve lo stesso config.yml di public/admin', () => {
+    expect(readFileSync('dist/admin/config.yml', 'utf8')).toBe(
+      readFileSync('public/admin/config.yml', 'utf8'),
+    );
+  });
+
+  it('non resta la copia della build CDN di Sveltia', () => {
+    expect(existsSync('dist/admin/sveltia-cms.js')).toBe(false);
+    expect(existsSync('dist/admin/chunks')).toBe(false);
+  });
+
+  it('i font del pannello sono file del sito, non indirizzi esterni', () => {
+    // Il pacchetto npm registra i font con `FontFace` e li prende da file che
+    // Vite emette in /_astro/; la build CDN li prenderebbe da jsDelivr.
+    const nomi = readdirSync(join('dist', '_astro'));
+    for (const famiglia of ['source-sans-3', 'noto-mono', 'material-symbols-outlined']) {
+      expect(
+        nomi.some((nome) => nome.startsWith(`${famiglia}-`) && nome.endsWith('.woff2')),
+        famiglia,
+      ).toBe(true);
+    }
+    const codice = leggiAstro(/src="\/_astro\/([^"]+)"/.exec(html())?.[1] ?? '');
+    expect(codice).toMatch(/new URL\(`\/_astro\/source-sans-3-[^`]+\.woff2`/);
+    expect(codice).toMatch(/new URL\(`\/_astro\/material-symbols-outlined-[^`]+\.woff2`/);
+  });
+
+  it('nessuna regola @font-face, in CSS o JS emessi, ha un indirizzo esterno', () => {
+    const regole: string[] = [];
+    for (const nome of sorgentiAstro()) {
+      regole.push(...(leggiAstro(nome).match(/@font-face\s*\{[^}]*\}/g) ?? []));
+    }
+    // PDF.js ne scrive alcune a tempo di esecuzione, per i font incorporati nei PDF.
+    for (const regola of regole) {
+      const indirizzi = [...regola.matchAll(/url\(\s*["']?([^"')]*)/g)].map((m) => m[1]);
+      for (const indirizzo of indirizzi) {
+        expect(indirizzo, regola).not.toMatch(/^(?:https?:)?\/\//i);
+      }
+    }
+    for (const nome of sorgentiAstro()) {
+      expect(leggiAstro(nome), nome).not.toMatch(
+        /url\(\s*["'`]?(?:https?:)?\/\/[^)]*\.(?:woff2?|ttf|otf)/i,
+      );
+    }
+  });
+
+  it('nessun import(), worker o foglio di stile ha un indirizzo esterno scritto per esteso', () => {
+    // Le stringhe "unpkg.com" che restano nel pacchetto sono i valori
+    // predefiniti della build CDN, sostituiti all'avvio con quelli locali (si
+    // verifica nel browser, vedi il report): qui si controlla solo ciò che
+    // sarebbe sicuramente un caricamento esterno.
+    for (const nome of sorgentiAstro()) {
+      const sorgente = leggiAstro(nome);
+      expect(sorgente, nome).not.toMatch(/import\(\s*["'`]https?:/);
+      expect(sorgente, nome).not.toMatch(/(?:importScripts|new Worker)\(\s*["'`]https?:/);
+      expect(sorgente, nome).not.toMatch(/@import\s+(?:url\()?["']?https?:/);
+    }
   });
 });
 

@@ -1,0 +1,181 @@
+# Configurazione del pannello dei contenuti (Sveltia CMS), servito su /admin/.
+# Documentazione: https://sveltiacms.app/en/docs/
+#
+# Il pannello e `autonomia.yml` descrivono gli stessi campi: tests/sveltia-config.test.ts
+# li tiene allineati. Un campo a livello 0 in `autonomia.yml` è `readonly: true`
+# qui (solo l'interfaccia: la regola vera la fa il controllo `verifica-autonomia`).
+# I limiti dei campi vengono da src/content/limits.ts (LIMITI), gli stessi
+# dello schema che la build fa rispettare.
+#
+# yaml-language-server: $schema=../../node_modules/@sveltia/cms/schema/sveltia-cms.json
+
+app_title: Alma Living
+
+backend:
+  name: github
+  repo: eusebjo/alma-living
+  branch: main
+  # Segnaposto: la Task 8 mette qui l'indirizzo del Worker che gestisce l'accesso
+  # con GitHub (flusso OAuth). Fino ad allora il pannello si usa solo in locale.
+  base_url: https://AUTH_WORKER_URL
+
+# Ogni modifica passa da un ramo `cms/<collection>/<id>` e da una pull request,
+# mai da un commit diretto su main. Gli stati sono le etichette
+# `sveltia-cms/draft`, `sveltia-cms/pending_review` e `sveltia-cms/pending_publish`;
+# la bozza è una pull request draft. Pubblicare spetta agli admin (`publish: false`).
+publish_mode: editorial_workflow
+
+output:
+  # Senza questa opzione un campo opzionale lasciato vuoto viene salvato come ""
+  # e lo schema di Astro (`email` è `z.email().optional()`) fa fallire la build.
+  omit_empty_optional_fields: true
+
+# Cartella globale delle immagini (Libreria dei file): coincide con quella
+# delle pagine, l'unica in cui `autonomia.yml` consente di caricare file.
+media_folder: src/content/pagine/immagini
+
+media_libraries:
+  all:
+    # Le foto si convertono nel browser, prima del caricamento: WebP, qualità 85,
+    # larghezza massima 2400 px (senza ingrandire le più piccole). I metadati
+    # Exif vengono sempre tolti; con questa opzione si convertono anche le foto
+    # HEIC di iPhone e Android.
+    transformations:
+      raster_image:
+        format: webp
+        quality: 85
+        width: 2400
+    # Niente spazi, maiuscole o accenti nei nomi dei file.
+    slugify_filename: true
+  # Niente foto di stock da servizi esterni.
+  stock_assets: false
+
+collections:
+  - name: negozio
+    label: Negozio
+    icon: storefront
+    publish: false
+    files:
+      - name: negozio
+        label: Dati del negozio
+        file: src/content/negozio/negozio.json
+        format: json
+        fields:
+          - name: nome
+            label: Nome
+            widget: string
+            readonly: true
+            maxlength: 60
+          - name: descrizione
+            label: Descrizione
+            widget: text
+            hint: Una frase che presenta il negozio. Compare anche nei motori di ricerca.
+            minlength: 20
+            maxlength: 160
+          - name: indirizzo
+            label: Indirizzo
+            widget: object
+            readonly: true
+            fields:
+              - { name: via, label: Via, widget: string, readonly: true }
+              - { name: civico, label: Civico, widget: string, readonly: true, maxlength: 10 }
+              - name: cap
+                label: CAP
+                widget: string
+                readonly: true
+                pattern: ['^\d{5}$', 'Il CAP deve avere 5 cifre.']
+              - { name: citta, label: Città, widget: string, readonly: true }
+              - name: provincia
+                label: Provincia
+                widget: string
+                readonly: true
+                pattern: ['^[A-Z]{2}$', 'La provincia è una sigla di 2 lettere maiuscole.']
+          - name: telefono
+            label: Telefono
+            widget: string
+            hint: Solo cifre e spazi, con un + iniziale se serve. Per esempio +39 334 520 5451.
+            # Come nello schema: solo cifre, spazi e un + iniziale, da 9 a 15 cifre.
+            pattern:
+              - '^\+?(?=(?:\D*\d){9,15}\D*$)[\d ]+$'
+              - 'Il telefono può contenere solo cifre, spazi e un + iniziale, da 9 a 15 cifre.'
+          - name: email
+            label: Email
+            widget: string
+            type: email
+            required: false
+            hint: Lascia vuoto se non vuoi mostrare un indirizzo email.
+          - name: orari
+            label: Orari di apertura
+            label_singular: Fascia oraria
+            widget: list
+            required: false
+            hint: Una riga per fascia. Un giorno con mattina e pomeriggio ha due righe, un giorno di chiusura non ne ha.
+            summary: '{{giorno}}, {{apertura}}-{{chiusura}}'
+            fields:
+              - name: giorno
+                label: Giorno
+                widget: select
+                options:
+                  - { label: Lunedì, value: lunedi }
+                  - { label: Martedì, value: martedi }
+                  - { label: Mercoledì, value: mercoledi }
+                  - { label: Giovedì, value: giovedi }
+                  - { label: Venerdì, value: venerdi }
+                  - { label: Sabato, value: sabato }
+                  - { label: Domenica, value: domenica }
+              - name: apertura
+                label: Apertura
+                widget: string
+                hint: Ora in formato 24 ore, per esempio 09:30.
+                pattern: ['^([01]\d|2[0-3]):[0-5]\d$', "L'ora va scritta come HH:MM, per esempio 09:30."]
+              - name: chiusura
+                label: Chiusura
+                widget: string
+                hint: Ora in formato 24 ore, dopo l'apertura.
+                pattern: ['^([01]\d|2[0-3]):[0-5]\d$', "L'ora va scritta come HH:MM, per esempio 19:30."]
+
+  - name: pagine
+    label: Pagine
+    label_singular: Pagina
+    icon: article
+    folder: src/content/pagine
+    extension: md
+    identifier_field: titolo
+    summary: '{{titolo}}'
+    # Le pagine si modificano soltanto: nuove pagine ed eliminazioni passano da
+    # una proposta di sviluppo (create e delete a livello 0 in `autonomia.yml`).
+    create: false
+    delete: false
+    publish: false
+    # Cartelle relative alla pagina: `src/content/pagine/immagini/`. Nel frontmatter
+    # il percorso è `immagini/<file>.webp`, relativo alla pagina come richiede `image()` di Astro.
+    media_folder: immagini
+    public_folder: immagini
+    fields:
+      - name: titolo
+        label: Titolo
+        widget: string
+        hint: È il titolo della pagina nei motori di ricerca.
+        maxlength: 70
+      - name: descrizione
+        label: Descrizione
+        widget: text
+        hint: È la descrizione nei risultati di ricerca.
+        minlength: 50
+        maxlength: 160
+      - name: immagine
+        label: Immagine
+        widget: image
+        hint: Foto JPEG, PNG, WebP, AVIF o HEIC. Il pannello la converte in WebP.
+        # Solo file caricati (niente indirizzi esterni) e niente SVG, che può contenere codice.
+        choose_url: false
+        accept: image/jpeg,image/png,image/webp,image/avif,.heic,.heif
+      - name: immagine_alt
+        label: Testo alternativo dell'immagine
+        widget: string
+        hint: Descrivi cosa si vede nella foto, per chi non può vederla.
+        minlength: 5
+        maxlength: 150
+      - name: body
+        label: Testo
+        widget: markdown
