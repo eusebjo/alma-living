@@ -1,6 +1,7 @@
 import picomatch from 'picomatch';
 import { diffFields, levelForField } from './diff';
 import { parseContent } from './parse';
+import { ruoloEffettivo } from './ruolo';
 import { codice, formattaNumero } from './testo';
 import type {
   Azione,
@@ -368,28 +369,34 @@ function valutaFile(file: ChangedFile, ctx: Contesto): Parziale {
   }
 }
 
-function ruoloDi(autore: string, rules: Rules): Verdict['ruolo'] {
-  const login = autore.toLowerCase();
-  // I login di GitHub non distinguono maiuscole e minuscole.
-  const contiene = (elenco: string[]) =>
-    elenco.some((nome) => nome.toLowerCase() === login);
-  if (contiene(rules.ruoli.sviluppo)) return 'sviluppo';
-  if (contiene(rules.ruoli.redazione)) return 'redazione';
-  return 'sconosciuto';
+/** Informazioni sulla proposta che non stanno in `PullRequestInput`. */
+export interface OpzioniValutazione {
+  /**
+   * Ramo della proposta (`null` o assente se non si sa, per esempio un fork).
+   * Una proposta di un ramo `cms/` si valuta con le regole della redazione
+   * anche se la apre chi è nello `sviluppo` (vedi `ruoloEffettivo`).
+   */
+  ramo?: string | null | undefined;
 }
 
 /**
  * Decide se una proposta è consentita, respinta o ancora in bozza.
  *
- * 1. Chi è nel ruolo `sviluppo` passa sempre (livello `null`).
+ * 1. Chi è nel ruolo `sviluppo` passa sempre (livello `null`), tranne che su un
+ *    ramo `cms/` del pannello: lì valgono le regole della redazione (punti 3-5)
+ *    e il ruolo del verdetto è `redazione`.
  * 2. Chi non è in nessun ruolo viene respinto.
  * 3. Per la redazione, una proposta in bozza o senza un'etichetta di invio è `in_bozza`.
  * 4. Ogni file deve rientrare in una collection o nei media, con livelli > 0.
  * 5. Una sola violazione basta per respingere; altrimenti il livello è il
  *    minimo dei livelli toccati (1, il più prudente, se non ne è toccato nessuno).
  */
-export function evaluate(input: PullRequestInput, rules: Rules): Verdict {
-  const ruolo = ruoloDi(input.author, rules);
+export function evaluate(
+  input: PullRequestInput,
+  rules: Rules,
+  opzioni: OpzioniValutazione = {},
+): Verdict {
+  const ruolo = ruoloEffettivo(input.author, opzioni.ramo, rules);
 
   if (ruolo === 'sviluppo') {
     return { ruolo, esito: 'consentito', livello: null, violazioni: [] };

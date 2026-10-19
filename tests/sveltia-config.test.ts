@@ -23,6 +23,7 @@ interface Campo {
   fields?: Campo[];
   choose_url?: boolean;
   accept?: string;
+  editor_components?: string[];
 }
 
 interface Collection {
@@ -213,6 +214,17 @@ describe('campi', () => {
   it('il corpo è un campo Markdown', () => {
     expect(campo(campiPagine(), 'body').widget).toBe('markdown');
   });
+
+  it("il corpo non offre componenti dell'editor: niente immagini inserite nel testo", () => {
+    // Senza questa opzione Sveltia offre i componenti `image` e `code-block`:
+    // un'immagine con indirizzo esterno sarebbe una risorsa di terzi sul sito.
+    // L'elenco vuoto vale davvero: Sveltia usa l'elenco predefinito solo se
+    // l'opzione manca (`editor_components ?? [...predefiniti]`). L'immagine di
+    // una pagina si carica dal campo `immagine`, non dal testo.
+    const corpo = campo(campiPagine(), 'body');
+    expect(corpo).toHaveProperty('editor_components');
+    expect(corpo.editor_components).toEqual([]);
+  });
 });
 
 describe('limiti dei campi (da LIMITI)', () => {
@@ -322,11 +334,16 @@ describe('formati dei campi (stessi dello schema)', () => {
 describe('immagini', () => {
   const trasformazioni = () => config.media_libraries.all?.transformations;
 
-  it('ogni immagine caricata diventa WebP, qualità 85, larghezza massima 2400', () => {
+  it('ogni immagine caricata diventa WebP, qualità 85, dentro un riquadro di 2400 x 2400 px', () => {
+    // Larghezza e altezza insieme sono un riquadro: la foto si riduce (mai si
+    // ingrandisce) finché sta dentro entrambi i limiti, mantenendo le proporzioni.
+    // Con la sola larghezza una foto verticale 3:4 diventerebbe 2400 x 3200 px e
+    // potrebbe superare il peso massimo di autonomia.yml.
     expect(trasformazioni()?.raster_image).toEqual({
       format: 'webp',
       quality: 85,
       width: 2400,
+      height: 2400,
     });
   });
 

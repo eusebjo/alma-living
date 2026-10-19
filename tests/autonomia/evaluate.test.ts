@@ -1,6 +1,7 @@
 import { parseFrontmatter } from '@astrojs/markdown-remark';
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../../scripts/autonomia/evaluate';
+import { eRamoDelPannello, ruoloDi, ruoloEffettivo } from '../../scripts/autonomia/ruolo';
 import type { ChangedFile, Rules } from '../../scripts/autonomia/types';
 import {
   HOME,
@@ -1074,6 +1075,135 @@ describe('evaluate, glob e collection', () => {
   });
 });
 
+describe('evaluate, rami del pannello (cms/): regole della redazione per chiunque apra la proposta', () => {
+  // Il pannello lavora su rami `cms/<collection>/<id>` e la redazione può
+  // scrivere lì: una proposta di quel ramo aperta da chi è nello `sviluppo`
+  // porterebbe online (con il merge dell'admin) le modifiche della redazione
+  // senza i controlli sui contenuti. Per questo vale il ramo, non chi apre.
+  const RAMO_PANNELLO = 'cms/negozio/negozio';
+  const modificaNomeNegozio = modificato(
+    NEGOZIO,
+    negozioJson(),
+    negozioJson((n) => {
+      n.nome = 'Altro nome';
+    }),
+  );
+  const modificaDescrizione = modificato(
+    NEGOZIO,
+    negozioJson(),
+    negozioJson((n) => {
+      n.descrizione = 'Una descrizione nuova del negozio.';
+    }),
+  );
+  const daSviluppo = (
+    files: ChangedFile[],
+    ramo: string | null | undefined,
+    altro: Partial<Parameters<typeof proposta>[1]> = {},
+  ) => evaluate(proposta(files, { author: 'eusebjo', ...altro }), rules, { ramo });
+
+  it('sviluppo + ramo cms/ + campo vietato: respinto con le regole della redazione', () => {
+    const verdetto = daSviluppo([modificaNomeNegozio], RAMO_PANNELLO);
+
+    expect(verdetto.ruolo).toBe('redazione');
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.livello).toBeNull();
+    expect(verdetto.violazioni).toEqual([
+      expect.objectContaining({ file: NEGOZIO, campo: 'nome', azione: 'modifica' }),
+    ]);
+  });
+
+  it('sviluppo + ramo cms/ + file fuori perimetro: respinto', () => {
+    const verdetto = daSviluppo(
+      [modificato('src/layouts/BaseLayout.astro', 'a', 'b')],
+      RAMO_PANNELLO,
+    );
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['perimetro']);
+  });
+
+  it('sviluppo + ramo cms/ + campo consentito + pending_review: consentito, livello 1', () => {
+    expect(daSviluppo([modificaDescrizione], RAMO_PANNELLO)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('sviluppo + ramo cms/ vale anche con pending_publish', () => {
+    const verdetto = daSviluppo([modificaDescrizione], RAMO_PANNELLO, {
+      labels: ['sveltia-cms/pending_publish'],
+    });
+    expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1 });
+  });
+
+  it('sviluppo + ramo cms/ in bozza o senza etichetta di invio: in_bozza, come per la redazione', () => {
+    for (const altro of [
+      { draft: true },
+      { labels: [] },
+      { labels: ['sveltia-cms/draft'] },
+    ]) {
+      const verdetto = daSviluppo([modificaNomeNegozio], RAMO_PANNELLO, altro);
+      expect(verdetto.ruolo).toBe('redazione');
+      expect(verdetto.esito).toBe('in_bozza');
+      expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['stato']);
+    }
+  });
+
+  it('sviluppo + ramo di sviluppo (o ramo ignoto): invariato, nessun limite sui contenuti', () => {
+    for (const ramo of [
+      'fase1/9-correzioni',
+      'main-fix',
+      'fase1/cms/x',
+      'cmsx/negozio',
+      'cms',
+      null,
+      undefined,
+    ]) {
+      expect(daSviluppo([modificaNomeNegozio], ramo), String(ramo)).toEqual({
+        ruolo: 'sviluppo',
+        esito: 'consentito',
+        livello: null,
+        violazioni: [],
+      });
+    }
+    // Senza il terzo parametro (chiamata di prima) il comportamento non cambia.
+    expect(evaluate(proposta([modificaNomeNegozio], { author: 'eusebjo' }), rules)).toMatchObject({
+      ruolo: 'sviluppo',
+      esito: 'consentito',
+    });
+  });
+
+  it('il prefisso cms/ si riconosce senza distinguere maiuscole e minuscole (si sbaglia dal lato prudente)', () => {
+    for (const ramo of ['CMS/negozio/negozio', 'Cms/pagine/home']) {
+      expect(daSviluppo([modificaNomeNegozio], ramo), ramo).toMatchObject({
+        ruolo: 'redazione',
+        esito: 'respinto',
+      });
+    }
+  });
+
+  it('chi non è in nessun ruolo resta respinto per autore, anche da un ramo cms/', () => {
+    const verdetto = evaluate(
+      proposta([modificaDescrizione], { author: 'estraneo' }),
+      rules,
+      { ramo: RAMO_PANNELLO },
+    );
+    expect(verdetto.ruolo).toBe('sconosciuto');
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['autore']);
+  });
+
+  it('la redazione da un ramo di sviluppo non cambia: le regole sono le stesse', () => {
+    const verdetto = evaluate(
+      proposta([modificaNomeNegozio], { author: 'lei' }),
+      rules,
+      { ramo: 'fase1/qualcosa' },
+    );
+    expect(verdetto).toMatchObject({ ruolo: 'redazione', esito: 'respinto' });
+  });
+});
+
 describe('evaluate, messaggi per chi gestisce i contenuti', () => {
   const GERGO = /branch|merge|commit/i;
 
@@ -1123,5 +1253,58 @@ describe('evaluate, messaggi per chi gestisce i contenuti', () => {
     expect(verdetto.violazioni[0].messaggio).toMatch(
       /^L'utente `[^`]*@everyone[^`]*` non è autorizzato/,
     );
+  });
+});
+
+describe('eRamoDelPannello', () => {
+  it.each([
+    'cms/negozio/negozio',
+    'cms/pagine/home',
+    'cms/x',
+    'CMS/pagine/home',
+    'Cms/pagine/home',
+  ])('%s è un ramo del pannello', (ramo) => {
+    expect(eRamoDelPannello(ramo)).toBe(true);
+  });
+
+  it.each([
+    'main',
+    'fase1/9-correzioni',
+    'fase1/cms/x',
+    'cms',
+    'cmsx/pagine/home',
+    'cms-pagine/home',
+    ' cms/pagine/home',
+    '',
+    null,
+    undefined,
+  ])('%j non è un ramo del pannello', (ramo) => {
+    expect(eRamoDelPannello(ramo)).toBe(false);
+  });
+});
+
+describe('ruoloEffettivo', () => {
+  it('lo sviluppo su un ramo cms/ vale come redazione', () => {
+    expect(ruoloEffettivo('eusebjo', 'cms/pagine/home', rules)).toBe('redazione');
+    expect(ruoloEffettivo('Eusebjo', 'CMS/pagine/home', rules)).toBe('redazione');
+  });
+
+  it('lo sviluppo su un altro ramo, o senza ramo, resta sviluppo', () => {
+    expect(ruoloEffettivo('eusebjo', 'fase1/x', rules)).toBe('sviluppo');
+    expect(ruoloEffettivo('eusebjo', null, rules)).toBe('sviluppo');
+    expect(ruoloEffettivo('eusebjo', undefined, rules)).toBe('sviluppo');
+  });
+
+  it('la redazione resta redazione e gli sconosciuti restano sconosciuti, su qualunque ramo', () => {
+    for (const ramo of ['cms/pagine/home', 'fase1/x', null]) {
+      expect(ruoloEffettivo('lei', ramo, rules)).toBe('redazione');
+      expect(ruoloEffettivo('estraneo', ramo, rules)).toBe('sconosciuto');
+    }
+  });
+
+  it('ruoloDi guarda solo l’autore', () => {
+    expect(ruoloDi('eusebjo', rules)).toBe('sviluppo');
+    expect(ruoloDi('LEI', rules)).toBe('redazione');
+    expect(ruoloDi('estraneo', rules)).toBe('sconosciuto');
   });
 });

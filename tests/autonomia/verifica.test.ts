@@ -5,7 +5,7 @@ import {
 } from '../../scripts/autonomia/github';
 import { MARCATORE } from '../../scripts/autonomia/report';
 import { eseguiVerifica, rapportoErrore } from '../../scripts/autonomia/verifica';
-import { ETICHETTA_INVIATA, HOME, NEGOZIO, negozioJson, rules } from './fixtures';
+import { ETICHETTA_INVIATA, HOME, NEGOZIO, homeMd, negozioJson, rules } from './fixtures';
 import {
   BASE_SHA,
   HEAD_SHA,
@@ -242,11 +242,308 @@ describe('eseguiVerifica', () => {
     });
 
     it('una proposta senza file resta consentita', async () => {
-      const { octokit } = creaOctokitFinto({ autore: 'eusebjo', files: [] });
+      const { octokit } = creaOctokitFinto({
+        autore: 'eusebjo',
+        ramo: 'fase1/2-anteprime',
+        files: [],
+      });
 
       expect((await eseguiVerifica(octokit, ref, rules)).superato).toBe(true);
     });
 
+    it('un ramo cms/ senza file non è consentito: vale come una proposta della redazione', async () => {
+      const { octokit } = creaOctokitFinto({
+        autore: 'eusebjo',
+        ramo: 'cms/pagine/home',
+        etichette: [ETICHETTA_INVIATA],
+        files: [],
+      });
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.violazioni[0]?.messaggio).toMatch(/nessun file/i);
+    });
+
+  });
+
+  describe('ramo del pannello (cms/) aperto da chi è nello sviluppo', () => {
+    // La redazione può scrivere sui rami `cms/**`: se la proposta la apre
+    // l'admin, le modifiche della redazione devono comunque passare dai
+    // controlli sui contenuti prima che l'admin le porti online.
+    const dalPannello = (nomeNegozio: string | null, extra: ScenarioFinto = {}): ScenarioFinto => {
+      const dopo = negozioJson((n) => {
+        if (nomeNegozio !== null) n.nome = nomeNegozio;
+        else n.descrizione = 'Una descrizione nuova.';
+      });
+      return {
+        autore: 'eusebjo',
+        ramo: 'cms/negozio/negozio',
+        etichette: [ETICHETTA_INVIATA],
+        files: [{ filename: NEGOZIO, status: 'modified' }],
+        contenuti: {
+          [chiave(BASE_SHA, NEGOZIO)]: { testo: negozioJson() },
+          [chiave(HEAD_SHA, NEGOZIO)]: { testo: dopo },
+        },
+        ...extra,
+      };
+    };
+
+    it('una modifica a un campo vietato è respinta, con le regole della redazione', async () => {
+      const { octokit, stato } = creaOctokitFinto(dalPannello('Altro nome'));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'respinto' });
+      expect(esito.verdict?.violazioni).toEqual([
+        expect.objectContaining({ file: NEGOZIO, campo: 'nome', azione: 'modifica' }),
+      ]);
+      const corpo = corpoDelRapporto(stato);
+      expect(corpo).toMatch(/modifica non consentita/);
+      expect(corpo).not.toMatch(/gruppo sviluppo/);
+      expect(corpo).not.toMatch(GERGO);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('una modifica a un campo consentito, inviata per la revisione, è consentita a livello 1', async () => {
+      const { octokit, stato } = creaOctokitFinto(dalPannello(null));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'consentito', livello: 1 });
+      expect(corpoDelRapporto(stato)).toContain(URL_ANTEPRIMA.replace('pagine-home', 'negozio-negozio'));
+      expect(stato.etichette).toEqual([ETICHETTA_INVIATA, ETICHETTA_LIVELLO_1]);
+    });
+
+    it('una bozza non supera il controllo, come per la redazione', async () => {
+      const { octokit } = creaOctokitFinto(dalPannello(null, { bozza: true }));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'in_bozza' });
+    });
+
+    it('su un ramo di sviluppo la stessa modifica resta consentita, senza leggere i file', async () => {
+      const { octokit, chiamate, stato } = creaOctokitFinto(
+        dalPannello('Altro nome', { ramo: 'fase1/9-correzioni' }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ ruolo: 'sviluppo', esito: 'consentito' });
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+      expect(quante(chiamate, 'repos.compareCommitsWithBasehead')).toBe(0);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('un fork con ramo cms/ resta respinto come ogni fork', async () => {
+      const { octokit } = creaOctokitFinto(
+        dalPannello(null, { repoTestata: 'altro/alma-living' }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.violazioni[0]).toMatchObject({ azione: 'perimetro' });
+    });
+
+    it('chi non è in nessun ruolo resta respinto, anche con un ramo cms/', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(dalPannello(null, { autore: 'estraneo' }));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.ruolo).toBe('sconosciuto');
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+    });
+  });
+
+  describe('contenuto non valido per gli schemi: l’errore della build spiegato in italiano', () => {
+    // Una chiusura prima dell'apertura passa dal pannello e dalle regole di
+    // autonomia, e farebbe fallire solo la build (in inglese). Il controllo lo
+    // dice subito, in italiano, dicendo cosa correggere.
+    const orariSbagliati = (extra: ScenarioFinto = {}): ScenarioFinto =>
+      modificaConsentita({
+        contenuti: {
+          [chiave(BASE_SHA, NEGOZIO)]: { testo: negozioJson() },
+          [chiave(HEAD_SHA, NEGOZIO)]: {
+            testo: negozioJson((n) => {
+              n.orari = [{ giorno: 'lunedi', apertura: '18:00', chiusura: '09:00' }];
+            }),
+          },
+        },
+        ...extra,
+      });
+
+    it('una chiusura prima dell’apertura è respinta, con il motivo e cosa fare', async () => {
+      const { octokit, stato } = creaOctokitFinto(orariSbagliati());
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'respinto', livello: null });
+      expect(esito.verdict?.violazioni).toEqual([
+        expect.objectContaining({ file: NEGOZIO, campo: 'orari.chiusura', azione: 'formato' }),
+      ]);
+      const corpo = corpoDelRapporto(stato);
+      expect(corpo).toMatch(/modifica non consentita/);
+      expect(corpo).not.toMatch(/modifica consentita/);
+      expect(corpo).toContain("La chiusura deve essere successiva all'apertura.");
+      expect(corpo).toMatch(/pannello dei contenuti/);
+      expect(corpo).not.toMatch(GERGO);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('una modifica valida resta consentita', async () => {
+      const { octokit } = creaOctokitFinto(modificaConsentita());
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
+    });
+
+    it('si aggiunge alle violazioni sulle regole senza nasconderle', async () => {
+      const { octokit } = creaOctokitFinto(
+        orariSbagliati({
+          contenuti: {
+            [chiave(BASE_SHA, NEGOZIO)]: { testo: negozioJson() },
+            [chiave(HEAD_SHA, NEGOZIO)]: {
+              testo: negozioJson((n) => {
+                n.nome = 'Altro nome';
+                n.orari = [{ giorno: 'lunedi', apertura: '18:00', chiusura: '09:00' }];
+              }),
+            },
+          },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.verdict?.esito).toBe('respinto');
+      expect(esito.verdict?.violazioni.map((v) => [v.azione, v.campo])).toEqual([
+        ['modifica', 'nome'],
+        ['formato', 'orari.chiusura'],
+      ]);
+    });
+
+    it('vale anche per una pagina con la descrizione troppo corta', async () => {
+      const { octokit, stato } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: HOME, status: 'modified' }],
+          contenuti: {
+            [chiave(BASE_SHA, HOME)]: { testo: homeMd() },
+            [chiave(HEAD_SHA, HOME)]: { testo: homeMd({ descrizione: 'Troppo corta.' }) },
+          },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(corpoDelRapporto(stato)).toMatch(/almeno 50 caratteri/);
+    });
+
+    it('una bozza resta in bozza: il contenuto si controlla quando la proposta viene inviata', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(orariSbagliati({ bozza: true }));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.verdict?.esito).toBe('in_bozza');
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+    });
+
+    it('lo sviluppo su un ramo di sviluppo non è toccato', async () => {
+      const { octokit } = creaOctokitFinto(
+        orariSbagliati({ autore: 'eusebjo', ramo: 'fase1/9-correzioni' }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ ruolo: 'sviluppo', esito: 'consentito' });
+    });
+
+    it('un ramo cms/ aperto dallo sviluppo è controllato anche con gli schemi', async () => {
+      const { octokit } = creaOctokitFinto(
+        orariSbagliati({ autore: 'eusebjo', ramo: 'cms/negozio/negozio' }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.violazioni).toEqual([
+        expect.objectContaining({ azione: 'formato', campo: 'orari.chiusura' }),
+      ]);
+    });
+  });
+
+  describe('versione di partenza della proposta', () => {
+    // `main` ha cambiato un campo che la redazione non può toccare (il nome del
+    // negozio) mentre la proposta era aperta: la redazione ha cambiato solo la
+    // descrizione, quindi non va ritenuta responsabile del nome.
+    const MERGE_BASE = 'd'.repeat(40);
+    const nomeNuovoSuMain = negozioJson((n) => {
+      n.nome = 'Nome cambiato su main';
+    });
+    const scenarioMainCambiato = (extra: ScenarioFinto = {}): ScenarioFinto =>
+      modificaConsentita({
+        mergeBaseSha: MERGE_BASE,
+        contenuti: {
+          [chiave(MERGE_BASE, NEGOZIO)]: { testo: negozioJson() },
+          [chiave(BASE_SHA, NEGOZIO)]: { testo: nomeNuovoSuMain },
+          [chiave(HEAD_SHA, NEGOZIO)]: {
+            testo: negozioJson((n) => {
+              n.descrizione = 'Una descrizione nuova.';
+            }),
+          },
+        },
+        ...extra,
+      });
+
+    it('se main è cambiato nel frattempo, la redazione non viene incolpata di quel cambiamento', async () => {
+      const { octokit } = creaOctokitFinto(scenarioMainCambiato());
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.verdict?.violazioni).toEqual([]);
+      expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
+      expect(esito.superato).toBe(true);
+    });
+
+    it('controllo: letto alla punta di main il cambiamento verrebbe attribuito alla redazione', async () => {
+      // Stesso scenario, ma con il punto di partenza uguale alla punta di main
+      // (come se `before` si leggesse lì): il campo `nome` risulta cambiato.
+      const { octokit } = creaOctokitFinto(
+        scenarioMainCambiato({ mergeBaseSha: BASE_SHA }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.verdict?.violazioni).toEqual([
+        expect.objectContaining({ campo: 'nome', azione: 'modifica' }),
+      ]);
+      expect(esito.superato).toBe(false);
+    });
+
+    it('se il punto di partenza non si stabilisce il controllo non passa, con un messaggio in italiano', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { octokit, stato } = creaOctokitFinto(scenarioMainCambiato({ mergeBaseSha: null }));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toBeNull();
+      const corpo = corpoDelRapporto(stato);
+      expect(corpo).toMatch(/controllo non completato/);
+      expect(corpo).toMatch(/da quale versione/);
+      expect(corpo).not.toMatch(GERGO);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
   });
 
   describe('proposte da un fork (o da un repository cancellato)', () => {

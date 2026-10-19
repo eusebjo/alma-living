@@ -13,7 +13,11 @@ import type { Octokit } from '@octokit/rest';
 //   diverso da quello elencato); `type: "symlink"` solo se la destinazione è
 //   fuori dal repository;
 // - oltre 1 MB senza `mediaType.format = "object"` risponde 403; con il formato
-//   `object` dà i soli metadati (codifica `none`, contenuto vuoto).
+//   `object` dà i soli metadati (codifica `none`, contenuto vuoto);
+// - `repos.compareCommitsWithBasehead` dà in `merge_base_commit` la versione da cui la
+//   proposta si è staccata dal ramo base: per i test è `baseSha`, a meno che lo
+//   scenario non indichi `mergeBaseSha` (la punta del ramo base nel frattempo
+//   si è mossa) oppure `null` (risposta senza merge base).
 
 /** SHA (finto ma stabile) del blob di un percorso. */
 export function shaDiFile(percorso: string): string {
@@ -53,6 +57,12 @@ export interface ScenarioFinto {
   bozza?: boolean;
   etichette?: string[];
   baseSha?: string;
+  /**
+   * Versione da cui la proposta si è staccata dal ramo base (`merge_base_commit`
+   * di `repos.compareCommitsWithBasehead`). Se manca è `baseSha`; `null` simula una risposta
+   * senza merge base.
+   */
+  mergeBaseSha?: string | null;
   headSha?: string;
   ramo?: string;
   /** Repository della testata (`null` se è stato cancellato). */
@@ -205,6 +215,18 @@ export function creaOctokitFinto(scenario: ScenarioFinto = {}): {
         }),
     },
     repos: {
+      compareCommitsWithBasehead: (params: Record<string, unknown>) =>
+        registra('repos.compareCommitsWithBasehead', params, () => {
+          const mergeBase =
+            scenario.mergeBaseSha === undefined
+              ? (scenario.baseSha ?? BASE_SHA)
+              : scenario.mergeBaseSha;
+          return {
+            data: {
+              merge_base_commit: mergeBase === null ? undefined : { sha: mergeBase },
+            },
+          };
+        }),
       getContent: (params: Record<string, unknown>) =>
         registra('repos.getContent', params, () => {
           const trovato = scenario.contenuti?.[

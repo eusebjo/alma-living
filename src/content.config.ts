@@ -11,7 +11,8 @@ const negozio = defineCollection({
 
 // Frontmatter (titolo, descrizione, immagine, immagine_alt) più il corpo in
 // Markdown. Le immagini stanno in `src/content/pagine/immagini/` e si citano
-// con un percorso relativo (`./immagini/home.webp`).
+// con un percorso relativo: `immagini/home.webp` (come lo scrive il pannello) o
+// `./immagini/home.webp`.
 const pagine = defineCollection({
   loader: glob({ pattern: '*.md', base: './src/content/pagine' }),
   schema: ({ image }) => makePaginaSchema(image),

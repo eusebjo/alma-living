@@ -565,6 +565,236 @@ describe('fetchPullRequestInput', () => {
     });
   });
 
+  describe('ramo del pannello (cms/) aperto da chi è nello sviluppo', () => {
+    // Il ramo `cms/` si valuta con le regole della redazione (vedi evaluate):
+    // quindi per leggere i contenuti conta il ramo, non chi apre la proposta.
+    const scenarioSviluppo = (ramo: string): ScenarioFinto => ({
+      autore: 'eusebjo',
+      etichette: [ETICHETTA_INVIATA],
+      ramo,
+      files: [{ filename: HOME, status: 'modified' }],
+      contenuti: {
+        [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
+        [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+      },
+    });
+
+    it('legge before e after come per la redazione', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(scenarioSviluppo('cms/pagine/home'));
+
+      const caricata = await fetchPullRequest(octokit, ref, rules);
+
+      expect(caricata.ramo).toBe('cms/pagine/home');
+      expect(caricata.input.files).toEqual([
+        { path: HOME, status: 'modified', before: 'prima', after: 'dopo', sizeBytes: 4 },
+      ]);
+      expect(quante(chiamate, 'repos.getContent')).toBe(2);
+    });
+
+    it.each(['fase1/9-correzioni', 'main-fix', 'cmsx/pagine/home'])(
+      'su un ramo di sviluppo (%s) non legge i contenuti',
+      async (ramo) => {
+        const { octokit, chiamate } = creaOctokitFinto(scenarioSviluppo(ramo));
+
+        const { input } = await fetchPullRequest(octokit, ref, rules);
+
+        expect(quante(chiamate, 'repos.getContent')).toBe(0);
+        expect(input.files[0]).toMatchObject({ before: null, after: null });
+      },
+    );
+
+    it('in bozza o senza etichetta di invio non legge i contenuti, come per la redazione', async () => {
+      for (const extra of [{ bozza: true }, { etichette: [] }]) {
+        const { octokit, chiamate } = creaOctokitFinto({
+          ...scenarioSviluppo('cms/pagine/home'),
+          ...extra,
+        });
+
+        await fetchPullRequest(octokit, ref, rules);
+
+        expect(quante(chiamate, 'repos.getContent')).toBe(0);
+      }
+    });
+
+    it('un fork resta respinto senza leggere nulla, anche con un ramo cms/', async () => {
+      const { octokit, chiamate } = creaOctokitFinto({
+        ...scenarioSviluppo('cms/pagine/home'),
+        repoTestata: 'altro/alma-living',
+      });
+
+      const caricata = await fetchPullRequest(octokit, ref, rules);
+
+      expect(caricata.ramo).toBeNull();
+      expect(quante(chiamate, 'pulls.listFiles')).toBe(0);
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+    });
+  });
+
+  describe('versione di partenza della proposta (before)', () => {
+    // Mentre la proposta è aperta `main` può cambiare. `pulls.listFiles` elenca
+    // le differenze rispetto a dove la proposta si è staccata da `main`: anche
+    // `before` va letto lì, non alla punta attuale di `main`, altrimenti una
+    // modifica fatta su `main` nel frattempo verrebbe attribuita alla redazione.
+    const MERGE_BASE = 'd'.repeat(40);
+    const scenarioMain = (extra: ScenarioFinto = {}): ScenarioFinto =>
+      dellaRedazione({
+        mergeBaseSha: MERGE_BASE,
+        files: [{ filename: HOME, status: 'modified' }],
+        contenuti: {
+          [chiave(MERGE_BASE, HOME)]: { testo: 'dal punto di partenza' },
+          [chiave(BASE_SHA, HOME)]: { testo: 'punta di main, cambiata nel frattempo' },
+          [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+        },
+        ...extra,
+      });
+
+    it('legge before dal punto da cui la proposta parte, non dalla punta di main', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(scenarioMain());
+
+      const { input } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(input.files[0]).toMatchObject({ before: 'dal punto di partenza', after: 'dopo' });
+      const letti = chiamate
+        .filter((c) => c.metodo === 'repos.getContent')
+        .map((c) => c.params.ref);
+      expect(letti.sort()).toEqual([HEAD_SHA, MERGE_BASE].sort());
+    });
+
+    it('chiede il punto di partenza confrontando la base e la testata della proposta', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(scenarioMain());
+
+      await fetchPullRequest(octokit, ref, rules);
+
+      const confronti = chiamate.filter((c) => c.metodo === 'repos.compareCommitsWithBasehead');
+      expect(confronti.map((c) => c.params)).toEqual([
+        {
+          owner: 'eusebjo',
+          repo: 'alma-living',
+          basehead: `${BASE_SHA}...${HEAD_SHA}`,
+          per_page: 1,
+        },
+      ]);
+    });
+
+    it('lo chiede una sola volta con più file, anche se si leggono in parallelo', async () => {
+      const piu = Array.from({ length: 5 }, (_, i) => `src/content/pagine/p${i}.md`);
+      const { octokit, chiamate } = creaOctokitFinto(
+        scenarioMain({
+          files: piu.map((filename) => ({ filename, status: 'modified' })),
+          contenuti: Object.fromEntries(
+            piu.flatMap((p) => [
+              [chiave(MERGE_BASE, p), { testo: 'a' }],
+              [chiave(HEAD_SHA, p), { testo: 'b' }],
+            ]),
+          ),
+        }),
+      );
+
+      const { input } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(quante(chiamate, 'repos.compareCommitsWithBasehead')).toBe(1);
+      expect(input.files.every((f) => f.before === 'a' && f.after === 'b')).toBe(true);
+    });
+
+    it('un file rinominato legge before dal vecchio percorso, sempre dal punto di partenza', async () => {
+      const nuovo = 'src/content/pagine/chi-siamo.md';
+      const { octokit } = creaOctokitFinto(
+        scenarioMain({
+          files: [{ filename: nuovo, status: 'renamed', previous_filename: HOME }],
+          contenuti: {
+            [chiave(MERGE_BASE, HOME)]: { testo: 'vecchio' },
+            [chiave(HEAD_SHA, nuovo)]: { testo: 'nuovo' },
+          },
+        }),
+      );
+
+      const { input } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(input.files[0]).toMatchObject({ before: 'vecchio', after: 'nuovo' });
+    });
+
+    it.each([
+      ['sviluppo', { autore: 'eusebjo', ramo: 'fase1/x' }],
+      ['bozza', { bozza: true }],
+      ['proposta non inviata', { etichette: [] }],
+      ['autore sconosciuto', { autore: 'estraneo' }],
+      ['fork', { repoTestata: 'altro/alma-living' }],
+    ] as Array<[string, ScenarioFinto]>)(
+      'non lo chiede quando non si leggono i contenuti (%s)',
+      async (_nome, extra) => {
+        const { octokit, chiamate } = creaOctokitFinto(scenarioMain(extra));
+
+        await fetchPullRequest(octokit, ref, rules);
+
+        expect(quante(chiamate, 'repos.compareCommitsWithBasehead')).toBe(0);
+      },
+    );
+
+    it('lo chiede anche per un file rimosso: serve sapere cosa si toglie', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(
+        scenarioMain({
+          files: [{ filename: HOME, status: 'removed' }],
+          contenuti: { [chiave(MERGE_BASE, HOME)]: { testo: 'vecchia' } },
+        }),
+      );
+
+      const { input } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(quante(chiamate, 'repos.compareCommitsWithBasehead')).toBe(1);
+      expect(input.files[0]).toMatchObject({ before: 'vecchia', after: null });
+    });
+
+    it('con soli file aggiunti o media non fa nemmeno il confronto', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(
+        scenarioMain({
+          files: [
+            { filename: 'src/content/pagine/nuova.md', status: 'added' },
+            { filename: FOTO, status: 'modified' },
+          ],
+          contenuti: {
+            [chiave(HEAD_SHA, 'src/content/pagine/nuova.md')]: { testo: 'x' },
+            [chiave(HEAD_SHA, FOTO)]: { testo: 'x', size: 10 },
+          },
+        }),
+      );
+
+      await fetchPullRequest(octokit, ref, rules);
+
+      expect(quante(chiamate, 'repos.compareCommitsWithBasehead')).toBe(0);
+    });
+
+    it('se il punto di partenza non si può stabilire la verifica fallisce, in italiano', async () => {
+      const { octokit } = creaOctokitFinto(scenarioMain({ mergeBaseSha: null }));
+
+      const promessa = fetchPullRequest(octokit, ref, rules);
+
+      await expect(promessa).rejects.toBeInstanceOf(VerificaNonPossibile);
+      await expect(promessa).rejects.toThrow(/versione/i);
+      await expect(promessa).rejects.not.toThrow(GERGO);
+    });
+
+    it.each([
+      ['uno SHA vuoto', ''],
+      ['uno SHA che non è un testo', 12345],
+    ])('%s non vale come punto di partenza', async (_nome, sha) => {
+      const { octokit } = creaOctokitFinto(
+        scenarioMain({ mergeBaseSha: sha as unknown as string }),
+      );
+
+      await expect(fetchPullRequest(octokit, ref, rules)).rejects.toBeInstanceOf(
+        VerificaNonPossibile,
+      );
+    });
+
+    it("se il confronto dà errore l'errore si propaga (la verifica non passa)", async () => {
+      const { octokit } = creaOctokitFinto(
+        scenarioMain({ errori: { 'repos.compareCommitsWithBasehead': erroreHttp(502) } }),
+      );
+
+      await expect(fetchPullRequest(octokit, ref, rules)).rejects.toMatchObject({ status: 502 });
+    });
+  });
+
   describe('proposte che si respingono comunque: nessuna lettura dei file', () => {
     const file = [
       { filename: HOME, status: 'modified' },

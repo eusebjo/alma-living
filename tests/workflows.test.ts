@@ -490,4 +490,80 @@ describe('CLAUDE.md', () => {
     expect(testo).toMatch(/solo gli admin/);
     expect(testo).toMatch(/cms\/\*\*/);
   });
+
+  it('non dice più che le anteprime ricevono le variabili di build', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).not.toMatch(/valgono per tutte le build, produzione e anteprime/);
+    expect(testo).toMatch(/anteprime[^.\n]*non le ricevono/);
+    expect(testo).toContain('http://localhost:4321/');
+  });
+
+  it('dice che le pull request di sviluppo le unisce eusebjo con il bypass da amministratore', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).toMatch(/bypass da amministratore/);
+    expect(testo).toMatch(/non lascia approvare la propria pull request/);
+  });
+
+  it('elenca i limiti noti da risolvere prima del livello 2', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).toMatch(/## Limiti noti prima del livello ≥2/);
+    // Il controllo si può imitare: serve una GitHub App dedicata e il suo integration_id.
+    expect(testo).toMatch(/imitare/);
+    expect(testo).toMatch(/GitHub App dedicata/);
+    expect(testo).toMatch(/integration_id/);
+    // La libreria dei file multimediali non si usa per i caricamenti.
+    expect(testo).toMatch(/File Multimediali/);
+    expect(testo).toMatch(/non deve usarla/);
+    // I segreti futuri stanno in ambienti limitati ai rami consentiti.
+    expect(testo).toMatch(/Environments/);
+  });
+
+  it('descrive le regole sui rami cms/** e sugli account che non sono in autonomia.yml', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).toMatch(/sempre con le regole della redazione/);
+    expect(testo).toMatch(/account che non sono in `autonomia.yml` sono sempre respinte/);
+  });
+});
+
+describe('AGENTS.md', () => {
+  it('dice che gli account non elencati sono respinti e che cms/** vale come redazione', () => {
+    const testo = leggiTesto('AGENTS.md');
+    expect(testo).toMatch(/Solo gli account elencati in `autonomia.yml`/);
+    expect(testo).toMatch(/sempre respinta/);
+    expect(testo).toMatch(/branch `cms\/\*\*` valgono sempre come proposte della redazione/);
+  });
+});
+
+describe('docs/onboarding-redazione.md', () => {
+  const testo = () => leggiTesto('docs/onboarding-redazione.md');
+
+  it('copre i passi della prima volta', () => {
+    expect(testo()).toMatch(/Two-factor authentication/);
+    expect(testo()).toMatch(/Accept invitation/);
+    expect(testo()).toContain('https://alma-living.sebjomuho.workers.dev/admin/');
+    expect(testo()).toContain('Accedi con GitHub');
+    expect(testo()).toContain('"Authorize"');
+  });
+
+  it('spiega bozza, revisione, anteprima ed email', () => {
+    expect(testo()).toMatch(/\*\*"Salva"\*\*/);
+    expect(testo()).toContain('Invia per Revisione');
+    expect(testo()).toContain('In Revisione');
+    expect(testo()).toMatch(/anteprima/i);
+    expect(testo()).toMatch(/email/i);
+  });
+
+  it('chiede di disattivare le email dei controlli automatici di GitHub Actions', () => {
+    expect(testo()).toMatch(/"Actions"/);
+    expect(testo()).toContain("Don't notify");
+  });
+
+  it('dice di non usare la sezione dei file multimediali per i caricamenti', () => {
+    expect(testo()).toMatch(/Non usare la sezione "File Multimediali"/);
+    expect(testo()).toMatch(/campo "Immagine"/);
+  });
+
+  it('è in italiano e senza gergo di Git (branch, merge, commit)', () => {
+    expect(testo()).not.toMatch(/\b(branch|merge|commit)\b/i);
+  });
 });

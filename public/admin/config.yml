@@ -38,14 +38,18 @@ media_folder: src/content/pagine/immagini
 media_libraries:
   all:
     # Le foto si convertono nel browser, prima del caricamento: WebP, qualità 85,
-    # larghezza massima 2400 px (senza ingrandire le più piccole). I metadati
-    # Exif vengono sempre tolti; con questa opzione si convertono anche le foto
-    # HEIC di iPhone e Android.
+    # dentro un riquadro di 2400 x 2400 px (larghezza e altezza massime insieme:
+    # la foto si riduce mantenendo le proporzioni, mai si ingrandisce). Con la
+    # sola larghezza una foto verticale 3:4 sarebbe 2400 x 3200 px e potrebbe
+    # superare il peso massimo di `autonomia.yml`. I metadati Exif vengono
+    # sempre tolti; con questa opzione si convertono anche le foto HEIC di
+    # iPhone e Android.
     transformations:
       raster_image:
         format: webp
         quality: 85
         width: 2400
+        height: 2400
     # Niente spazi, maiuscole o accenti nei nomi dei file.
     slugify_filename: true
   # Niente foto di stock da servizi esterni.
@@ -180,3 +184,10 @@ collections:
       - name: body
         label: Testo
         widget: markdown
+        # Nessun componente dell'editor (predefiniti: `image` e `code-block`).
+        # Un'immagine inserita nel testo potrebbe avere un indirizzo esterno, cioè
+        # una risorsa di terzi sul sito: l'immagine della pagina si carica dal
+        # campo `immagine`. L'elenco vuoto vale davvero (Sveltia usa quello
+        # predefinito solo se l'opzione manca). La build toglie comunque le
+        # immagini esterne scritte a mano (src/lib/markdown.ts).
+        editor_components: []

@@ -34,12 +34,71 @@ describe('build statica: dist/index.html', () => {
     expect(html).toMatch(/<meta name="description" content="[^"]+"/);
   });
 
+  it("la home ha un'immagine in evidenza ottimizzata da Astro: un file WebP di /_astro/", () => {
+    // Non si guarda quale foto sia né come si chiami: è un contenuto che la
+    // redazione può cambiare dal pannello (e `home.md` non si legge qui), la
+    // build deve restare verde con qualunque foto valida.
+    const html = readFileSync('dist/index.html', 'utf8');
+    const hero = [...html.matchAll(/<img\b[^>]*>/gi)]
+      .map((m) => m[0])
+      .filter((tag) => /\sclass="[^"]*\bhero\b[^"]*"/.test(tag));
+    expect(hero).toHaveLength(1);
+    expect(hero[0]).toMatch(/\ssrc="\/_astro\/[^"/]+\.webp"/);
+  });
+
   it('la home ha canonical e Open Graph', () => {
     const html = readFileSync('dist/index.html', 'utf8');
     expect(html).toMatch(/<link rel="canonical" href="https?:\/\/[^"]+\/"/);
     expect(html).toMatch(/<meta property="og:title" content="[^"]+"/);
     expect(html).toMatch(/<meta property="og:description" content="[^"]+"/);
     expect(html).toMatch(/<meta property="og:url" content="https?:\/\/[^"]+"/);
+  });
+});
+
+// Un indirizzo è esterno se ha uno schema `http(s):` oppure comincia con `//`
+// (indirizzo "senza schema", che il browser completa con quello della pagina e
+// che porta a un altro sito).
+const INDIRIZZO_ESTERNO = /^(?:https?:)?\/\//i;
+
+/**
+ * Tag di `html` che caricano una risorsa da un altro sito: script, immagini e
+ * frame con `src` esterno, fogli di stile con `href` esterno.
+ */
+function risorseEsterne(html: string): string[] {
+  const trovati: string[] = [];
+  for (const [tag, nome] of html.matchAll(/<(script|img|iframe|link)\b[^>]*>/gi)) {
+    const attributo = nome!.toLowerCase() === 'link' ? 'href' : 'src';
+    const indirizzo = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(tag)?.[1];
+    if (indirizzo === undefined || !INDIRIZZO_ESTERNO.test(indirizzo)) continue;
+    if (attributo === 'href' && !/\srel=["']?stylesheet\b/i.test(tag)) continue;
+    trovati.push(tag);
+  }
+  return trovati;
+}
+
+describe('controllo delle risorse di terzi', () => {
+  it.each([
+    '<script src="https://cdn.example.com/a.js"></script>',
+    '<script src=https://cdn.example.com/a.js></script>',
+    '<img alt="x" src="//cdn.example.com/a.jpg">',
+    "<img src='//cdn.example.com/a.jpg'>",
+    '<iframe src="http://example.com/"></iframe>',
+    '<link rel="stylesheet" href="//cdn.example.com/a.css">',
+    '<link href="https://cdn.example.com/a.css" rel="stylesheet">',
+  ])('trova %s', (tag) => {
+    expect(risorseEsterne(`<p>testo</p>${tag}`)).toHaveLength(1);
+  });
+
+  it.each([
+    '<script type="module" src="/_astro/a.js"></script>',
+    '<img src="/_astro/a.webp" alt="x">',
+    '<img src="immagini/a.webp" alt="x">',
+    '<link rel="stylesheet" href="/_astro/a.css">',
+    '<link rel="canonical" href="https://example.com/">',
+    '<a href="https://example.com/">un link</a>',
+    '<img alt="x">',
+  ])('non segnala %s', (tag) => {
+    expect(risorseEsterne(tag)).toEqual([]);
   });
 });
 
@@ -50,10 +109,7 @@ describe('build statica: tutte le pagine', () => {
 
   it.each(pagine)('%s: nessuna risorsa da CDN di terzi', (file) => {
     const html = readFileSync(file, 'utf8');
-    expect(html).not.toMatch(/<(script|img|iframe)[^>]+src=["']?https?:\/\//);
-    expect(html).not.toMatch(
-      /<link[^>]+rel=["']?stylesheet["']?[^>]+href=["']?https?:\/\//,
-    );
+    expect(risorseEsterne(html)).toEqual([]);
     expect(html).not.toContain('fonts.googleapis');
   });
 });
