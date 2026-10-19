@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "alma-living",
+  "compatibility_date": "2026-10-19",
+  "assets": {
+    "directory": "./dist"
+  }
+
+  // Variabili d'ambiente di Workers Builds (disponibili SOLO durante la build,
+  // non a runtime; sovrascrivibili). Fonte ufficiale, sezione "Default variables":
+  // https://developers.cloudflare.com/workers/ci-cd/builds/configuration/
+  // (pagina aggiornata il 2026-09-22, verificata il 2026-10-19)
+  //
+  //   WORKERS_CI          = 1                               (build su Workers Builds, non locale)
+  //   WORKERS_CI_BRANCH   = nome del branch dell'evento push (QUESTA e' la variabile del ramo)
+  //   WORKERS_CI_COMMIT_SHA, WORKERS_CI_BUILD_UUID          (commit e id della build)
+  //
+  // Nome esatto da usare nella Task 4: WORKERS_CI_BRANCH.
+  // La documentazione non definisce una variabile che distingua build di anteprima da
+  // build di produzione: per distinguerle si confronta WORKERS_CI_BRANCH con il ramo di
+  // produzione configurato (main). Per sapere se si e' su Workers Builds usare WORKERS_CI
+  // (la pagina non dice cosa valga WORKERS_CI_BRANCH in una build locale).
+  // Nota: la pagina riporta il valore come "<branch-name-from-push-event" (parentesi di
+  // chiusura mancante, refuso della documentazione). Il nome della variabile non e' in dubbio.
+  //
+  // Comandi di build predefiniti (stessa pagina): deploy = "npx wrangler deploy";
+  // anteprime = "npx wrangler preview" (Worker Previews), che sulle build non di
+  // produzione sostituisce il comando di deploy.
+}
