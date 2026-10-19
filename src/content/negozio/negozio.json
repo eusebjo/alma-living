@@ -8,12 +8,5 @@
     "citta": "Livorno",
     "provincia": "LI"
   },
-  "telefono": "334 520 5451",
-  "orari": [
-    {
-      "giorno": "lunedi",
-      "apertura": "09:30",
-      "chiusura": "13:30"
-    }
-  ]
+  "telefono": "334 520 5451"
 }
