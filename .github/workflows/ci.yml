@@ -1,0 +1,40 @@
+# Controllo `build`: test, build e test sui file generati. È un controllo
+# obbligatorio su `main` (vedi infra/github/ruleset-main-protezione.json).
+#
+# Non imposta SITE_LAUNCHED né WORKERS_CI_BRANCH: i test su `dist/` presuppongono
+# una build non indicizzabile, come le anteprime.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Astro 7 richiede Node >= 22.22.0: la 22 prende l'ultima 22.x.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:dist

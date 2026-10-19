@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "private": true,
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.0"
   },
   "scripts": {
     "dev": "astro dev",
@@ -21,6 +21,7 @@
     "rehype-sanitize": "^6.0.0"
   },
   "devDependencies": {
+    "@octokit/rest": "^22.0.1",
     "@types/picomatch": "^4.0.3",
     "gray-matter": "^4.0.3",
     "picomatch": "^4.0.7",

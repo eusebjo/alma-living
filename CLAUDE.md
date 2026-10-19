@@ -10,7 +10,7 @@ Sito vetrina statico di Alma Living, negozio di biancheria per la casa in Via Ri
 
 ## Comandi
 
-Node `>=22`, npm. Funziona su Windows (PowerShell e Git Bash) e su Linux.
+Node `>=22.22.0` (come richiede Astro), npm. Funziona su Windows (PowerShell e Git Bash) e su Linux.
 
 | Comando | Cosa fa |
 |---|---|
