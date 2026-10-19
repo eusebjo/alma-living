@@ -19,7 +19,9 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('astro.config: site e sitemap', () => {
+// Il primo caricamento della configurazione importa Astro da zero: con tutti
+// i file di test in parallelo può superare i 5 secondi predefiniti.
+describe('astro.config: site e sitemap', { timeout: 30_000 }, () => {
   it('site deriva da getSiteConfig (SITE_URL senza barra finale)', async () => {
     const config = await caricaConfig({ SITE_URL: 'https://x.dev/' });
     expect(config.site).toBe('https://x.dev');
