@@ -15,7 +15,9 @@
     "test:dist": "vitest run --config vitest.dist.config.ts"
   },
   "dependencies": {
-    "astro": "^7.4.0"
+    "@astrojs/markdown-remark": "^7.3.3",
+    "astro": "^7.4.0",
+    "rehype-sanitize": "^6.0.0"
   },
   "devDependencies": {
     "vitest": "^5.0.5",

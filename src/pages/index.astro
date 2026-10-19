@@ -1,12 +1,97 @@
 ---
+import { Image } from 'astro:assets';
+import { getEntry, render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { GIORNI } from '../content/limits';
+
+const negozioEntry = await getEntry('negozio', 'negozio');
+const homeEntry = await getEntry('pagine', 'home');
+if (!negozioEntry) {
+  throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
+}
+if (!homeEntry) {
+  throw new Error('Manca src/content/pagine/home.md (voce "home").');
+}
+
+const negozio = negozioEntry.data;
+const home = homeEntry.data;
+const { Content } = await render(homeEntry);
+
+const { via, civico, cap, citta, provincia } = negozio.indirizzo;
+const telefonoHref = `tel:${negozio.telefono.replace(/[^\d+]/g, '')}`;
+
+const ETICHETTE_GIORNI: Record<(typeof GIORNI)[number], string> = {
+  lunedi: 'Lunedì',
+  martedi: 'Martedì',
+  mercoledi: 'Mercoledì',
+  giovedi: 'Giovedì',
+  venerdi: 'Venerdì',
+  sabato: 'Sabato',
+  domenica: 'Domenica',
+};
+
+// Una riga per giorno, in ordine di settimana; un giorno può avere più fasce
+// (per esempio mattina e pomeriggio). I giorni senza fasce non compaiono.
+const orari = GIORNI.map((giorno) => ({
+  etichetta: ETICHETTE_GIORNI[giorno],
+  fasce: negozio.orari
+    .filter((orario) => orario.giorno === giorno)
+    .sort((a, b) => a.apertura.localeCompare(b.apertura)),
+})).filter((giorno) => giorno.fasce.length > 0);
 ---
 
-<BaseLayout
-  title="Alma Living"
-  description="Alma Living, negozio a Livorno. Sito in costruzione."
->
+<BaseLayout title={home.titolo} description={home.descrizione}>
   <main>
-    <h1>Alma Living, sito in costruzione</h1>
+    <h1>{home.titolo}</h1>
+    <Image
+      class="hero"
+      src={home.immagine}
+      alt={home.immagine_alt}
+      loading="eager"
+      fetchpriority="high"
+    />
+
+    <Content />
+
+    <section>
+      <h2>Dove siamo</h2>
+      <address>
+        {negozio.nome}<br />
+        {via} {civico}<br />
+        {cap} {citta} ({provincia})
+      </address>
+      <p>Telefono: <a href={telefonoHref}>{negozio.telefono}</a></p>
+    </section>
+
+    {
+      orari.length > 0 && (
+        <section>
+          <h2>Orari</h2>
+          <ul>
+            {orari.map(({ etichetta, fasce }) => (
+              <li>
+                {etichetta}:{' '}
+                {fasce
+                  .map((fascia) => `${fascia.apertura}–${fascia.chiusura}`)
+                  .join(', ')}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
   </main>
 </BaseLayout>
+
+<style>
+  main {
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+
+  .hero {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+</style>
