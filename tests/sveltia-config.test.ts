@@ -90,8 +90,11 @@ describe('backend e flusso editoriale', () => {
     expect(config.publish_mode).toBe('editorial_workflow');
   });
 
-  it("ha un indirizzo https per l'autenticazione (segnaposto fino alla Task 8)", () => {
-    expect(config.backend.base_url).toMatch(/^https:\/\/[^\s/]+$/);
+  it("l'accesso passa dal Worker sveltia-cms-auth: indirizzo https esatto, senza barra finale", () => {
+    expect(config.backend.base_url).toBe('https://sveltia-cms-auth.sebjomuho.workers.dev');
+    expect(new URL(String(config.backend.base_url)).protocol).toBe('https:');
+    // Il Worker serve /auth: l'endpoint predefinito di Sveltia, da non cambiare.
+    expect(config.backend).not.toHaveProperty('auth_endpoint');
   });
 
   it('omette i campi opzionali vuoti: email "" farebbe fallire la build', () => {
