@@ -100,7 +100,7 @@ Creare o eliminare pagine non rientra nei contenuti modificabili in fase 1. Una 
 - Formato **WebP**. Il pannello converte in WebP, riduce la larghezza a 2400 px al massimo, porta la qualità a circa 85 e toglie i dati Exif. Se aggiungi un file senza il pannello, fai lo stesso.
 - Nomi dei file in minuscolo, con trattini al posto degli spazi.
 - Il testo alternativo (`immagine_alt`) è obbligatorio.
-- Le foto troppo pesanti vengono respinte da `verifica-autonomia`: il peso massimo è in `autonomia.yml`.
+- Le foto troppo pesanti vengono respinte da `verifica-autonomia`: il peso massimo è in `autonomia.yml`. Vengono respinti anche i file di un tipo diverso da quelli elencati in `media.estensioni` (webp, jpg, jpeg, png, avif): niente SVG né HTML.
 
 ## Limiti
 
