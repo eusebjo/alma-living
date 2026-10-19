@@ -5,7 +5,7 @@ import {
 } from '../../scripts/autonomia/github';
 import { MARCATORE } from '../../scripts/autonomia/report';
 import { eseguiVerifica, rapportoErrore } from '../../scripts/autonomia/verifica';
-import { ETICHETTA_INVIATA, HOME, NEGOZIO, negozioJson, rules } from './fixtures';
+import { ETICHETTA_INVIATA, HOME, NEGOZIO, homeMd, negozioJson, rules } from './fixtures';
 import {
   BASE_SHA,
   HEAD_SHA,
@@ -359,6 +359,126 @@ describe('eseguiVerifica', () => {
       expect(esito.superato).toBe(false);
       expect(esito.verdict?.ruolo).toBe('sconosciuto');
       expect(quante(chiamate, 'repos.getContent')).toBe(0);
+    });
+  });
+
+  describe('contenuto non valido per gli schemi: l’errore della build spiegato in italiano', () => {
+    // Una chiusura prima dell'apertura passa dal pannello e dalle regole di
+    // autonomia, e farebbe fallire solo la build (in inglese). Il controllo lo
+    // dice subito, in italiano, dicendo cosa correggere.
+    const orariSbagliati = (extra: ScenarioFinto = {}): ScenarioFinto =>
+      modificaConsentita({
+        contenuti: {
+          [chiave(BASE_SHA, NEGOZIO)]: { testo: negozioJson() },
+          [chiave(HEAD_SHA, NEGOZIO)]: {
+            testo: negozioJson((n) => {
+              n.orari = [{ giorno: 'lunedi', apertura: '18:00', chiusura: '09:00' }];
+            }),
+          },
+        },
+        ...extra,
+      });
+
+    it('una chiusura prima dell’apertura è respinta, con il motivo e cosa fare', async () => {
+      const { octokit, stato } = creaOctokitFinto(orariSbagliati());
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'respinto', livello: null });
+      expect(esito.verdict?.violazioni).toEqual([
+        expect.objectContaining({ file: NEGOZIO, campo: 'orari.chiusura', azione: 'formato' }),
+      ]);
+      const corpo = corpoDelRapporto(stato);
+      expect(corpo).toMatch(/modifica non consentita/);
+      expect(corpo).not.toMatch(/modifica consentita/);
+      expect(corpo).toContain("La chiusura deve essere successiva all'apertura.");
+      expect(corpo).toMatch(/pannello dei contenuti/);
+      expect(corpo).not.toMatch(GERGO);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('una modifica valida resta consentita', async () => {
+      const { octokit } = creaOctokitFinto(modificaConsentita());
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
+    });
+
+    it('si aggiunge alle violazioni sulle regole senza nasconderle', async () => {
+      const { octokit } = creaOctokitFinto(
+        orariSbagliati({
+          contenuti: {
+            [chiave(BASE_SHA, NEGOZIO)]: { testo: negozioJson() },
+            [chiave(HEAD_SHA, NEGOZIO)]: {
+              testo: negozioJson((n) => {
+                n.nome = 'Altro nome';
+                n.orari = [{ giorno: 'lunedi', apertura: '18:00', chiusura: '09:00' }];
+              }),
+            },
+          },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.verdict?.esito).toBe('respinto');
+      expect(esito.verdict?.violazioni.map((v) => [v.azione, v.campo])).toEqual([
+        ['modifica', 'nome'],
+        ['formato', 'orari.chiusura'],
+      ]);
+    });
+
+    it('vale anche per una pagina con la descrizione troppo corta', async () => {
+      const { octokit, stato } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: HOME, status: 'modified' }],
+          contenuti: {
+            [chiave(BASE_SHA, HOME)]: { testo: homeMd() },
+            [chiave(HEAD_SHA, HOME)]: { testo: homeMd({ descrizione: 'Troppo corta.' }) },
+          },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(corpoDelRapporto(stato)).toMatch(/almeno 50 caratteri/);
+    });
+
+    it('una bozza resta in bozza: il contenuto si controlla quando la proposta viene inviata', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(orariSbagliati({ bozza: true }));
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.verdict?.esito).toBe('in_bozza');
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+    });
+
+    it('lo sviluppo su un ramo di sviluppo non è toccato', async () => {
+      const { octokit } = creaOctokitFinto(
+        orariSbagliati({ autore: 'eusebjo', ramo: 'fase1/9-correzioni' }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ ruolo: 'sviluppo', esito: 'consentito' });
+    });
+
+    it('un ramo cms/ aperto dallo sviluppo è controllato anche con gli schemi', async () => {
+      const { octokit } = creaOctokitFinto(
+        orariSbagliati({ autore: 'eusebjo', ramo: 'cms/negozio/negozio' }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.violazioni).toEqual([
+        expect.objectContaining({ azione: 'formato', campo: 'orari.chiusura' }),
+      ]);
     });
   });
 

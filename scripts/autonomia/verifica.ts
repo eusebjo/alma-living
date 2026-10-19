@@ -14,6 +14,7 @@ import {
   type PullRequestCaricata,
 } from './github';
 import { MARCATORE, formatReport } from './report';
+import { validaConSchemi } from './schemi';
 import type { Rules, Verdict } from './types';
 
 // Orchestrazione della verifica: legge la proposta, applica le regole, pubblica
@@ -97,6 +98,31 @@ export function applicaControlli(
     };
   }
   return verdict;
+}
+
+/**
+ * Per le proposte valutate con le regole della redazione, controlla anche che
+ * il nuovo contenuto sia valido per gli schemi della build (vedi `schemi.ts`):
+ * un valore che passa dal pannello e dalle regole, come una chiusura prima
+ * dell'apertura, farebbe fallire solo la build, con un errore in inglese. Se
+ * c'è un problema la proposta è respinta, con un messaggio in italiano che dice
+ * cosa correggere; le violazioni si aggiungono a quelle già trovate. Una bozza
+ * (non ancora inviata) non si controlla: nessun contenuto è stato letto.
+ */
+export function applicaSchemi(
+  verdict: Verdict,
+  caricata: PullRequestCaricata,
+  rules: Rules,
+): Verdict {
+  if (verdict.ruolo !== 'redazione' || verdict.esito === 'in_bozza') return verdict;
+  const violazioni = validaConSchemi(caricata.input.files, rules);
+  if (violazioni.length === 0) return verdict;
+  return {
+    ruolo: verdict.ruolo,
+    esito: 'respinto',
+    livello: null,
+    violazioni: [...verdict.violazioni, ...violazioni],
+  };
 }
 
 /** Sezione con il link all'anteprima ('' se non c'è un'anteprima da mostrare). */
@@ -197,9 +223,10 @@ export async function eseguiVerifica(
     caricata = await fetchPullRequest(octokit, ref, rules, opzioni);
     // Il ramo conta quanto l'autore: un ramo `cms/` si valuta con le regole della
     // redazione anche se lo apre chi è nello sviluppo (vedi `ruoloEffettivo`).
-    verdict = applicaControlli(
-      evaluate(caricata.input, rules, { ramo: caricata.ramo }),
+    verdict = applicaSchemi(
+      applicaControlli(evaluate(caricata.input, rules, { ramo: caricata.ramo }), caricata),
       caricata,
+      rules,
     );
   } catch (errore) {
     if (errore instanceof PropostaCambiata) {
