@@ -28,10 +28,12 @@ jobs:
         with:
           persist-credentials: false
 
-      # Astro 7 richiede Node >= 22.22.0: la 22 prende l'ultima 22.x.
+      # Astro 7 richiede Node >= 22.22.0: con check-latest la 22.x è sempre
+      # l'ultima uscita, mai una vecchia versione già presente sul runner.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version: 22.x
+          check-latest: true
           cache: npm
 
       - run: npm ci

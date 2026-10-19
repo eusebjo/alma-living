@@ -49,6 +49,43 @@ const comandi = (workflow: Workflow): string[] =>
     .filter((passo) => passo.run !== undefined)
     .map((passo) => passo.run!.trim());
 
+// Versione minima di Node: quella che richiede Astro, fissata in package.json.
+const MINIMO_NODE = (
+  JSON.parse(leggiTesto('package.json')) as { engines: { node: string } }
+).engines.node.replace(/^>=/, '');
+
+const parti = (versione: string): number[] =>
+  versione.split('.').map((voce) => Number.parseInt(voce, 10));
+
+function nonInferiore(versione: string, minimo: string): boolean {
+  const a = parti(versione);
+  const b = parti(minimo);
+  for (let i = 0; i < 3; i++) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return true;
+}
+
+/**
+ * La scelta di `setup-node` garantisce almeno `minimo`?
+ * - una versione esatta, se non è inferiore;
+ * - una maggiore generica (`22`, `22.x`) solo con `check-latest: true`, che
+ *   prende l'ultima uscita di quella serie (oggi 22.23 o più) invece di una
+ *   versione vecchia già presente sul runner.
+ */
+function garantisceMinimo(passo: Passo | undefined, minimo = MINIMO_NODE): boolean {
+  const versione = String(passo?.with?.['node-version']);
+  if (/^\d+\.\d+\.\d+$/.test(versione)) return nonInferiore(versione, minimo);
+  const maggiore = /^(\d+)(?:\.x)?$/.exec(versione);
+  if (maggiore) {
+    return (
+      passo?.with?.['check-latest'] === true &&
+      Number.parseInt(maggiore[1]!, 10) >= (parti(minimo)[0] ?? 0)
+    );
+  }
+  return false;
+}
+
 const SHA_COMPLETO = /^[a-z0-9._-]+\/[a-z0-9._-]+@[0-9a-f]{40}$/i;
 
 describe('verifica-autonomia.yml (pull_request_target)', () => {
@@ -57,6 +94,10 @@ describe('verifica-autonomia.yml (pull_request_target)', () => {
 
   it("parte solo con l'evento pull_request_target", () => {
     expect(Object.keys(workflow.on)).toEqual(['pull_request_target']);
+  });
+
+  it('guarda solo le proposte dirette a main', () => {
+    expect(workflow.on.pull_request_target?.branches).toEqual(['main']);
   });
 
   it('ascolta gli eventi che cambiano lo stato della proposta', () => {
@@ -148,12 +189,36 @@ describe('verifica-autonomia.yml (pull_request_target)', () => {
     }
   });
 
-  it('usa una versione di Node compatibile con Astro', () => {
+  it('usa una versione di Node che garantisce il minimo richiesto da Astro', () => {
     const node = passi(workflow).find((passo) =>
       passo.uses?.startsWith('actions/setup-node@'),
     );
-    expect(Number.parseInt(String(node?.with?.['node-version']), 10)).toBeGreaterThanOrEqual(22);
+    expect(garantisceMinimo(node)).toBe(true);
   });
+});
+
+describe('versione di Node nei workflow', () => {
+  it('il minimo è quello di Astro (>=22.22.0)', () => {
+    expect(MINIMO_NODE).toBe('22.22.0');
+  });
+
+  it.each([
+    [{ 'node-version': '22.x', 'check-latest': true }, true],
+    [{ 'node-version': '22', 'check-latest': true }, true],
+    [{ 'node-version': '24.1.0' }, true],
+    [{ 'node-version': '22.22.0' }, true],
+    [{ 'node-version': '22.21.9' }, false],
+    // Senza check-latest il runner può usare una 22.x vecchia già installata.
+    [{ 'node-version': '22.x' }, false],
+    [{ 'node-version': 22 }, false],
+    [{ 'node-version': '20.x', 'check-latest': true }, false],
+    [{ 'node-version': 'lts/*', 'check-latest': true }, false],
+  ] as Array<[Record<string, unknown>, boolean]>)(
+    'garantisceMinimo(%j) = %s',
+    (con, atteso) => {
+      expect(garantisceMinimo({ uses: 'actions/setup-node@x', with: con })).toBe(atteso);
+    },
+  );
 });
 
 describe('ci.yml (build)', () => {
@@ -189,8 +254,7 @@ describe('ci.yml (build)', () => {
       passo.uses?.startsWith('actions/setup-node@'),
     );
     expect(node).toBeDefined();
-    const versione = String(node?.with?.['node-version']);
-    expect(Number.parseInt(versione, 10)).toBeGreaterThanOrEqual(22);
+    expect(garantisceMinimo(node)).toBe(true);
     const ambiente = { ...workflow.env, ...workflow.jobs.build?.env };
     expect(String(ambiente.ASTRO_TELEMETRY_DISABLED)).toBe('1');
   });
@@ -271,27 +335,44 @@ const leggiRuleset = (nome: string): Ruleset =>
 const regola = (ruleset: Ruleset, tipo: string): Regola | undefined =>
   ruleset.rules.find((voce) => voce.type === tipo);
 
+describe.each([
+  'ruleset-main-protezione.json',
+  'ruleset-main-approvazione.json',
+  'ruleset-rami-sviluppo.json',
+])('%s: forma accettata dall’API di GitHub', (nome) => {
+  const ruleset = leggiRuleset(nome);
+
+  it('usa solo i campi previsti da "Create a repository ruleset"', () => {
+    expect(Object.keys(ruleset).sort()).toEqual(
+      ['bypass_actors', 'conditions', 'enforcement', 'name', 'rules', 'target'].sort(),
+    );
+  });
+
+  it('è un ruleset sui rami ed è attivo', () => {
+    expect(ruleset.target).toBe('branch');
+    expect(ruleset.enforcement).toBe('active');
+  });
+
+  it('il nome corrisponde al file', () => {
+    expect(nome).toBe(`ruleset-${ruleset.name}.json`);
+  });
+
+  it('ogni bypass ha id, tipo e modalità', () => {
+    for (const bypass of ruleset.bypass_actors) {
+      expect(Object.keys(bypass).sort()).toEqual(['actor_id', 'actor_type', 'bypass_mode']);
+    }
+  });
+});
+
 describe.each(['ruleset-main-protezione.json', 'ruleset-main-approvazione.json'])(
-  '%s: forma accettata dall’API di GitHub',
+  '%s: regole sul ramo predefinito',
   (nome) => {
     const ruleset = leggiRuleset(nome);
 
-    it('usa solo i campi previsti da "Create a repository ruleset"', () => {
-      expect(Object.keys(ruleset).sort()).toEqual(
-        ['bypass_actors', 'conditions', 'enforcement', 'name', 'rules', 'target'].sort(),
-      );
-    });
-
-    it('vale per il ramo predefinito ed è attivo', () => {
-      expect(ruleset.target).toBe('branch');
-      expect(ruleset.enforcement).toBe('active');
+    it('vale per il ramo predefinito', () => {
       expect(ruleset.conditions).toEqual({
         ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] },
       });
-    });
-
-    it('il nome corrisponde al file', () => {
-      expect(nome).toBe(`ruleset-${ruleset.name}.json`);
     });
 
     it('la regola pull_request ha tutti i parametri obbligatori', () => {
@@ -330,13 +411,24 @@ describe('main-protezione', () => {
 
   it('richiede i controlli build e verifica-autonomia', () => {
     const parametri = regola(ruleset, 'required_status_checks')?.parameters as {
-      required_status_checks: Array<{ context: string }>;
+      required_status_checks: Array<{ context: string; integration_id?: number }>;
       strict_required_status_checks_policy: boolean;
     };
     expect(parametri.required_status_checks.map((c) => c.context)).toEqual([
       ...CONTROLLI_OBBLIGATORI,
     ]);
     expect(typeof parametri.strict_required_status_checks_policy).toBe('boolean');
+  });
+
+  it('accetta i controlli solo dall’app GitHub Actions (id 15368)', () => {
+    // Un'altra app non può far apparire verde un controllo chiamato `build`.
+    const parametri = regola(ruleset, 'required_status_checks')?.parameters as {
+      required_status_checks: Array<{ context: string; integration_id?: number }>;
+    };
+    expect(parametri.required_status_checks).toEqual([
+      { context: 'build', integration_id: 15368 },
+      { context: 'verifica-autonomia', integration_id: 15368 },
+    ]);
   });
 
   it('contiene solo queste quattro regole', () => {
@@ -364,5 +456,38 @@ describe('main-approvazione', () => {
       required_review_thread_resolution: false,
     });
     expect(ruleset.rules).toHaveLength(1);
+  });
+});
+
+describe('rami-sviluppo', () => {
+  const ruleset = leggiRuleset('ruleset-rami-sviluppo.json');
+
+  it('vale per tutti i rami tranne main e quelli del pannello (cms/**)', () => {
+    expect(ruleset.conditions).toEqual({
+      ref_name: {
+        include: ['~ALL'],
+        exclude: ['refs/heads/main', 'refs/heads/cms/**'],
+      },
+    });
+  });
+
+  it('solo gli admin possono creare, aggiornare ed eliminare questi rami', () => {
+    expect(ruleset.rules).toEqual([
+      { type: 'creation' },
+      { type: 'update' },
+      { type: 'deletion' },
+    ]);
+    expect(ruleset.bypass_actors).toEqual([
+      { actor_id: 5, actor_type: 'RepositoryRole', bypass_mode: 'always' },
+    ]);
+  });
+});
+
+describe('CLAUDE.md', () => {
+  it('spiega che i rami di sviluppo sono solo per gli admin e il pannello usa cms/**', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).toMatch(/rami-sviluppo/);
+    expect(testo).toMatch(/solo gli admin/);
+    expect(testo).toMatch(/cms\/\*\*/);
   });
 });

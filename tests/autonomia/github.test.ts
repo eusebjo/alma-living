@@ -3,6 +3,7 @@ import {
   CONTROLLI_OBBLIGATORI,
   ETICHETTA_LIVELLO_1,
   LIMITE_CORPO,
+  PropostaCambiata,
   VerificaNonPossibile,
   fetchPullRequest,
   fetchPullRequestInput,
@@ -20,6 +21,7 @@ import {
   creaOctokitFinto,
   erroreHttp,
   quante,
+  shaDiFile,
   type ScenarioFinto,
 } from './octokitFinto';
 
@@ -92,8 +94,8 @@ describe('fetchPullRequestInput', () => {
       .map((c) => c.params);
     expect(letture).toEqual(
       expect.arrayContaining([
-        { owner: 'eusebjo', repo: 'alma-living', path: HOME, ref: BASE_SHA },
-        { owner: 'eusebjo', repo: 'alma-living', path: HOME, ref: HEAD_SHA },
+        { owner: 'eusebjo', repo: 'alma-living', path: HOME, ref: BASE_SHA, mediaType: { format: 'object' } },
+        { owner: 'eusebjo', repo: 'alma-living', path: HOME, ref: HEAD_SHA, mediaType: { format: 'object' } },
       ]),
     );
     expect(letture).toHaveLength(2);
@@ -212,6 +214,45 @@ describe('fetchPullRequestInput', () => {
       expect(stato.letturaContenuto).toBe(0);
     });
 
+    it('misura anche un media tra 1 e 1,5 MB (formato object, solo metadati)', async () => {
+      const { octokit, stato } = creaOctokitFinto(
+        dellaRedazione({
+          files: [{ filename: FOTO, status: 'added' }],
+          contenuti: { [chiave(HEAD_SHA, FOTO)]: { size: 1_200_000 } },
+        }),
+      );
+
+      const { input, bloccati } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(input.files[0]).toMatchObject({ sizeBytes: 1_200_000, after: null });
+      expect(bloccati).toEqual([]);
+      expect(stato.letturaContenuto).toBe(0);
+    });
+
+    it('chiede sempre a getContent il formato object', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(
+        dellaRedazione({
+          files: [
+            { filename: HOME, status: 'modified' },
+            { filename: FOTO, status: 'added' },
+          ],
+          contenuti: {
+            [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
+            [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+            [chiave(HEAD_SHA, FOTO)]: { size: 10 },
+          },
+        }),
+      );
+
+      await fetchPullRequestInput(octokit, ref, rules);
+
+      const letture = chiamate.filter((c) => c.metodo === 'repos.getContent');
+      expect(letture).toHaveLength(3);
+      for (const lettura of letture) {
+        expect(lettura.params.mediaType).toEqual({ format: 'object' });
+      }
+    });
+
     it('un media rimosso non richiede nessuna lettura', async () => {
       const { octokit, chiamate } = creaOctokitFinto(
         dellaRedazione({ files: [{ filename: FOTO, status: 'removed' }] }),
@@ -268,6 +309,70 @@ describe('fetchPullRequestInput', () => {
         }
       },
     );
+
+    // L'API di GitHub, davanti a un collegamento simbolico verso un file DEL
+    // REPOSITORY, risponde con `type: "file"` e il contenuto della destinazione:
+    // l'unica traccia è lo SHA del blob, diverso da quello di `listFiles`.
+    it.each([
+      ['un file di contenuto', HOME, 'modified'],
+      ['un file dei media', FOTO, 'added'],
+    ] as const)(
+      'un collegamento verso un file del repository (%s) è segnalato dallo SHA diverso',
+      async (_nome, percorso, status) => {
+        const bersaglio = 'f'.repeat(40);
+        const { octokit } = creaOctokitFinto(
+          dellaRedazione({
+            files: [{ filename: percorso, status }],
+            contenuti: {
+              [chiave(BASE_SHA, percorso)]: { testo: 'prima' },
+              [chiave(HEAD_SHA, percorso)]: {
+                tipo: 'file',
+                testo: 'contenuto della destinazione',
+                size: 28,
+                sha: bersaglio,
+              },
+            },
+          }),
+        );
+
+        const { input, bloccati } = await fetchPullRequest(octokit, ref, rules);
+
+        expect(bloccati.map((b) => b.file)).toEqual([percorso]);
+        expect(bloccati[0]?.azione).toBe('perimetro');
+        expect(bloccati[0]?.messaggio).not.toMatch(GERGO);
+        // Il contenuto della destinazione non viene usato come se fosse il file.
+        expect(input.files[0]?.after).toBeNull();
+        expect(input.files[0]?.sizeBytes).toBeUndefined();
+      },
+    );
+
+    it('se pulls.listFiles non dà lo SHA del file, non si può escludere un collegamento', async () => {
+      const { octokit } = creaOctokitFinto(
+        dellaRedazione({
+          files: [{ filename: HOME, status: 'added', sha: null }],
+          contenuti: { [chiave(HEAD_SHA, HOME)]: { testo: 'x' } },
+        }),
+      );
+
+      const { input, bloccati } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(bloccati.map((b) => b.file)).toEqual([HOME]);
+      expect(input.files[0]?.after).toBeNull();
+    });
+
+    it('gli SHA si confrontano senza distinguere maiuscole e minuscole', async () => {
+      const { octokit } = creaOctokitFinto(
+        dellaRedazione({
+          files: [{ filename: HOME, status: 'added', sha: shaDiFile(HOME).toUpperCase() }],
+          contenuti: { [chiave(HEAD_SHA, HOME)]: { testo: 'x' } },
+        }),
+      );
+
+      const { input, bloccati } = await fetchPullRequest(octokit, ref, rules);
+
+      expect(bloccati).toEqual([]);
+      expect(input.files[0]?.after).toBe('x');
+    });
 
     it('un file normale non genera segnalazioni', async () => {
       const { octokit } = creaOctokitFinto(
@@ -410,7 +515,6 @@ describe('fetchPullRequestInput', () => {
 
     it.each([
       ['sviluppo', { autore: 'eusebjo', etichette: [] }],
-      ['autore sconosciuto', { autore: 'estraneo', etichette: [] }],
       ['bozza', { bozza: true }],
       ['proposta non inviata', { etichette: [] }],
     ])(
@@ -458,6 +562,88 @@ describe('fetchPullRequestInput', () => {
       const { octokit } = creaOctokitFinto({ autore: 'eusebjo', ...scenario });
 
       expect((await fetchPullRequest(octokit, ref, rules)).ramo).toBeNull();
+    });
+  });
+
+  describe('proposte che si respingono comunque: nessuna lettura dei file', () => {
+    const file = [
+      { filename: HOME, status: 'modified' },
+      { filename: FOTO, status: 'added' },
+    ];
+
+    it('un autore sconosciuto non fa leggere né l’elenco né i contenuti', async () => {
+      const { octokit, chiamate } = creaOctokitFinto({
+        autore: 'estraneo',
+        files: file,
+        // Anche con un elenco dichiarato impossibile da leggere per intero.
+        fileDichiarati: 5000,
+      });
+
+      const caricata = await fetchPullRequest(octokit, ref, rules);
+
+      expect(quante(chiamate, 'pulls.listFiles')).toBe(0);
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+      expect(caricata.input).toEqual({
+        author: 'estraneo',
+        draft: false,
+        labels: [],
+        files: [],
+      });
+      expect(caricata.bloccati).toEqual([]);
+    });
+
+    it.each([
+      ['redazione', 'lei'],
+      ['sviluppo', 'eusebjo'],
+    ])('un fork non fa leggere nulla nemmeno a un autore di %s', async (_ruolo, autore) => {
+      const { octokit, chiamate } = creaOctokitFinto(
+        dellaRedazione({
+          autore,
+          repoTestata: 'altro/alma-living',
+          files: file,
+        }),
+      );
+
+      const caricata = await fetchPullRequest(octokit, ref, rules);
+
+      expect(quante(chiamate, 'pulls.listFiles')).toBe(0);
+      expect(quante(chiamate, 'repos.getContent')).toBe(0);
+      expect(caricata.ramo).toBeNull();
+      expect(caricata.input.files).toEqual([]);
+    });
+  });
+
+  describe('proposta cambiata durante la verifica', () => {
+    const scenario = { autore: 'eusebjo', files: [{ filename: 'README.md', status: 'modified' }] };
+
+    it('si ferma subito se lo SHA dell’evento non è quello attuale', async () => {
+      const { octokit, chiamate } = creaOctokitFinto(scenario);
+
+      const promessa = fetchPullRequest(octokit, ref, rules, {
+        headShaAtteso: 'c'.repeat(40),
+      });
+
+      await expect(promessa).rejects.toBeInstanceOf(PropostaCambiata);
+      await expect(promessa).rejects.toBeInstanceOf(VerificaNonPossibile);
+      await expect(promessa).rejects.toThrow(/cambiata durante la verifica/);
+      await expect(promessa).rejects.not.toThrow(GERGO);
+      expect(quante(chiamate, 'pulls.listFiles')).toBe(0);
+    });
+
+    it('prosegue se coincide (senza distinguere maiuscole e minuscole)', async () => {
+      const { octokit } = creaOctokitFinto(scenario);
+
+      const caricata = await fetchPullRequest(octokit, ref, rules, {
+        headShaAtteso: HEAD_SHA.toUpperCase(),
+      });
+
+      expect(caricata.input.files).toHaveLength(1);
+    });
+
+    it('senza SHA atteso non controlla nulla', async () => {
+      const { octokit } = creaOctokitFinto(scenario);
+
+      await expect(fetchPullRequest(octokit, ref, rules)).resolves.toBeDefined();
     });
   });
 });
@@ -597,6 +783,25 @@ describe('upsertReport', () => {
     });
 
     await upsertReport(octokit, ref, `${MARCATORE}\nvero`);
+
+    expect(quante(chiamate, 'issues.updateComment')).toBe(0);
+    expect(quante(chiamate, 'issues.createComment')).toBe(1);
+  });
+
+  it('ignora i commenti di altri bot, anche se iniziano con il marcatore', async () => {
+    const { octokit, chiamate } = creaOctokitFinto({
+      commenti: [
+        {
+          id: 1,
+          body: `${MARCATORE}
+finto`,
+          user: { login: 'dependabot[bot]', type: 'Bot' },
+        },
+      ],
+    });
+
+    await upsertReport(octokit, ref, `${MARCATORE}
+vero`);
 
     expect(quante(chiamate, 'issues.updateComment')).toBe(0);
     expect(quante(chiamate, 'issues.createComment')).toBe(1);

@@ -19,6 +19,9 @@ export const CONTROLLI_OBBLIGATORI = ['build', 'verifica-autonomia'] as const;
  */
 export const LIMITE_CORPO = 60_000;
 
+/** Autore dei commenti pubblicati con il `GITHUB_TOKEN` di un workflow. */
+const AUTORE_COMMENTO = 'github-actions[bot]';
+
 /** Nome del servizio di anteprime: `<ramo>-alma-living.<sottodominio>.workers.dev`. */
 const DOMINIO_ANTEPRIME = 'alma-living.sebjomuho.workers.dev';
 
@@ -40,6 +43,8 @@ const MESSAGGI = {
     'GitHub non ha indicato quanti file contiene la proposta, quindi non è possibile controllarli tutti. Riprova tra qualche minuto.',
   autoreSconosciuto:
     'Non è possibile sapere chi ha creato la proposta, quindi non può essere controllata.',
+  propostaCambiata:
+    'La proposta è cambiata durante la verifica: il controllo ripartirà da solo.',
   nonUnFile:
     'Questo elemento non è un file normale (per esempio è un collegamento o una cartella collegata): non è possibile verificarlo, quindi non può essere accettato.',
   descrizioneEtichetta:
@@ -66,13 +71,26 @@ export class VerificaNonPossibile extends Error {
   }
 }
 
+/**
+ * La proposta è stata modificata mentre la verifica era in corso. Non è un
+ * errore da segnalare nella proposta: il controllo dell'evento più recente
+ * (la nuova versione) è quello che decide.
+ */
+export class PropostaCambiata extends VerificaNonPossibile {
+  constructor(messaggio: string) {
+    super(messaggio);
+    this.name = 'PropostaCambiata';
+  }
+}
+
 /** Una proposta letta da GitHub, con le informazioni che `evaluate` non usa. */
 export interface PullRequestCaricata {
   input: PullRequestInput;
   /**
    * Ramo della proposta, per il link all'anteprima. È `null` se la proposta
    * arriva da un fork (o da un repository cancellato): lì Cloudflare non
-   * costruisce nessuna anteprima.
+   * costruisce nessuna anteprima, e la proposta va respinta per qualunque
+   * autore (vedi `applicaControlli`).
    */
   ramo: string | null;
   /**
@@ -115,14 +133,30 @@ function statoHttp(errore: unknown): number | undefined {
 // Lettura della proposta
 
 type Lettura =
-  | { tipo: 'file'; size: number | undefined; testo: string | null }
+  | {
+      tipo: 'file';
+      size: number | undefined;
+      /** SHA del blob che l'API ha restituito per questo percorso. */
+      sha: string | undefined;
+      testo: string | null;
+    }
   | { tipo: 'speciale' }
   | { tipo: 'assente' };
 
 /**
- * Legge un file a una data versione. Per `conTesto: false` guarda solo tipo e
- * dimensione: il contenuto non viene nemmeno decodificato. Un file che non
- * esiste (404) è `assente`; qualunque altro errore interrompe il controllo.
+ * Legge un file a una data versione. Per `conTesto: false` guarda solo tipo,
+ * dimensione e SHA: il contenuto non viene nemmeno decodificato. Un file che
+ * non esiste (404) è `assente`; qualunque altro errore interrompe il controllo.
+ *
+ * Si usa il formato `object` dell'API: per i file tra 1 e 100 MB risponde con
+ * i soli metadati (contenuto vuoto, codifica `none`) invece di un errore 403,
+ * così un'immagine da 1,2 MB si può misurare. Una cartella arriva come oggetto
+ * di tipo `dir`, quindi non è mai un `file`.
+ *
+ * Attenzione: se il percorso è un collegamento simbolico verso un file DEL
+ * REPOSITORY, l'API risponde con `type: "file"` e il contenuto del file di
+ * destinazione. Per riconoscerlo chi chiama deve confrontare `sha` con lo SHA
+ * che `pulls.listFiles` dichiara per quel percorso (vedi `coincide`).
  */
 async function leggi(
   octokit: Octokit,
@@ -138,6 +172,7 @@ async function leggi(
       repo: ref.repo,
       path,
       ref: sha,
+      mediaType: { format: 'object' },
     });
     dati = risposta.data;
   } catch (errore) {
@@ -152,6 +187,7 @@ async function leggi(
   const voce = dati as {
     type?: unknown;
     size?: unknown;
+    sha?: unknown;
     encoding?: unknown;
     content?: unknown;
   };
@@ -161,7 +197,8 @@ async function leggi(
     typeof voce.size === 'number' && Number.isFinite(voce.size) && voce.size >= 0
       ? voce.size
       : undefined;
-  if (!conTesto) return { tipo: 'file', size, testo: null };
+  const shaLetto = typeof voce.sha === 'string' ? voce.sha : undefined;
+  if (!conTesto) return { tipo: 'file', size, sha: shaLetto, testo: null };
 
   // Sopra 1 MB l'API non include il contenuto (codifica `none`): per un file
   // di testo vale come illeggibile, e `evaluate` respinge la proposta.
@@ -169,7 +206,25 @@ async function leggi(
     voce.encoding === 'base64' && typeof voce.content === 'string'
       ? Buffer.from(voce.content, 'base64').toString('utf8')
       : null;
-  return { tipo: 'file', size, testo };
+  return { tipo: 'file', size, sha: shaLetto, testo };
+}
+
+/**
+ * Il blob letto con `getContent` è proprio quello che `pulls.listFiles`
+ * dichiara per il percorso? Se no (o se uno dei due SHA manca) il percorso è
+ * un collegamento simbolico verso un altro file del repository: l'API ne
+ * restituirebbe il contenuto spacciandolo per un file normale.
+ */
+function coincide(
+  lettura: Extract<Lettura, { tipo: 'file' }>,
+  elencato: string | null | undefined,
+): boolean {
+  return (
+    typeof elencato === 'string' &&
+    elencato !== '' &&
+    lettura.sha !== undefined &&
+    stessoNome(lettura.sha, elencato)
+  );
 }
 
 /** Esegue `fn` su ogni voce, con al massimo `limite` richieste insieme. */
@@ -230,6 +285,8 @@ function servonoIContenuti(
 interface FileGitHub {
   filename: string;
   status: string;
+  /** SHA del blob del file alla testata, come lo dichiara `pulls.listFiles`. */
+  sha?: string | null | undefined;
   previous_filename?: string | undefined;
 }
 
@@ -258,18 +315,50 @@ async function elencaFile(
   return elenco;
 }
 
+export interface OpzioniLettura {
+  /**
+   * SHA della testata indicato dall'evento che ha fatto partire il controllo.
+   * Se la proposta nel frattempo è cambiata (`pulls.get` ne dà un altro) la
+   * lettura si interrompe con `PropostaCambiata`: decide il controllo
+   * dell'evento più recente.
+   */
+  headShaAtteso?: string | undefined;
+}
+
 /**
  * Legge da GitHub la proposta e ciò che serve a valutarla. Oltre a
  * `PullRequestInput` restituisce il ramo (per l'anteprima) e i file che non
  * sono file normali (vedi `PullRequestCaricata`).
  *
- * - L'elenco dei file è paginato. Se è incompleto, o GitHub non dice quanti
- *   sono, lancia `VerificaNonPossibile`; qualunque errore di rete si propaga.
- * - `before` si legge dalla versione di base (null per i file aggiunti),
- *   `after` dalla testata (null per i file rimossi); un file che non
- *   esiste (404) o non è leggibile come testo dà `null`, e `evaluate` respinge.
- * - Per i file dei media (`rules.media.percorsi`) si legge solo la dimensione
- *   (`sizeBytes`), mai il contenuto. Per un media rimosso non serve.
+ * Cosa si legge e quando:
+ *
+ * - `author`, `draft`, `labels`: sempre, da `pulls.get`.
+ * - Elenco dei file (`files`, paginato): sempre, tranne per gli autori
+ *   sconosciuti e per le proposte da un fork o da un repository cancellato.
+ *   Questi si respingono comunque: nessuna richiesta di elenco né di
+ *   contenuto, così chi non fa parte del progetto non può esaurire il limite
+ *   di richieste. In quel caso `files` è vuoto.
+ *   Se l'elenco è incompleto, o GitHub non dice quanti file sono, lancia
+ *   `VerificaNonPossibile`; qualunque errore di rete si propaga.
+ * - `before`, `after`, `sizeBytes`: solo per la redazione, con proposta non in
+ *   bozza e con etichetta di invio (le condizioni in cui `evaluate` guarda i
+ *   file). Per gli altri restano `null`/indefiniti.
+ *   - `before`: testo alla versione di base (`null` se il file è `added`; per
+ *     un `renamed` si legge dal vecchio percorso).
+ *   - `after`: testo alla testata (`null` se `removed`).
+ *   - `sizeBytes`: dimensione alla testata, da `getContent`, per ogni file
+ *     aggiunto o modificato (non per un `removed`).
+ *   - File dei media (`rules.media.percorsi`): si legge solo `sizeBytes`
+ *     (metadati: il contenuto non si legge né si decodifica), mai
+ *     `before`/`after`.
+ *   - Un file inesistente (404), o non leggibile come testo (oltre 1 MB), dà
+ *     `null` e `evaluate` respinge.
+ * - Un file alla testata che non è un file normale finisce in `bloccati`:
+ *   collegamento simbolico, sotto-modulo, cartella, oppure un percorso il
+ *   cui blob (`getContent`) non coincide con lo SHA dichiarato da
+ *   `pulls.listFiles` (un collegamento verso un file del repository: l'API ne
+ *   restituisce il contenuto come se fosse un file). Di questi `after` resta
+ *   `null` e `sizeBytes` indefinito.
  * - Gli stati che `evaluate` non conosce (`copied`, `changed`...) passano
  *   invariati, così `evaluate` li respinge.
  */
@@ -277,12 +366,21 @@ export async function fetchPullRequest(
   octokit: Octokit,
   ref: PullRef,
   rules: Rules,
+  opzioni: OpzioniLettura = {},
 ): Promise<PullRequestCaricata> {
   const { data: pr } = await octokit.rest.pulls.get({
     owner: ref.owner,
     repo: ref.repo,
     pull_number: ref.pullNumber,
   });
+
+  const headSha = pr.head.sha;
+  if (
+    opzioni.headShaAtteso !== undefined &&
+    !stessoNome(headSha, opzioni.headShaAtteso)
+  ) {
+    throw new PropostaCambiata(MESSAGGI.propostaCambiata);
+  }
 
   const author = pr.user?.login;
   if (typeof author !== 'string' || author === '') {
@@ -294,11 +392,22 @@ export async function fetchPullRequest(
 
   const draft = pr.draft === true;
   const labels = pr.labels.map((etichetta) => etichetta.name);
+  const stessoRepository =
+    pr.head.repo != null && stessoNome(pr.head.repo.full_name, pr.base.repo.full_name);
+  const ramo = stessoRepository ? pr.head.ref : null;
+
+  const conosciuto = [...rules.ruoli.sviluppo, ...rules.ruoli.redazione].some(
+    (nome) => stessoNome(nome, author),
+  );
+  // Sconosciuti e fork sono respinti qualunque cosa contengano.
+  if (!conosciuto || ramo === null) {
+    return { input: { author, draft, labels, files: [] }, ramo, bloccati: [] };
+  }
+
   const elenco = await elencaFile(octokit, ref, pr.changed_files);
   const leggiContenuti = servonoIContenuti(author, draft, labels, rules);
   const eMedia = creaVerificaMedia(rules.media.percorsi);
   const baseSha = pr.base.sha;
-  const headSha = pr.head.sha;
 
   const letti = await conLimite(elenco, LETTURE_IN_PARALLELO, async (voce) => {
     const file: ChangedFile = {
@@ -321,8 +430,9 @@ export async function fetchPullRequest(
       if (voce.status === 'removed') return { file, bloccato };
       const lettura = await leggi(octokit, ref, voce.filename, headSha, false);
       if (lettura.tipo === 'speciale') bloccato = nonUnFile;
-      else if (lettura.tipo === 'file' && lettura.size !== undefined) {
-        file.sizeBytes = lettura.size;
+      else if (lettura.tipo === 'file') {
+        if (!coincide(lettura, voce.sha)) bloccato = nonUnFile;
+        else if (lettura.size !== undefined) file.sizeBytes = lettura.size;
       }
       return { file, bloccato };
     }
@@ -341,19 +451,19 @@ export async function fetchPullRequest(
       const dopo = await leggi(octokit, ref, voce.filename, headSha, true);
       if (dopo.tipo === 'speciale') bloccato = nonUnFile;
       else if (dopo.tipo === 'file') {
-        file.after = dopo.testo;
-        if (dopo.size !== undefined) file.sizeBytes = dopo.size;
+        if (!coincide(dopo, voce.sha)) bloccato = nonUnFile;
+        else {
+          file.after = dopo.testo;
+          if (dopo.size !== undefined) file.sizeBytes = dopo.size;
+        }
       }
     }
     return { file, bloccato };
   });
 
-  const stessoRepository =
-    pr.head.repo != null && stessoNome(pr.head.repo.full_name, pr.base.repo.full_name);
-
   return {
     input: { author, draft, labels, files: letti.map((l) => l.file) },
-    ramo: stessoRepository ? pr.head.ref : null,
+    ramo,
     bloccati: letti.flatMap((l) => (l.bloccato ? [l.bloccato] : [])),
   };
 }
@@ -361,8 +471,20 @@ export async function fetchPullRequest(
 /**
  * Versione compatta di `fetchPullRequest`: restituisce solo ciò che serve a
  * `evaluate`. Rispetto alla firma del piano ha un terzo parametro, `rules`:
- * serve a sapere quali file sono media (di cui si legge solo la dimensione) e
- * a evitare letture inutili.
+ * serve a sapere chi è sconosciuto, quali file sono media (di cui si legge
+ * solo la dimensione) e a evitare letture inutili.
+ *
+ * Quando sono valorizzati i campi di ogni file (stesse regole di
+ * `fetchPullRequest`):
+ * - `files` è l'elenco completo (paginato), ma è vuoto per gli autori
+ *   sconosciuti e per i fork, che non si leggono affatto;
+ * - `before`, `after` e `sizeBytes` si leggono solo per la redazione con una
+ *   proposta inviata e non in bozza: `before` dalla base (null se `added`),
+ *   `after` dalla testata (null se `removed`), `sizeBytes` dalla testata per
+ *   ogni file aggiunto o modificato; per i media solo `sizeBytes`;
+ * - un collegamento simbolico verso un file del repository dà `after` null e
+ *   `sizeBytes` indefinito (lo SHA letto non coincide con quello elencato),
+ *   quindi `evaluate` lo respinge anche senza `bloccati`.
  */
 export async function fetchPullRequestInput(
   octokit: Octokit,
@@ -407,11 +529,13 @@ async function trovaCommento(
       per_page: PER_PAGINA,
       page: pagina,
     });
-    // Solo i commenti di un bot che iniziano con il marcatore: chiunque può
-    // scrivere il marcatore in un proprio commento, ma non essere un bot.
+    // Solo i commenti scritti dal token del workflow (`github-actions[bot]`,
+    // un nome che nessun utente può avere) che iniziano con il marcatore:
+    // chiunque può scrivere il marcatore in un proprio commento, e altri bot
+    // potrebbero imitarlo.
     const trovato = data.find(
       (commento) =>
-        commento.user?.type === 'Bot' &&
+        commento.user?.login === AUTORE_COMMENTO &&
         typeof commento.body === 'string' &&
         commento.body.startsWith(MARCATORE),
     );

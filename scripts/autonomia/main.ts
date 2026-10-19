@@ -12,7 +12,9 @@ import type { Rules } from './types';
 //   GITHUB_TOKEN       token del workflow (permessi: contents read,
 //                      pull-requests write, issues write)
 //   GITHUB_REPOSITORY  `proprietario/repository`
-//   GITHUB_EVENT_PATH  file JSON dell'evento, da cui si prende il numero
+//   GITHUB_EVENT_PATH  file JSON dell'evento, da cui si prendono il numero della
+//                      proposta e lo SHA della sua testata (se la proposta nel
+//                      frattempo è cambiata, il controllo si ferma)
 //   GITHUB_API_URL     (facoltativa) indirizzo dell'API di GitHub
 //
 // Le regole si leggono da `autonomia.yml` nel checkout del ramo base.
@@ -27,7 +29,13 @@ function variabile(nome: string): string {
   return valore;
 }
 
-function leggiRiferimento(): PullRef {
+interface Evento {
+  ref: PullRef;
+  /** SHA della testata della proposta al momento dell'evento. */
+  headSha: string;
+}
+
+function leggiEvento(): Evento {
   const repository = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(
     variabile('GITHUB_REPOSITORY'),
   );
@@ -35,20 +43,30 @@ function leggiRiferimento(): PullRef {
     throw new Error('GITHUB_REPOSITORY deve avere la forma proprietario/repository.');
   }
   const evento: unknown = JSON.parse(readFileSync(variabile('GITHUB_EVENT_PATH'), 'utf8'));
-  const numero = (evento as { pull_request?: { number?: unknown } } | null)
-    ?.pull_request?.number;
+  const proposta = (
+    evento as { pull_request?: { number?: unknown; head?: { sha?: unknown } } } | null
+  )?.pull_request;
+  const numero = proposta?.number;
   if (typeof numero !== 'number' || !Number.isInteger(numero) || numero <= 0) {
     throw new Error("L'evento non riguarda una pull request.");
   }
-  return { owner: repository[1]!, repo: repository[2]!, pullNumber: numero };
+  const headSha = proposta?.head?.sha;
+  if (typeof headSha !== 'string' || !/^[0-9a-f]{40}$/i.test(headSha)) {
+    throw new Error("L'evento non indica la versione della proposta da controllare.");
+  }
+  return {
+    ref: { owner: repository[1]!, repo: repository[2]!, pullNumber: numero },
+    headSha,
+  };
 }
 
 async function main(): Promise<void> {
   let octokit: Octokit;
   let ref: PullRef;
+  let headSha: string;
   try {
     const token = variabile('GITHUB_TOKEN');
-    ref = leggiRiferimento();
+    ({ ref, headSha } = leggiEvento());
     const apiUrl = process.env.GITHUB_API_URL;
     octokit = new Octokit({
       auth: token,
@@ -79,7 +97,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const esito = await eseguiVerifica(octokit, ref, rules);
+  const esito = await eseguiVerifica(octokit, ref, rules, { headShaAtteso: headSha });
   if (!esito.superato) process.exitCode = 1;
 }
 

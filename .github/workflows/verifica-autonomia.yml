@@ -19,6 +19,7 @@ name: verifica-autonomia
 
 on:
   pull_request_target:
+    branches: [main]
     types:
       - opened
       - reopened
@@ -50,7 +51,8 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version: 22.x
+          check-latest: true
           package-manager-cache: false
 
       - run: npm ci

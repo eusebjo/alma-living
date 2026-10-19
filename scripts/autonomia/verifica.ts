@@ -3,6 +3,7 @@ import { evaluate } from './evaluate';
 import {
   ETICHETTA_LIVELLO_1,
   LIMITE_CORPO,
+  PropostaCambiata,
   VerificaNonPossibile,
   fetchPullRequest,
   limitaCorpo,
@@ -23,6 +24,8 @@ import type { Rules, Verdict } from './types';
 // leggere o a scrivere, l'esito è "non superato", mai "consentito".
 
 const MESSAGGI = {
+  daFork:
+    'La proposta non arriva da questo sito ma da una copia esterna (o da una copia che non esiste più): per sicurezza non può essere accettata. Le modifiche si propongono dal pannello dei contenuti.',
   nessunFile:
     'Nella proposta non risulta nessun file modificato, quindi non c’è nulla da verificare.',
   erroreGenerico:
@@ -44,15 +47,32 @@ export interface EsitoVerifica {
 
 /**
  * Aggiunge a `evaluate` i controlli che dipendono da come è stata letta la
- * proposta, e che valgono solo per la redazione (lo sviluppo non ha limiti):
- * - un file che non è un file normale (collegamento, sotto-modulo) è respinto,
- *   con un solo messaggio per file;
- * - una proposta senza nessun file non è mai "consentita".
+ * proposta:
+ * - per OGNI ruolo, una proposta che arriva da un fork (o da un repository
+ *   cancellato) è respinta: il suo codice non è quello del repository, e un
+ *   autore "di sviluppo" non deve passare solo perché apre la proposta da una
+ *   copia altrui;
+ * - solo per la redazione (lo sviluppo non ha limiti sui contenuti):
+ *   - un file che non è un file normale (collegamento, sotto-modulo) è
+ *     respinto, con un solo messaggio per file;
+ *   - una proposta senza nessun file non è mai "consentita".
  */
 export function applicaControlli(
   verdict: Verdict,
   caricata: PullRequestCaricata,
 ): Verdict {
+  if (caricata.ramo === null) {
+    return {
+      ruolo: verdict.ruolo,
+      esito: 'respinto',
+      livello: null,
+      violazioni: [
+        { file: '', azione: 'perimetro', messaggio: MESSAGGI.daFork },
+        ...verdict.violazioni,
+      ],
+    };
+  }
+
   if (verdict.ruolo !== 'redazione') return verdict;
 
   if (caricata.bloccati.length > 0) {
@@ -149,23 +169,38 @@ export async function pubblicaErrore(
   }
 }
 
+export interface OpzioniVerifica {
+  /** SHA della testata indicato dall'evento (vedi `OpzioniLettura`). */
+  headShaAtteso?: string | undefined;
+}
+
 /**
  * Esegue l'intera verifica di una proposta. Non lancia: ogni problema diventa
  * `superato: false`. L'etichetta è solo un aiuto per chi legge: se non si
  * riesce ad aggiornare, il controllo non cambia esito e il problema viene
  * segnalato come avviso nel log di GitHub Actions.
+ *
+ * Se la proposta è cambiata durante la verifica (`PropostaCambiata`) il
+ * controllo fallisce senza scrivere nulla nella proposta: un commento di
+ * questo controllo ormai superato potrebbe sovrascrivere il rapporto di
+ * quello più recente, che è l'unico a decidere.
  */
 export async function eseguiVerifica(
   octokit: Octokit,
   ref: PullRef,
   rules: Rules,
+  opzioni: OpzioniVerifica = {},
 ): Promise<EsitoVerifica> {
   let caricata: PullRequestCaricata;
   let verdict: Verdict;
   try {
-    caricata = await fetchPullRequest(octokit, ref, rules);
+    caricata = await fetchPullRequest(octokit, ref, rules, opzioni);
     verdict = applicaControlli(evaluate(caricata.input, rules), caricata);
   } catch (errore) {
+    if (errore instanceof PropostaCambiata) {
+      console.log(`::warning title=Proposta cambiata::${errore.message}`);
+      return { superato: false, verdict: null };
+    }
     await pubblicaErrore(octokit, ref, errore);
     return { superato: false, verdict: null };
   }

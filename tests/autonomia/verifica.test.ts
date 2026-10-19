@@ -157,6 +157,8 @@ describe('eseguiVerifica', () => {
 
       expect(esito.superato).toBe(false);
       expect(esito.verdict?.ruolo).toBe('sconosciuto');
+      // Deciso prima di elencare i file: nessuna richiesta che un estraneo possa moltiplicare.
+      expect(quante(chiamate, 'pulls.listFiles')).toBe(0);
       expect(quante(chiamate, 'repos.getContent')).toBe(0);
       const corpo = corpoDelRapporto(stato);
       expect(corpo).not.toMatch(/workers\.dev/);
@@ -245,16 +247,141 @@ describe('eseguiVerifica', () => {
       expect((await eseguiVerifica(octokit, ref, rules)).superato).toBe(true);
     });
 
-    it('una proposta da un fork non mostra un’anteprima che non esiste', async () => {
-      const { octokit, stato } = creaOctokitFinto({
-        autore: 'eusebjo',
-        repoTestata: 'eusebjo-fork/alma-living',
-        files: [{ filename: 'README.md', status: 'modified' }],
-      });
+  });
+
+  describe('proposte da un fork (o da un repository cancellato)', () => {
+    it.each([
+      ['redazione', modificaConsentita({ repoTestata: 'altro/alma-living' }), 'redazione'],
+      [
+        'sviluppo',
+        {
+          autore: 'eusebjo',
+          repoTestata: 'eusebjo-fork/alma-living',
+          files: [{ filename: 'README.md', status: 'modified' }],
+        },
+        'sviluppo',
+      ],
+      [
+        'sconosciuto',
+        modificaConsentita({ autore: 'estraneo', repoTestata: 'altro/alma-living' }),
+        'sconosciuto',
+      ],
+      [
+        'sviluppo con repository cancellato',
+        {
+          autore: 'eusebjo',
+          repoTestata: null,
+          files: [{ filename: 'README.md', status: 'modified' }],
+        },
+        'sviluppo',
+      ],
+    ] as Array<[string, ScenarioFinto, string]>)(
+      'è sempre respinta, anche per %s',
+      async (_nome, scenario, ruolo) => {
+        const { octokit, chiamate, stato } = creaOctokitFinto(scenario);
+
+        const esito = await eseguiVerifica(octokit, ref, rules);
+
+        expect(esito.superato).toBe(false);
+        expect(esito.verdict).toMatchObject({ ruolo, esito: 'respinto', livello: null });
+        expect(esito.verdict?.violazioni[0]).toMatchObject({ azione: 'perimetro' });
+        const corpo = corpoDelRapporto(stato);
+        expect(corpo).toMatch(/modifica non consentita/);
+        expect(corpo).toMatch(/copia esterna/);
+        expect(corpo).not.toMatch(GERGO);
+        // Niente anteprima (non esiste) e nessuna lettura dei file.
+        expect(corpo).not.toMatch(/workers\.dev/);
+        expect(quante(chiamate, 'pulls.listFiles')).toBe(0);
+        expect(quante(chiamate, 'repos.getContent')).toBe(0);
+        expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+      },
+    );
+
+    it('uno sconosciuto da un fork vede anche il motivo dell’autore', async () => {
+      const { octokit, stato } = creaOctokitFinto(
+        modificaConsentita({ autore: 'estraneo', repoTestata: 'altro/alma-living' }),
+      );
 
       await eseguiVerifica(octokit, ref, rules);
 
-      expect(corpoDelRapporto(stato)).not.toMatch(/workers\.dev/);
+      expect(corpoDelRapporto(stato)).toMatch(/non è autorizzato/);
+    });
+
+    it('la stessa proposta dallo stesso repository è consentita (nessun falso allarme)', async () => {
+      const { octokit } = creaOctokitFinto(modificaConsentita());
+
+      expect((await eseguiVerifica(octokit, ref, rules)).superato).toBe(true);
+    });
+  });
+
+  describe('collegamenti simbolici verso file del repository', () => {
+    it('un media che è un collegamento a un altro file viene respinto', async () => {
+      const { octokit, stato } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: FOTO, status: 'added' }],
+          contenuti: {
+            // L'API risponde `file` con il contenuto (e lo SHA) della destinazione.
+            [chiave(HEAD_SHA, FOTO)]: { sha: 'e'.repeat(40), size: 4_000 },
+          },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.esito).toBe('respinto');
+      expect(esito.verdict?.violazioni).toHaveLength(1);
+      expect(corpoDelRapporto(stato)).toMatch(/non è un file normale/);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('un file di contenuto che è un collegamento viene respinto', async () => {
+      const { octokit } = creaOctokitFinto(
+        modificaConsentita({
+          contenuti: {
+            [chiave(BASE_SHA, NEGOZIO)]: { testo: negozioJson() },
+            [chiave(HEAD_SHA, NEGOZIO)]: {
+              testo: negozioJson((n) => {
+                n.descrizione = 'Una descrizione nuova.';
+              }),
+              sha: 'd'.repeat(40),
+            },
+          },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict?.violazioni.map((v) => v.file)).toEqual([NEGOZIO]);
+    });
+  });
+
+  describe('proposta cambiata durante la verifica', () => {
+    it('fallisce senza scrivere nulla nella proposta e lo segnala nel log', async () => {
+      const avvisi = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { octokit, chiamate, stato } = creaOctokitFinto(modificaConsentita());
+
+      const esito = await eseguiVerifica(octokit, ref, rules, {
+        headShaAtteso: 'c'.repeat(40),
+      });
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toBeNull();
+      expect(stato.commenti).toEqual([]);
+      expect(quante(chiamate, 'issues.createComment')).toBe(0);
+      expect(quante(chiamate, 'issues.addLabels')).toBe(0);
+      expect(avvisi).toHaveBeenCalledWith(
+        expect.stringMatching(/^::warning .*cambiata durante la verifica.*ripartirà/),
+      );
+    });
+
+    it('con lo SHA giusto la verifica procede normalmente', async () => {
+      const { octokit } = creaOctokitFinto(modificaConsentita());
+
+      const esito = await eseguiVerifica(octokit, ref, rules, { headShaAtteso: HEAD_SHA });
+
+      expect(esito.superato).toBe(true);
     });
   });
 
