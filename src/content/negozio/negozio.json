@@ -9,5 +9,11 @@
     "provincia": "LI"
   },
   "telefono": "334 520 5451",
-  "orari": []
+  "orari": [
+    {
+      "giorno": "lunedi",
+      "apertura": "09:30",
+      "chiusura": "13:30"
+    }
+  ]
 }
