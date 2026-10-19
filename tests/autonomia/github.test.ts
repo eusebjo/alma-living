@@ -1047,6 +1047,117 @@ vero`);
     expect(quante(chiamate, 'issues.createComment')).toBe(1);
   });
 
+  // Più controlli della stessa proposta possono girare insieme (il pannello
+  // manda più eventi nello stesso secondo): se nessuno trova il commento, lo
+  // creano tutti. Resta solo il più vecchio.
+  describe('commenti doppi creati da controlli in parallelo', () => {
+    it('tiene il commento del bot più vecchio, lo aggiorna e cancella gli altri', async () => {
+      const { octokit, chiamate, stato } = creaOctokitFinto({
+        commenti: [
+          { id: 3, body: `${MARCATORE}\nprimo`, user: bot },
+          { id: 4, body: 'Ciao', user: { login: 'lei', type: 'User' } },
+          { id: 5, body: `${MARCATORE}\nsecondo`, user: bot },
+          { id: 6, body: `${MARCATORE}\nterzo`, user: bot },
+        ],
+      });
+      const corpo = `${MARCATORE}\n\nNuovo esito.\n`;
+
+      await upsertReport(octokit, ref, corpo);
+
+      expect(quante(chiamate, 'issues.createComment')).toBe(0);
+      expect(
+        chiamate.filter((c) => c.metodo === 'issues.updateComment').map((c) => c.params.comment_id),
+      ).toEqual([3]);
+      expect(
+        chiamate.filter((c) => c.metodo === 'issues.deleteComment').map((c) => c.params.comment_id),
+      ).toEqual([5, 6]);
+      expect(stato.commenti.map((c) => c.id)).toEqual([3, 4]);
+      expect(stato.commenti[0]?.body).toBe(corpo);
+    });
+
+    it('se un altro controllo crea il commento nello stesso momento, ne resta uno solo con il nuovo esito', async () => {
+      const { octokit, stato } = creaOctokitFinto();
+      const crea = octokit.rest.issues.createComment;
+      // Mentre questo controllo crea il suo commento, un altro controllo ha
+      // già creato il proprio (id più basso, quindi più vecchio).
+      octokit.rest.issues.createComment = (async (params: Parameters<typeof crea>[0]) => {
+        stato.commenti.push({ id: 50, body: `${MARCATORE}\naltro controllo`, user: bot });
+        return crea(params);
+      }) as typeof crea;
+      const corpo = `${MARCATORE}\n\nEsito.\n`;
+
+      await upsertReport(octokit, ref, corpo);
+
+      expect(stato.commenti).toHaveLength(1);
+      expect(stato.commenti[0]).toMatchObject({ id: 50, body: corpo });
+    });
+
+    it('se il commento da cancellare non c’è più (cancellato dall’altro controllo) non fallisce', async () => {
+      const { octokit, chiamate, stato } = creaOctokitFinto({
+        commenti: [
+          { id: 3, body: `${MARCATORE}\nprimo`, user: bot },
+          { id: 5, body: `${MARCATORE}\nsecondo`, user: bot },
+        ],
+      });
+      const cancella = octokit.rest.issues.deleteComment;
+      octokit.rest.issues.deleteComment = (async (params: Parameters<typeof cancella>[0]) => {
+        // L'altro controllo arriva prima.
+        stato.commenti.splice(stato.commenti.findIndex((c) => c.id === 5), 1);
+        return cancella(params);
+      }) as typeof cancella;
+
+      await expect(upsertReport(octokit, ref, `${MARCATORE}\nvero`)).resolves.toBeUndefined();
+      expect(quante(chiamate, 'issues.deleteComment')).toBe(1);
+      expect(stato.commenti.map((c) => c.id)).toEqual([3]);
+    });
+
+    it('non cancella i commenti di persone o di altri bot, anche con il marcatore', async () => {
+      const { octokit, chiamate, stato } = creaOctokitFinto({
+        commenti: [
+          { id: 1, body: `${MARCATORE}\nfinto`, user: { login: 'estraneo', type: 'User' } },
+          { id: 2, body: `${MARCATORE}\nvecchio`, user: bot },
+          { id: 3, body: `${MARCATORE}\nfinto`, user: { login: 'dependabot[bot]', type: 'Bot' } },
+        ],
+      });
+
+      await upsertReport(octokit, ref, `${MARCATORE}\nnuovo`);
+
+      expect(quante(chiamate, 'issues.deleteComment')).toBe(0);
+      expect(stato.commenti.map((c) => c.id)).toEqual([1, 2, 3]);
+    });
+
+    it('trova i commenti doppi anche nelle pagine successive', async () => {
+      const riempitivo = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 10,
+        body: `commento ${i}`,
+        user: { login: 'lei', type: 'User' },
+      }));
+      const { octokit, stato } = creaOctokitFinto({
+        commenti: [
+          { id: 1, body: `${MARCATORE}\nprimo`, user: bot },
+          ...riempitivo,
+          { id: 500, body: `${MARCATORE}\nsecondo`, user: bot },
+        ],
+      });
+
+      await upsertReport(octokit, ref, `${MARCATORE}\nnuovo`);
+
+      expect(stato.commenti.filter((c) => c.body.startsWith(MARCATORE)).map((c) => c.id)).toEqual([1]);
+    });
+
+    it('un errore diverso da 404 durante la cancellazione non viene nascosto', async () => {
+      const { octokit } = creaOctokitFinto({
+        commenti: [
+          { id: 3, body: `${MARCATORE}\nprimo`, user: bot },
+          { id: 5, body: `${MARCATORE}\nsecondo`, user: bot },
+        ],
+        errori: { 'issues.deleteComment': erroreHttp(500) },
+      });
+
+      await expect(upsertReport(octokit, ref, `${MARCATORE}\nvero`)).rejects.toThrow();
+    });
+  });
+
   it('accorcia un rapporto troppo lungo prima di inviarlo (GitHub rifiuta oltre 65.536 caratteri)', async () => {
     const { octokit, stato } = creaOctokitFinto();
     const enorme = `${MARCATORE}\n\n${Array.from({ length: 3000 }, (_, i) => `- file ${i}: ${'y'.repeat(150)}`).join('\n')}\n`;

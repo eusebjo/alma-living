@@ -560,10 +560,9 @@ export function limitaCorpo(testo: string, massimo: number = LIMITE_CORPO): stri
   return `${testo.slice(0, taglio)}${NOTA_ACCORCIATO}`.slice(0, massimo);
 }
 
-async function trovaCommento(
-  octokit: Octokit,
-  ref: PullRef,
-): Promise<number | undefined> {
+/** Id dei commenti del rapporto nella proposta, dal più vecchio. */
+async function trovaCommenti(octokit: Octokit, ref: PullRef): Promise<number[]> {
+  const trovati: number[] = [];
   for (let pagina = 1; pagina <= PAGINE_MASSIME_COMMENTI; pagina++) {
     const { data } = await octokit.rest.issues.listComments({
       owner: ref.owner,
@@ -576,22 +575,31 @@ async function trovaCommento(
     // un nome che nessun utente può avere) che iniziano con il marcatore:
     // chiunque può scrivere il marcatore in un proprio commento, e altri bot
     // potrebbero imitarlo.
-    const trovato = data.find(
-      (commento) =>
+    for (const commento of data) {
+      if (
         commento.user?.login === AUTORE_COMMENTO &&
         typeof commento.body === 'string' &&
-        commento.body.startsWith(MARCATORE),
-    );
-    if (trovato) return trovato.id;
+        commento.body.startsWith(MARCATORE)
+      ) {
+        trovati.push(commento.id);
+      }
+    }
     if (data.length < PER_PAGINA) break;
   }
-  return undefined;
+  return trovati.sort((a, b) => a - b);
 }
 
 /**
  * Pubblica il rapporto nella proposta: aggiorna il commento del bot che inizia
  * con il marcatore, oppure lo crea. Il testo deve iniziare con il marcatore;
  * se è troppo lungo per GitHub viene accorciato (`limitaCorpo`).
+ *
+ * Più controlli della stessa proposta possono girare insieme (il pannello manda
+ * più eventi nello stesso secondo e il workflow non ne ferma nessuno): se
+ * nessuno trova il commento, lo creano tutti. Per questo, dopo aver creato il
+ * proprio, ognuno rilegge i commenti: resta il più vecchio, con questo
+ * rapporto, e gli altri si cancellano. Un commento già cancellato da un altro
+ * controllo (404) non è un errore.
  */
 export async function upsertReport(
   octokit: Octokit,
@@ -602,21 +610,37 @@ export async function upsertReport(
     throw new Error(MESSAGGI.corpoSenzaMarcatore);
   }
   const corpo = limitaCorpo(body);
-  const esistente = await trovaCommento(octokit, ref);
-  if (esistente === undefined) {
-    await octokit.rest.issues.createComment({
+  let commenti = await trovaCommenti(octokit, ref);
+  let creato: number | undefined;
+  if (commenti.length === 0) {
+    const { data } = await octokit.rest.issues.createComment({
       owner: ref.owner,
       repo: ref.repo,
       issue_number: ref.pullNumber,
       body: corpo,
     });
-  } else {
+    creato = data.id;
+    commenti = await trovaCommenti(octokit, ref);
+  }
+  const [tenuto, ...doppi] = commenti;
+  if (tenuto !== undefined && tenuto !== creato) {
     await octokit.rest.issues.updateComment({
       owner: ref.owner,
       repo: ref.repo,
-      comment_id: esistente,
+      comment_id: tenuto,
       body: corpo,
     });
+  }
+  for (const doppio of doppi) {
+    try {
+      await octokit.rest.issues.deleteComment({
+        owner: ref.owner,
+        repo: ref.repo,
+        comment_id: doppio,
+      });
+    } catch (errore) {
+      if (statoHttp(errore) !== 404) throw errore;
+    }
   }
 }
 
