@@ -195,7 +195,12 @@ export async function eseguiVerifica(
   let verdict: Verdict;
   try {
     caricata = await fetchPullRequest(octokit, ref, rules, opzioni);
-    verdict = applicaControlli(evaluate(caricata.input, rules), caricata);
+    // Il ramo conta quanto l'autore: un ramo `cms/` si valuta con le regole della
+    // redazione anche se lo apre chi è nello sviluppo (vedi `ruoloEffettivo`).
+    verdict = applicaControlli(
+      evaluate(caricata.input, rules, { ramo: caricata.ramo }),
+      caricata,
+    );
   } catch (errore) {
     if (errore instanceof PropostaCambiata) {
       console.log(`::warning title=Proposta cambiata::${errore.message}`);

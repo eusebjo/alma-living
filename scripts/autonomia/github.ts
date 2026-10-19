@@ -1,6 +1,7 @@
 import type { Octokit } from '@octokit/rest';
 import picomatch from 'picomatch';
 import { MARCATORE } from './report';
+import { ruoloEffettivo } from './ruolo';
 import type { ChangedFile, PullRequestInput, Rules, Violazione } from './types';
 
 // Parte "GitHub" della verifica di autonomia: legge la proposta (pull request)
@@ -49,6 +50,8 @@ const MESSAGGI = {
     'Questo elemento non è un file normale (per esempio è un collegamento o una cartella collegata): non è possibile verificarlo, quindi non può essere accettato.',
   descrizioneEtichetta:
     "Modifica nei limiti delle regole: serve l'approvazione prima di andare online",
+  puntoDiPartenza:
+    'Non è stato possibile stabilire da quale versione del sito parte la proposta, quindi non si possono confrontare le modifiche. Riprova tra qualche minuto.',
   corpoSenzaMarcatore:
     'Il rapporto deve iniziare con il marcatore della verifica, altrimenti non si potrebbe aggiornare al controllo successivo.',
 } as const;
@@ -265,21 +268,51 @@ const stessoNome = (a: string, b: string): boolean =>
   a.toLowerCase() === b.toLowerCase();
 
 /**
- * `evaluate` guarda il contenuto dei file solo per le proposte della
- * redazione già inviate. Per le altre (sviluppo, sconosciuti, bozze) leggerlo
- * sarebbe solo uno spreco: il `GITHUB_TOKEN` ha un limite di 1.000 richieste
- * l'ora per repository e ogni salvataggio dal pannello rilancia il controllo.
+ * `evaluate` guarda il contenuto dei file solo per le proposte valutate con le
+ * regole della redazione (quelle della redazione, e quelle di un ramo `cms/`
+ * anche se le apre chi è nello sviluppo: vedi `ruoloEffettivo`) già inviate.
+ * Per le altre (sviluppo, sconosciuti, bozze) leggerlo sarebbe solo uno
+ * spreco: il `GITHUB_TOKEN` ha un limite di 1.000 richieste l'ora per
+ * repository e ogni salvataggio dal pannello rilancia il controllo.
  */
 function servonoIContenuti(
   autore: string,
+  ramo: string,
   bozza: boolean,
   etichette: string[],
   rules: Rules,
 ): boolean {
-  if (rules.ruoli.sviluppo.some((nome) => stessoNome(nome, autore))) return false;
-  if (!rules.ruoli.redazione.some((nome) => stessoNome(nome, autore))) return false;
+  if (ruoloEffettivo(autore, ramo, rules) !== 'redazione') return false;
   const inviata = etichette.some((e) => rules.proposte.stati_inviati.includes(e));
   return !bozza && inviata;
+}
+
+/**
+ * Versione da cui la proposta si è staccata dal ramo base (il merge base di
+ * base e testata). `pulls.listFiles` elenca le differenze rispetto a quella
+ * versione, non alla punta attuale del ramo base: anche `before` va letto lì.
+ * Se non si riesce a stabilire la verifica fallisce (`VerificaNonPossibile`):
+ * leggere `before` altrove attribuirebbe alla redazione le modifiche fatte sul
+ * ramo base nel frattempo.
+ */
+async function trovaPuntoDiPartenza(
+  octokit: Octokit,
+  ref: PullRef,
+  baseSha: string,
+  headSha: string,
+): Promise<string> {
+  const { data } = await octokit.rest.repos.compareCommitsWithBasehead({
+    owner: ref.owner,
+    repo: ref.repo,
+    basehead: `${baseSha}...${headSha}`,
+    // Del confronto serve solo il merge base: niente elenco di commit e file.
+    per_page: 1,
+  });
+  const sha: unknown = data.merge_base_commit?.sha;
+  if (typeof sha !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(sha)) {
+    throw new VerificaNonPossibile(MESSAGGI.puntoDiPartenza);
+  }
+  return sha;
 }
 
 interface FileGitHub {
@@ -340,11 +373,17 @@ export interface OpzioniLettura {
  *   di richieste. In quel caso `files` è vuoto.
  *   Se l'elenco è incompleto, o GitHub non dice quanti file sono, lancia
  *   `VerificaNonPossibile`; qualunque errore di rete si propaga.
- * - `before`, `after`, `sizeBytes`: solo per la redazione, con proposta non in
- *   bozza e con etichetta di invio (le condizioni in cui `evaluate` guarda i
- *   file). Per gli altri restano `null`/indefiniti.
- *   - `before`: testo alla versione di base (`null` se il file è `added`; per
- *     un `renamed` si legge dal vecchio percorso).
+ * - `before`, `after`, `sizeBytes`: solo per le proposte valutate con le regole
+ *   della redazione (della redazione, oppure di un ramo `cms/` anche se la
+ *   apre chi è nello sviluppo), non in bozza e con etichetta di invio (le
+ *   condizioni in cui `evaluate` guarda i file). Per gli altri restano
+ *   `null`/indefiniti.
+ *   - `before`: testo alla versione da cui la proposta si è staccata dal ramo
+ *     base, cioè il merge base di base e testata (`repos.compareCommitsWithBasehead`),
+ *     non la punta attuale del ramo base: `pulls.listFiles` elenca le differenze
+ *     rispetto al merge base. `null` se il file è `added`; per un `renamed` si
+ *     legge dal vecchio percorso. Se il merge base non si può stabilire lancia
+ *     `VerificaNonPossibile`.
  *   - `after`: testo alla testata (`null` se `removed`).
  *   - `sizeBytes`: dimensione alla testata, da `getContent`, per ogni file
  *     aggiunto o modificato (non per un `removed`).
@@ -405,9 +444,13 @@ export async function fetchPullRequest(
   }
 
   const elenco = await elencaFile(octokit, ref, pr.changed_files);
-  const leggiContenuti = servonoIContenuti(author, draft, labels, rules);
+  const leggiContenuti = servonoIContenuti(author, ramo, draft, labels, rules);
   const eMedia = creaVerificaMedia(rules.media.percorsi);
   const baseSha = pr.base.sha;
+  // Si chiede una volta sola, e solo se serve leggere una versione precedente.
+  let puntoDiPartenza: Promise<string> | undefined;
+  const versionePrecedente = (): Promise<string> =>
+    (puntoDiPartenza ??= trovaPuntoDiPartenza(octokit, ref, baseSha, headSha));
 
   const letti = await conLimite(elenco, LETTURE_IN_PARALLELO, async (voce) => {
     const file: ChangedFile = {
@@ -442,7 +485,7 @@ export async function fetchPullRequest(
         octokit,
         ref,
         voce.previous_filename ?? voce.filename,
-        baseSha,
+        await versionePrecedente(),
         true,
       );
       if (prima.tipo === 'file') file.before = prima.testo;

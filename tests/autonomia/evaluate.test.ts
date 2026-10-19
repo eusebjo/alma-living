@@ -1074,6 +1074,135 @@ describe('evaluate, glob e collection', () => {
   });
 });
 
+describe('evaluate, rami del pannello (cms/): regole della redazione per chiunque apra la proposta', () => {
+  // Il pannello lavora su rami `cms/<collection>/<id>` e la redazione può
+  // scrivere lì: una proposta di quel ramo aperta da chi è nello `sviluppo`
+  // porterebbe online (con il merge dell'admin) le modifiche della redazione
+  // senza i controlli sui contenuti. Per questo vale il ramo, non chi apre.
+  const RAMO_PANNELLO = 'cms/negozio/negozio';
+  const modificaNomeNegozio = modificato(
+    NEGOZIO,
+    negozioJson(),
+    negozioJson((n) => {
+      n.nome = 'Altro nome';
+    }),
+  );
+  const modificaDescrizione = modificato(
+    NEGOZIO,
+    negozioJson(),
+    negozioJson((n) => {
+      n.descrizione = 'Una descrizione nuova del negozio.';
+    }),
+  );
+  const daSviluppo = (
+    files: ChangedFile[],
+    ramo: string | null | undefined,
+    altro: Partial<Parameters<typeof proposta>[1]> = {},
+  ) => evaluate(proposta(files, { author: 'eusebjo', ...altro }), rules, { ramo });
+
+  it('sviluppo + ramo cms/ + campo vietato: respinto con le regole della redazione', () => {
+    const verdetto = daSviluppo([modificaNomeNegozio], RAMO_PANNELLO);
+
+    expect(verdetto.ruolo).toBe('redazione');
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.livello).toBeNull();
+    expect(verdetto.violazioni).toEqual([
+      expect.objectContaining({ file: NEGOZIO, campo: 'nome', azione: 'modifica' }),
+    ]);
+  });
+
+  it('sviluppo + ramo cms/ + file fuori perimetro: respinto', () => {
+    const verdetto = daSviluppo(
+      [modificato('src/layouts/BaseLayout.astro', 'a', 'b')],
+      RAMO_PANNELLO,
+    );
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['perimetro']);
+  });
+
+  it('sviluppo + ramo cms/ + campo consentito + pending_review: consentito, livello 1', () => {
+    expect(daSviluppo([modificaDescrizione], RAMO_PANNELLO)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('sviluppo + ramo cms/ vale anche con pending_publish', () => {
+    const verdetto = daSviluppo([modificaDescrizione], RAMO_PANNELLO, {
+      labels: ['sveltia-cms/pending_publish'],
+    });
+    expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1 });
+  });
+
+  it('sviluppo + ramo cms/ in bozza o senza etichetta di invio: in_bozza, come per la redazione', () => {
+    for (const altro of [
+      { draft: true },
+      { labels: [] },
+      { labels: ['sveltia-cms/draft'] },
+    ]) {
+      const verdetto = daSviluppo([modificaNomeNegozio], RAMO_PANNELLO, altro);
+      expect(verdetto.ruolo).toBe('redazione');
+      expect(verdetto.esito).toBe('in_bozza');
+      expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['stato']);
+    }
+  });
+
+  it('sviluppo + ramo di sviluppo (o ramo ignoto): invariato, nessun limite sui contenuti', () => {
+    for (const ramo of [
+      'fase1/9-correzioni',
+      'main-fix',
+      'fase1/cms/x',
+      'cmsx/negozio',
+      'cms',
+      null,
+      undefined,
+    ]) {
+      expect(daSviluppo([modificaNomeNegozio], ramo), String(ramo)).toEqual({
+        ruolo: 'sviluppo',
+        esito: 'consentito',
+        livello: null,
+        violazioni: [],
+      });
+    }
+    // Senza il terzo parametro (chiamata di prima) il comportamento non cambia.
+    expect(evaluate(proposta([modificaNomeNegozio], { author: 'eusebjo' }), rules)).toMatchObject({
+      ruolo: 'sviluppo',
+      esito: 'consentito',
+    });
+  });
+
+  it('il prefisso cms/ si riconosce senza distinguere maiuscole e minuscole (si sbaglia dal lato prudente)', () => {
+    for (const ramo of ['CMS/negozio/negozio', 'Cms/pagine/home']) {
+      expect(daSviluppo([modificaNomeNegozio], ramo), ramo).toMatchObject({
+        ruolo: 'redazione',
+        esito: 'respinto',
+      });
+    }
+  });
+
+  it('chi non è in nessun ruolo resta respinto per autore, anche da un ramo cms/', () => {
+    const verdetto = evaluate(
+      proposta([modificaDescrizione], { author: 'estraneo' }),
+      rules,
+      { ramo: RAMO_PANNELLO },
+    );
+    expect(verdetto.ruolo).toBe('sconosciuto');
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['autore']);
+  });
+
+  it('la redazione da un ramo di sviluppo non cambia: le regole sono le stesse', () => {
+    const verdetto = evaluate(
+      proposta([modificaNomeNegozio], { author: 'lei' }),
+      rules,
+      { ramo: 'fase1/qualcosa' },
+    );
+    expect(verdetto).toMatchObject({ ruolo: 'redazione', esito: 'respinto' });
+  });
+});
+
 describe('evaluate, messaggi per chi gestisce i contenuti', () => {
   const GERGO = /branch|merge|commit/i;
 
