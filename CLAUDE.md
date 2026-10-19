@@ -10,7 +10,7 @@ Sito vetrina statico di Alma Living, negozio di biancheria per la casa in Via Ri
 
 ## Comandi
 
-Node `>=22`, npm. Funziona su Windows (PowerShell e Git Bash) e su Linux.
+Node `>=22.22.0` (come richiede Astro), npm. Funziona su Windows (PowerShell e Git Bash) e su Linux.
 
 | Comando | Cosa fa |
 |---|---|
@@ -29,6 +29,7 @@ Negli script npm non usare la sintassi `VAR=x comando` (non funziona su Windows)
 
 - Nessun push diretto su `main`. Ogni modifica passa da un branch (`fase1/<n>-<nome>`) e da una pull request.
 - Controlli obbligatori su `main`: `build` e `verifica-autonomia`, più l'approvazione di eusebjo.
+- Branch di sviluppo (tutto tranne `main` e `cms/**`): li possono creare, aggiornare ed eliminare solo gli admin (ruleset `rami-sviluppo`, in `infra/github/`). Il pannello dei contenuti lavora solo su `cms/**`, così la redazione non può modificare una pull request di sviluppo. Le proposte da un fork sono sempre respinte da `verifica-autonomia`.
 - La pull request riceve un'anteprima Cloudflare; eusebjo la guarda, approva e unisce. Dopo il merge Cloudflare ricostruisce e pubblica.
 - Commit in inglese, nello stile `feat:`, `fix:`, `chore:`, `docs:`. Ogni commit termina con una riga vuota e il trailer `Co-Authored-By` con il nome del modello usato e `<noreply@anthropic.com>`.
 - Login a `gh` e `wrangler`, creazione di account, app OAuth e connessioni dal dashboard li fa eusebjo di persona: non si inseriscono né si leggono password o token.

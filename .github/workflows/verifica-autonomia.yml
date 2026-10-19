@@ -1,0 +1,62 @@
+# Controllo `verifica-autonomia`: decide se una proposta rispetta le regole di
+# autonomia (autonomia.yml) e pubblica l'esito come commento nella proposta.
+# È un controllo obbligatorio su `main` (vedi infra/github/).
+#
+# SICUREZZA. `pull_request_target` gira con un token che può scrivere ed è
+# lanciato anche per le proposte di sconosciuti (fork). Per questo:
+#   - si fa il checkout del ramo BASE (nessun `ref`): codice e regole sono
+#     quelli già approvati su `main`, mai quelli della proposta;
+#   - la proposta si legge solo tramite l'API di GitHub, come dato;
+#   - si eseguono solo `npm ci` e `npx tsx scripts/autonomia/main.ts` dal ramo
+#     base: mai build, test o script che arrivano dalla proposta;
+#   - nessun dato della proposta (ramo, titolo, testo) entra in un comando;
+#   - il token arriva solo allo step che esegue la verifica; niente cache.
+# tests/workflows.test.ts controlla queste regole.
+#
+# Funziona solo se il file è già su `main`: una pull request che lo aggiunge o
+# lo modifica non lo fa partire (e non lo vede in azione).
+name: verifica-autonomia
+
+on:
+  pull_request_target:
+    branches: [main]
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+      - converted_to_draft
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: verifica-autonomia-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verifica-autonomia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Nessun `ref`: ramo base. Niente credenziali lasciate nel checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.x
+          check-latest: true
+          package-manager-cache: false
+
+      - run: npm ci
+
+      - run: npx tsx scripts/autonomia/main.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
