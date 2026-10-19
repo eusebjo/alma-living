@@ -43,6 +43,53 @@ describe('build statica: dist/index.html', () => {
   });
 });
 
+// Un indirizzo è esterno se ha uno schema `http(s):` oppure comincia con `//`
+// (indirizzo "senza schema", che il browser completa con quello della pagina e
+// che porta a un altro sito).
+const INDIRIZZO_ESTERNO = /^(?:https?:)?\/\//i;
+
+/**
+ * Tag di `html` che caricano una risorsa da un altro sito: script, immagini e
+ * frame con `src` esterno, fogli di stile con `href` esterno.
+ */
+function risorseEsterne(html: string): string[] {
+  const trovati: string[] = [];
+  for (const [tag, nome] of html.matchAll(/<(script|img|iframe|link)\b[^>]*>/gi)) {
+    const attributo = nome!.toLowerCase() === 'link' ? 'href' : 'src';
+    const indirizzo = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(tag)?.[1];
+    if (indirizzo === undefined || !INDIRIZZO_ESTERNO.test(indirizzo)) continue;
+    if (attributo === 'href' && !/\srel=["']?stylesheet\b/i.test(tag)) continue;
+    trovati.push(tag);
+  }
+  return trovati;
+}
+
+describe('controllo delle risorse di terzi', () => {
+  it.each([
+    '<script src="https://cdn.example.com/a.js"></script>',
+    '<script src=https://cdn.example.com/a.js></script>',
+    '<img alt="x" src="//cdn.example.com/a.jpg">',
+    "<img src='//cdn.example.com/a.jpg'>",
+    '<iframe src="http://example.com/"></iframe>',
+    '<link rel="stylesheet" href="//cdn.example.com/a.css">',
+    '<link href="https://cdn.example.com/a.css" rel="stylesheet">',
+  ])('trova %s', (tag) => {
+    expect(risorseEsterne(`<p>testo</p>${tag}`)).toHaveLength(1);
+  });
+
+  it.each([
+    '<script type="module" src="/_astro/a.js"></script>',
+    '<img src="/_astro/a.webp" alt="x">',
+    '<img src="immagini/a.webp" alt="x">',
+    '<link rel="stylesheet" href="/_astro/a.css">',
+    '<link rel="canonical" href="https://example.com/">',
+    '<a href="https://example.com/">un link</a>',
+    '<img alt="x">',
+  ])('non segnala %s', (tag) => {
+    expect(risorseEsterne(tag)).toEqual([]);
+  });
+});
+
 describe('build statica: tutte le pagine', () => {
   it("c'è almeno la home tra le pagine HTML", () => {
     expect(pagine).toContain(join('dist', 'index.html'));
@@ -50,10 +97,7 @@ describe('build statica: tutte le pagine', () => {
 
   it.each(pagine)('%s: nessuna risorsa da CDN di terzi', (file) => {
     const html = readFileSync(file, 'utf8');
-    expect(html).not.toMatch(/<(script|img|iframe)[^>]+src=["']?https?:\/\//);
-    expect(html).not.toMatch(
-      /<link[^>]+rel=["']?stylesheet["']?[^>]+href=["']?https?:\/\//,
-    );
+    expect(risorseEsterne(html)).toEqual([]);
     expect(html).not.toContain('fonts.googleapis');
   });
 });
