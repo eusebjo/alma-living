@@ -1,0 +1,13 @@
+{
+  "nome": "Alma Living",
+  "descrizione": "Negozio di biancheria per la casa nel centro di Livorno.",
+  "indirizzo": {
+    "via": "Via Ricasoli",
+    "civico": "51-53",
+    "cap": "57125",
+    "citta": "Livorno",
+    "provincia": "LI"
+  },
+  "telefono": "334 520 5451",
+  "orari": []
+}
