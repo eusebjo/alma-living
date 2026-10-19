@@ -1,12 +1,20 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
+import sitemap from '@astrojs/sitemap';
+import { getSiteConfig } from './src/config/site';
 import { rehypePlugins } from './src/lib/markdown';
+
+const { siteUrl, indexable } = getSiteConfig(process.env);
 
 // https://astro.build/config
 export default defineConfig({
   output: 'static',
-  site: process.env.SITE_URL ?? 'http://localhost:4321',
+  // Stessa fonte di SeoHead, robots.txt e llms.txt: `getSiteConfig`.
+  site: siteUrl,
+  // La sitemap esiste solo nelle build indicizzabili (sito lanciato e ramo
+  // `main`): altrove non si genera nulla, e robots.txt non la cita.
+  integrations: indexable ? [sitemap()] : [],
   markdown: {
     // Da Astro 7 `markdown.rehypePlugins` è deprecato: i plugin rehype si
     // passano al processore `unified()`.

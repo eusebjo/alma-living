@@ -1,0 +1,41 @@
+---
+import { getEntry } from 'astro:content';
+import { absoluteUrl, getSiteConfig } from '../config/site';
+import { buildStoreJsonLd, serializeJsonLd } from '../lib/schemaOrg';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+
+const { siteUrl, indexable } = getSiteConfig(process.env);
+const canonical = absoluteUrl(siteUrl, Astro.url.pathname);
+
+const negozioEntry = await getEntry('negozio', 'negozio');
+if (!negozioEntry) {
+  throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
+}
+const negozio = negozioEntry.data;
+
+// I dati strutturati vanno pubblicati solo a sito lanciato, su produzione:
+// prima descriverebbero un negozio che sul web non c'è ancora.
+const jsonLd = indexable
+  ? serializeJsonLd(buildStoreJsonLd(negozio, siteUrl))
+  : null;
+---
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+{!indexable && <meta name="robots" content="noindex, nofollow" />}
+
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="it_IT" />
+<meta property="og:site_name" content={negozio.nome} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+
+{jsonLd && <script type="application/ld+json" set:html={jsonLd} />}
