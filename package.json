@@ -21,7 +21,12 @@
     "rehype-sanitize": "^6.0.0"
   },
   "devDependencies": {
+    "@types/picomatch": "^4.0.3",
+    "gray-matter": "^4.0.3",
+    "picomatch": "^4.0.7",
+    "tsx": "^4.23.15",
     "vitest": "^5.0.5",
-    "wrangler": "4.151.1"
+    "wrangler": "4.151.1",
+    "yaml": "^2.9.1"
   }
 }

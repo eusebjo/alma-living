@@ -1,0 +1,21 @@
+versione: 1
+ruoli:
+  sviluppo: [eusebjo]
+  redazione: []
+proposte:
+  stati_inviati: [sveltia-cms/pending_review, sveltia-cms/pending_publish]  # verificare in Task 7
+contenuti:
+  negozio:
+    file: src/content/negozio/negozio.json
+    formato: json
+    azioni: { crea: 0, modifica: 1, elimina: 0 }
+    campi: { nome: 0, indirizzo: 0, descrizione: 1, telefono: 1, email: 1, orari: 1 }
+  pagine:
+    file: src/content/pagine/*.md
+    formato: markdown
+    azioni: { crea: 0, modifica: 1, elimina: 0 }
+    campi: { titolo: 1, descrizione: 1, immagine: 1, immagine_alt: 1, corpo: 1 }
+media:
+  percorsi: [src/content/pagine/immagini/**]
+  dimensione_massima_kb: 1500
+  azioni: { carica: 1, elimina: 0 }
