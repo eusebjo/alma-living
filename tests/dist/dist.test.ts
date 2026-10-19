@@ -34,16 +34,16 @@ describe('build statica: dist/index.html', () => {
     expect(html).toMatch(/<meta name="description" content="[^"]+"/);
   });
 
-  it("l'immagine della home, scritta come la scrive il pannello (senza ./), è ottimizzata da Astro", () => {
-    // Sveltia salva il percorso come `immagini/<file>.webp`, senza `./`: la home
-    // usa proprio questa forma, così a ogni build `image()` di Astro la deve
-    // accettare (se non lo facesse, la build fallirebbe).
-    expect(readFileSync('src/content/pagine/home.md', 'utf8')).toMatch(
-      /^immagine: immagini\/home\.webp\r?$/m,
-    );
-    expect(readFileSync('dist/index.html', 'utf8')).toMatch(
-      /<img src="\/_astro\/home\.[^"]+\.webp"[^>]*class="hero"/,
-    );
+  it("la home ha un'immagine in evidenza ottimizzata da Astro: un file WebP di /_astro/", () => {
+    // Non si guarda quale foto sia né come si chiami: è un contenuto che la
+    // redazione può cambiare dal pannello (e `home.md` non si legge qui), la
+    // build deve restare verde con qualunque foto valida.
+    const html = readFileSync('dist/index.html', 'utf8');
+    const hero = [...html.matchAll(/<img\b[^>]*>/gi)]
+      .map((m) => m[0])
+      .filter((tag) => /\sclass="[^"]*\bhero\b[^"]*"/.test(tag));
+    expect(hero).toHaveLength(1);
+    expect(hero[0]).toMatch(/\ssrc="\/_astro\/[^"/]+\.webp"/);
   });
 
   it('la home ha canonical e Open Graph', () => {
