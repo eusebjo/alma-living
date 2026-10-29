@@ -560,6 +560,17 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(html()).toMatch(/<body\b[^>]*\sdata-variante="salvia-social"/);
   });
 
+  it('il pulsante del menu ha un nome fisso: aperto o chiuso lo dice solo aria-expanded', () => {
+    const pulsante = /<button\b[^>]*\sdata-menu-apri\b[^>]*>([\s\S]*?)<\/button>/i.exec(html());
+    expect(pulsante).not.toBeNull();
+    const apertura = pulsante![0].slice(0, pulsante![0].indexOf('>') + 1);
+    expect(apertura).toMatch(/\saria-expanded="false"/);
+    expect(apertura).not.toMatch(/\saria-label(?:ledby)?=/);
+    // Il testo dentro il pulsante (le icone sono decorative) è il suo nome.
+    const testo = pulsante![1]!.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    expect(testo).toBe('Menu');
+  });
+
   it('la fila di storie ha almeno 6 storie da aprire, e ogni storia sta in un dialog di storie', () => {
     const apri = tagCon('button', 'data-storia-apri');
     expect(apri.length).toBeGreaterThanOrEqual(6);

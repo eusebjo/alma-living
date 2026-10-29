@@ -14,7 +14,8 @@
 //
 // - Menu: `button[data-menu-apri][aria-controls]` apre e chiude il pannello
 //   `[data-menu]` (con `hidden`) e aggiorna `aria-expanded`. Si chiude con Esc o
-//   toccando un link del pannello.
+//   toccando un link del pannello. Il nome del pulsante non cambia con lo stato
+//   (niente "Menu" che diventa "Chiudi"): lo stato lo dice `aria-expanded`.
 // - Stato del negozio: `[data-stato-negozio][data-orari]` (JSON di `Fascia[]`):
 //   il suo testo, che va tenuto solo per questo, diventa "Aperto ora, chiude
 //   alle 19:30" e si aggiorna ogni minuto; porta anche `data-aperto="true|false"`
@@ -29,8 +30,10 @@
 //   `[data-filtri="<nome>"] [data-filtro="<id>"]` come un clic e lascia andare il
 //   link alla sezione (senza JavaScript ci porta e basta).
 // - Chiedi: `button[data-chiedi="<id>"]` (`aria-expanded`) mostra o nasconde
-//   `[data-chiedi-pannello="<id>"]`. Altri pulsanti con lo stesso `<id>`, anche
-//   dentro il pannello, fanno lo stesso. Esc lo chiude.
+//   `[data-chiedi-pannello="<id>"]`, che può coprirlo: all'apertura il focus va
+//   al primo elemento focalizzabile del pannello. Un pulsante con lo stesso
+//   `<id>` dentro il pannello lo chiude e riporta il focus al pulsante di fuori,
+//   come Esc; i pulsanti di dentro non ricevono `aria-expanded`.
 // - Galleria: `[data-galleria]` con `[data-galleria-foto]` (una alla volta, le
 //   altre `hidden`), `button[data-galleria-prec|succ]` (a giro),
 //   `button[data-galleria-punto]` (`aria-current`) e `[data-galleria-contatore]`
@@ -68,6 +71,9 @@ const RICALCOLO_STATO_MS = 60_000;
 const PANNELLI = '[data-menu], [data-chiedi-pannello]';
 const APRITORI = '[data-menu-apri], [data-chiedi]';
 const DIALOG = 'dialog[data-post], dialog[data-storie]';
+const FOCALIZZABILI =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type GruppoStoria = { gruppo: HTMLElement; foto: HTMLElement[]; barre: HTMLElement[] };
 
@@ -127,23 +133,42 @@ function bottoniDelPannello(c: Contesto, pannello: HTMLElement): HTMLElement[] {
   return elementi(c.radice, APRITORI).filter((b) => pannelloDelBottone(c, b) === pannello);
 }
 
+/** I pulsanti fuori dal pannello: hanno `aria-expanded` e, alla chiusura, il focus. */
+function apritoriEsterni(c: Contesto, pannello: HTMLElement): HTMLElement[] {
+  return bottoniDelPannello(c, pannello).filter((b) => !pannello.contains(b));
+}
+
 function impostaAperto(c: Contesto, pannello: HTMLElement, aperto: boolean): void {
   pannello.hidden = !aperto;
-  for (const bottone of bottoniDelPannello(c, pannello)) {
+  // Un pulsante dentro il pannello si vede solo a pannello aperto e lo chiude
+  // soltanto: `aria-expanded` direbbe sempre "espanso", non serve.
+  for (const bottone of apritoriEsterni(c, pannello)) {
     bottone.setAttribute('aria-expanded', String(aperto));
   }
 }
 
 function alternaPannello(c: Contesto, bottone: HTMLElement): void {
   const pannello = pannelloDelBottone(c, bottone);
-  if (pannello) impostaAperto(c, pannello, pannello.hidden);
+  if (!pannello) return;
+  const apri = pannello.hidden;
+  impostaAperto(c, pannello, apri);
+  if (apri) {
+    // Il pannello "Chiedi" copre il suo pulsante: il focus non può restare lì sotto.
+    if (pannello.matches('[data-chiedi-pannello]')) {
+      pannello.querySelector<HTMLElement>(FOCALIZZABILI)?.focus();
+    }
+  } else if (pannello.contains(bottone)) {
+    // Chiuso da dentro: il pulsante premuto sparisce, il focus torna a quello di fuori.
+    apritoriEsterni(c, pannello)[0]?.focus();
+  }
 }
 
-/** Allinea `aria-expanded` di ogni pulsante allo stato scritto nella pagina. */
+/** Allinea `aria-expanded` dei pulsanti di fuori allo stato scritto nella pagina. */
 function sincronizzaPannelli(c: Contesto): void {
-  for (const bottone of elementi(c.radice, APRITORI)) {
-    const pannello = pannelloDelBottone(c, bottone);
-    if (pannello) bottone.setAttribute('aria-expanded', String(!pannello.hidden));
+  for (const pannello of elementi(c.radice, PANNELLI)) {
+    for (const bottone of apritoriEsterni(c, pannello)) {
+      bottone.setAttribute('aria-expanded', String(!pannello.hidden));
+    }
   }
 }
 
@@ -154,7 +179,7 @@ function chiudiPannelliAperti(c: Contesto): void {
     const bottoni = bottoniDelPannello(c, pannello);
     const aveva = !!attivo && (pannello.contains(attivo) || bottoni.includes(attivo as HTMLElement));
     impostaAperto(c, pannello, false);
-    if (aveva) bottoni.find((b) => !pannello.contains(b))?.focus();
+    if (aveva) apritoriEsterni(c, pannello)[0]?.focus();
   }
 }
 

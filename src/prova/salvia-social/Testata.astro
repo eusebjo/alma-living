@@ -43,8 +43,7 @@ const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
     >
       <Icona nome="menu" misura={22} class="se-chiuso" />
       <Icona nome="chiudi" misura={22} class="se-aperto" />
-      <span class="se-chiuso">Menu</span>
-      <span class="se-aperto">Chiudi</span>
+      <span>Menu</span>
     </button>
 
     <nav class="nav" aria-label="Sezioni della pagina">
@@ -201,7 +200,9 @@ const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
     font-weight: 500;
   }
 
-  /* Le icone sono di Icona.astro: le loro classi vanno indicate con :global. */
+  /* Il nome resta "Menu" (con un lettore di schermo un nome che cambia insieme
+     ad aria-expanded confonde): aperto, le due righe diventano una X. Le icone
+     sono di Icona.astro: le loro classi vanno indicate con :global. */
   .menu-apri[aria-expanded='true'] :global(.se-chiuso),
   .menu-apri:not([aria-expanded='true']) :global(.se-aperto) {
     display: none;
