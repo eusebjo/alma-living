@@ -66,11 +66,11 @@ const { storie, etichetta, negozio } = Astro.props;
               <div class="azioni">
                 <a class="chiedi" href={linkWhatsApp(negozio.whatsapp, messaggioStoria(storia))}>
                   <Icona nome="whatsapp" misura={18} />
-                  Chiedi su WhatsApp
+                  <span><span class="lungo">Chiedi su </span>WhatsApp</span>
                 </a>
                 <a class="instagram" href={negozio.instagram.url}>
                   <Icona nome="instagram" misura={18} />
-                  Vedi su Instagram
+                  <span><span class="lungo">Vedi su </span>Instagram</span>
                 </a>
               </div>
               {prossima && (
@@ -501,6 +501,69 @@ const { storie, etichetta, negozio } = Astro.props;
       display: block;
       font-size: 15px;
       font-weight: 600;
+    }
+  }
+
+  /* --- Telefono ruotato (e finestre basse) --- */
+  /* Alta 300-390 px, la scheda 9:16 sarebbe larga meno di 220 px e la frase,
+     a capo su sei o sette righe, salirebbe sopra nome e data. Qui la scheda è
+     più larga (4:5), la frase più piccola, le azioni su una riga con il solo
+     nome del servizio (il nome completo resta per i lettori di schermo) e le
+     frecce ai lati, come sul computer. Dopo il blocco del computer: vale
+     anche per una sua finestra bassa. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .scena {
+      gap: 16px;
+      padding: 0 16px;
+    }
+
+    /* 168 px: due frecce (fino a 52 px), due spazi e i margini della scena. */
+    .scheda {
+      width: min(calc(100vw - 168px), calc(100dvh * 4 / 5));
+      aspect-ratio: 4 / 5;
+    }
+
+    .freccia {
+      position: static;
+      flex: none;
+    }
+
+    .frase {
+      left: 16px;
+      right: 16px;
+      bottom: 74px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .frase::before {
+      inset: -72px -16px -16px;
+      background: linear-gradient(to bottom, transparent, var(--velo-storia-testo) 72px);
+    }
+
+    .azioni {
+      left: 16px;
+      right: 16px;
+      bottom: 14px;
+      flex-direction: row;
+      gap: 8px;
+    }
+
+    .azioni a {
+      min-width: 0;
+      min-height: 44px;
+      padding: 0 10px;
+      gap: 6px;
+      font-size: 13px;
+    }
+
+    .lungo {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
 </style>
