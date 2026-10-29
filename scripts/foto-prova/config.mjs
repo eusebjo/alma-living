@@ -3,12 +3,9 @@
 // prendendole da `FOTO_PROVA_LOCALE` (sul computer di chi sviluppa) oppure dal
 // bucket R2 (alla build di Cloudflare e nelle anteprime).
 
-// Indirizzo pubblico del bucket R2 `alma-living-prova`, senza barra finale. Non è
-// un segreto. VALORE PROVVISORIO: il bucket non esiste ancora; prima di inviare
-// il ramo va sostituito con l'indirizzo pubblico `r2.dev` del bucket. Finché
-// resta `.invalid` nessuna richiesta di rete può andare a buon fine, e in locale
-// le foto si prendono da `FOTO_PROVA_LOCALE`.
-export const FOTO_PROVA_BASE = 'https://alma-living-prova.invalid';
+// Indirizzo pubblico `r2.dev` del bucket R2 `alma-living-prova` (prefisso
+// `prova/`), senza barra finale. Non è un segreto.
+export const FOTO_PROVA_BASE = 'https://pub-02e2834056a84517a87c5431c6904c14.r2.dev/prova';
 
 // Cartella (esclusa da git, vedi `.gitignore`) da cui `src/prova/comune/foto.ts`
 // legge le foto che Astro ottimizza.
