@@ -1,0 +1,126 @@
+---
+// La fila delle storie sotto l'header; sul computer, a destra, l'invito al
+// profilo di Martina.
+import CerchioStoria from './CerchioStoria.astro';
+import Icona from './Icona.astro';
+import { storie } from './dati';
+---
+
+<section class="storie" aria-label="Storie dal negozio">
+  <div class="dentro">
+    <ul class="fila" role="list">
+      {
+        storie.map((storia) => (
+          <li>
+            <CerchioStoria storia={storia} />
+          </li>
+        ))
+      }
+    </ul>
+    <div class="invito">
+      <p><span>Le storie di Martina</span>Nuove ogni settimana dal negozio</p>
+      <a href="#diario">Vedi il profilo<Icona nome="freccia" misura={18} /></a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .storie {
+    background: var(--bianco);
+    box-shadow: 0 1px 0 var(--linea);
+  }
+
+  .dentro {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: 6px 0;
+  }
+
+  .fila {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    gap: 12px;
+    margin: 0;
+    /* Spazio attorno ai cerchi: l'anello e il focus non vengono tagliati. */
+    padding: 8px 16px 10px;
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .fila::-webkit-scrollbar {
+    display: none;
+  }
+
+  .invito {
+    display: none;
+  }
+
+  @media (min-width: 960px) {
+    .dentro {
+      padding: 8px var(--margine) 4px;
+    }
+
+    .fila {
+      gap: 18px;
+      padding: 8px 6px 10px;
+    }
+
+    .invito {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding-left: 32px;
+      box-shadow: inset 1px 0 0 var(--linea);
+    }
+
+    .invito p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--grigio-testo);
+    }
+
+    .invito p span {
+      display: block;
+      font-weight: 600;
+      color: var(--nero);
+    }
+
+    .invito a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 46px;
+      padding: 0 18px 0 20px;
+      border-radius: var(--pillola);
+      background: var(--bianco);
+      box-shadow: inset 0 0 0 1px var(--nero);
+      color: var(--nero);
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition:
+        background-color 200ms ease,
+        color 200ms ease;
+    }
+
+    .invito a:hover {
+      background: var(--nero);
+      color: var(--bianco);
+    }
+  }
+
+  /* Tra 960 e 1199 px la fila ha bisogno di tutto lo spazio. */
+  @media (min-width: 960px) and (max-width: 1199px) {
+    .invito p {
+      display: none;
+    }
+  }
+</style>

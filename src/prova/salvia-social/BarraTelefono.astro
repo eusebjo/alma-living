@@ -1,0 +1,87 @@
+---
+// La barra dei contatti sempre visibile sul telefono: WhatsApp, chiamata,
+// indicazioni. Link semplici, anche senza JavaScript. Sul computer non c'è:
+// gli stessi contatti sono nell'header.
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import Icona from './Icona.astro';
+import { messaggi } from './dati';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+---
+
+<nav class="barra-telefono" aria-label="Contatti rapidi">
+  <div class="pillola">
+    <a class="scrivi" href={linkWhatsApp(negozio.whatsapp, messaggi.generico)}>
+      <Icona nome="whatsapp" misura={18} />Scrivici
+    </a>
+    <a href={negozio.telefonoHref}><Icona nome="telefono" misura={17} />Chiama</a>
+    <a href={negozio.mappeUrl}><Icona nome="luogo" misura={17} />Indicazioni</a>
+  </div>
+</nav>
+
+<style>
+  /* In fondo alla pagina la barra si posa sul piè di pagina, che le lascia
+     posto (72 px, vedi Piede.astro), invece di aggiungere una striscia bianca. */
+  .barra-telefono {
+    position: sticky;
+    bottom: 0;
+    z-index: 40;
+    margin-top: -72px;
+    padding: 0 12px max(12px, env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+
+  .pillola {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 4px;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 6px;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    box-shadow: var(--ombra-barra);
+    pointer-events: auto;
+  }
+
+  a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: 48px;
+    border-radius: var(--pillola);
+    color: var(--nero);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .scrivi {
+    gap: 8px;
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    font-size: 15px;
+  }
+
+  /* Sui telefoni più stretti le icone di chiamata e indicazioni lasciano posto al testo. */
+  @media (max-width: 359px) {
+    a:not(.scrivi) :global(svg) {
+      display: none;
+    }
+  }
+
+  @media (min-width: 960px) {
+    .barra-telefono {
+      display: none;
+    }
+  }
+</style>

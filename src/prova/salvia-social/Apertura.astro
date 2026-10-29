@@ -1,0 +1,633 @@
+---
+// L'apertura "come Diario": a sinistra le foto che scorrono (protocollo
+// "Galleria"), a destra una riga in stile post, il titolo, il biglietto firmato
+// da Martina con la frase della foto mostrata, e le azioni. Sul telefono le
+// due colonne si impilano.
+import { Image } from 'astro:assets';
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import logo from '../comune/logo/alma-nero.png';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import StatoNegozio from './StatoNegozio.astro';
+import { apertura, messaggi } from './dati';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+
+// Le regole CSS che mostrano la frase della foto visibile sono scritte per tre
+// diapositive (vedi in fondo): con un numero diverso vanno aggiornate.
+if (apertura.length !== 3) {
+  throw new Error(`L'apertura di Salvia social prevede 3 diapositive, non ${apertura.length}.`);
+}
+const totale = apertura.length;
+---
+
+<section id="apertura" class="apertura" aria-label="Oggi in negozio" data-galleria>
+  <div class="foto">
+    <ul class="pila" role="list">
+      {
+        apertura.map((diapositiva, i) => (
+          <li class="diapositiva" data-galleria-foto hidden={i > 0}>
+            <Foto
+              scatto={diapositiva}
+              larghezze={[400, 600, 800, 1000, 1200]}
+              sizes="(min-width: 960px) min(52vw, 760px), 100vw"
+              principale={i === 0}
+            />
+          </li>
+        ))
+      }
+    </ul>
+    <p class="pillola pillola-stato"><StatoNegozio orari={negozio.orari} /></p>
+    <span class="pillola pillola-oggi">Oggi in negozio</span>
+    <div class="comandi">
+      <div class="punti" role="group" aria-label="Foto del post">
+        {
+          apertura.map((_, i) => (
+            <button
+              type="button"
+              class="punto"
+              data-galleria-punto
+              aria-label={`Foto ${i + 1} di ${totale}`}
+              aria-current={i === 0 ? 'true' : undefined}
+            >
+              <span />
+            </button>
+          ))
+        }
+      </div>
+      <div class="frecce">
+        <button type="button" class="freccia" data-galleria-prec aria-label="Foto precedente">
+          <Icona nome="prec" />
+        </button>
+        <button type="button" class="freccia" data-galleria-succ aria-label="Foto successiva">
+          <Icona nome="succ" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="testo">
+    <div>
+      <div class="autore">
+        <span class="avatar" aria-hidden="true">
+          <Image src={logo} alt="" widths={[72, 108]} sizes="36px" />
+        </span>
+        <div class="autore-nome">
+          <p class="nome">{negozio.nome}</p>
+          <p class="dove">Via Ricasoli, Livorno · 28 ottobre</p>
+        </div>
+        <span class="oggi">Oggi in negozio</span>
+      </div>
+      <h1>Rendiamo la tua casa ancora più casa.</h1>
+      <p class="sotto">
+        Biancheria, profumi e dettagli che scaldano l’ambiente, scelti uno per uno per il negozio di
+        Via Ricasoli<span class="solo-largo">, nell’isola pedonale di Livorno</span>.
+      </p>
+    </div>
+
+    <div>
+      <figure class="biglietto">
+        <div class="citazioni">
+          {apertura.map(({ testo }) => <blockquote class="citazione">“{testo}”</blockquote>)}
+        </div>
+        <figcaption>
+          <span class="firmato"><span class="firma">Martina</span><span>dal negozio</span></span>
+          <span class="conta" data-galleria-contatore>1 di {totale}</span>
+        </figcaption>
+      </figure>
+      <div class="azioni">
+        <a class="scopri" href="#collezioni">Scopri le collezioni<Icona nome="freccia" misura={18} /></a>
+        <a class="scrivi" href={linkWhatsApp(negozio.whatsapp, messaggi.generico)}>
+          <Icona nome="whatsapp" />Scrivici su WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .apertura {
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: 10px 12px 0;
+    scroll-margin-top: var(--ancora);
+  }
+
+  /* --- Foto --- */
+  /* Con il telefono ruotato la foto non supera l'altezza dello schermo. */
+  .foto {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: max(320px, 80dvh);
+    border-radius: var(--raggio);
+    overflow: hidden;
+    background: var(--sabbia);
+  }
+
+  .foto::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 120px;
+    background: linear-gradient(to top, var(--velo-foto), transparent);
+    pointer-events: none;
+  }
+
+  .pila,
+  .diapositiva {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .diapositiva :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .pillola {
+    position: absolute;
+    z-index: 1;
+    top: 12px;
+    left: 12px;
+    margin: 0;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    box-shadow: var(--ombra-pillola);
+  }
+
+  .pillola-oggi {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    color: var(--verde-notte);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .pillola-stato {
+    display: none;
+  }
+
+  .comandi {
+    position: absolute;
+    z-index: 2;
+    left: 6px;
+    right: 12px;
+    bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .punti {
+    display: flex;
+    align-items: center;
+  }
+
+  .punto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--raggio-piccolo);
+    background: none;
+  }
+
+  .punto span {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--pillola);
+    background: var(--punto-spento);
+    transition:
+      width 300ms ease,
+      background-color 300ms ease;
+  }
+
+  .punto[aria-current='true'] span {
+    width: 24px;
+    background: var(--bianco);
+  }
+
+  .frecce {
+    display: flex;
+    gap: 8px;
+  }
+
+  .freccia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--vetro);
+    color: var(--nero);
+    transition: background-color 200ms ease;
+  }
+
+  .freccia:hover {
+    background: var(--bianco);
+  }
+
+  .comandi :focus-visible {
+    outline-color: var(--bianco);
+  }
+
+  /* --- Testo --- */
+  .testo {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 22px;
+    min-width: 0;
+    padding: 20px 8px 0;
+  }
+
+  .autore {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--latte);
+    box-shadow:
+      0 0 0 2px var(--bianco),
+      0 0 0 3.5px var(--salvia-scura);
+  }
+
+  .avatar :global(img) {
+    display: block;
+    width: 30px;
+    height: auto;
+  }
+
+  .autore-nome {
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .nome {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .dove {
+    margin: 0;
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  .oggi {
+    display: none;
+  }
+
+  h1 {
+    margin: 18px 0 0;
+    font-family: var(--titoli);
+    font-size: clamp(38px, 2.8vw + 18px, 58px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  .sotto {
+    max-width: 28em;
+    margin: 14px 0 0;
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--testo-morbido);
+    text-wrap: pretty;
+  }
+
+  .solo-largo {
+    display: none;
+  }
+
+  .biglietto {
+    margin: 0;
+    padding: 18px 18px 12px;
+    border-radius: var(--raggio-telefono);
+    background: var(--latte);
+  }
+
+  /* Le tre frasi stanno nella stessa cella: il biglietto prende l'altezza
+     della più lunga e non salta quando cambia la foto. */
+  .citazioni {
+    display: grid;
+  }
+
+  .citazione {
+    grid-area: 1 / 1;
+    margin: 0;
+    font-family: var(--corsivo);
+    font-size: 17px;
+    font-style: italic;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  /* Si vede la frase della foto mostrata (lo script nasconde le altre foto con
+     `hidden`). Senza JavaScript resta la prima, come la foto. */
+  .citazione:not(:first-child),
+  .apertura:has(.diapositiva:nth-child(2):not([hidden])) .citazione:nth-child(1),
+  .apertura:has(.diapositiva:nth-child(3):not([hidden])) .citazione:nth-child(1) {
+    visibility: hidden;
+  }
+
+  .apertura:has(.diapositiva:nth-child(2):not([hidden])) .citazione:nth-child(2),
+  .apertura:has(.diapositiva:nth-child(3):not([hidden])) .citazione:nth-child(3) {
+    visibility: visible;
+  }
+
+  figcaption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .firmato {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  .firma {
+    font-family: var(--firma);
+    font-size: 24px;
+    line-height: 1.5;
+    color: var(--verde-notte);
+  }
+
+  .conta {
+    padding: 5px 11px;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    color: var(--salvia-scura);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .azioni {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 20px;
+  }
+
+  .scopri {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 0 26px 0 30px;
+    border-radius: var(--pillola);
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: var(--ombra-bottone);
+    transition: background-color 200ms ease;
+  }
+
+  .scopri:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  .scrivi {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    color: var(--nero);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 6px;
+  }
+
+  .scrivi:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* Tra 960 e 1199 px la colonna del testo è stretta: la riga del post resta su una riga. */
+  @media (min-width: 960px) and (max-width: 1199px) {
+    .apertura .oggi {
+      display: none;
+    }
+  }
+
+  /* --- Tablet: foto meno alta --- */
+  @media (min-width: 600px) {
+    .apertura {
+      padding: 12px var(--margine) 0;
+    }
+
+    .foto {
+      aspect-ratio: 4 / 3;
+    }
+
+    .testo {
+      padding: 24px 0 0;
+    }
+
+    .azioni {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px 28px;
+    }
+  }
+
+  /* --- Computer: due colonne --- */
+  @media (min-width: 960px) {
+    .apertura {
+      display: grid;
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: clamp(36px, 4.4vw, 64px);
+      padding-top: 28px;
+    }
+
+    .foto {
+      aspect-ratio: auto;
+      height: clamp(500px, 46vw, 660px);
+      max-height: none;
+    }
+
+    .foto::after {
+      height: 170px;
+    }
+
+    .pillola-oggi {
+      display: none;
+    }
+
+    .pillola-stato {
+      display: inline-flex;
+      align-items: center;
+      top: 20px;
+      left: 20px;
+      padding: 11px 18px 11px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .comandi {
+      left: 12px;
+      right: 20px;
+      bottom: 16px;
+    }
+
+    .punto {
+      width: 38px;
+    }
+
+    .frecce {
+      gap: 10px;
+    }
+
+    .freccia {
+      width: 48px;
+      height: 48px;
+    }
+
+    .testo {
+      gap: 32px;
+      padding: 6px 0 2px;
+    }
+
+    .autore {
+      gap: 14px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+    }
+
+    .avatar :global(img) {
+      width: 36px;
+    }
+
+    .nome {
+      font-size: 16px;
+    }
+
+    .dove {
+      font-size: 14px;
+    }
+
+    .oggi {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 14px;
+      border-radius: var(--pillola);
+      background: var(--salvia-chiara);
+      color: var(--verde-notte);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    h1 {
+      margin-top: 40px;
+      line-height: 1.03;
+    }
+
+    .sotto {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    .solo-largo {
+      display: inline;
+    }
+
+    .biglietto {
+      padding: 22px 24px 16px;
+      border-radius: var(--raggio);
+    }
+
+    .citazione {
+      font-size: 19px;
+    }
+
+    figcaption {
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .firmato {
+      gap: 10px;
+    }
+
+    .firma {
+      font-size: 26px;
+    }
+
+    .conta {
+      padding: 5px 12px;
+    }
+
+    .azioni {
+      margin-top: 26px;
+    }
+
+    .scopri {
+      display: inline-flex;
+      min-height: 54px;
+    }
+
+    .scrivi {
+      display: inline-flex;
+      gap: 10px;
+      min-height: 44px;
+    }
+  }
+</style>

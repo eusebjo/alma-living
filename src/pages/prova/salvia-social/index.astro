@@ -1,0 +1,65 @@
+---
+// Variante di prova "Salvia social" (tavola SalviaSocial.dc.html): bianco e
+// verde salvia, storie sotto l'header, apertura come Diario, sezione di Martina
+// come profilo con griglia di post. Componenti e dati in src/prova/salvia-social/.
+import { getImage } from 'astro:assets';
+import { getEntry } from 'astro:content';
+import Interazioni from '../../../prova/comune/Interazioni.astro';
+import LayoutProva from '../../../prova/comune/LayoutProva.astro';
+import { CARATTERI_PER_VARIANTE } from '../../../prova/comune/caratteri';
+import grana from '../../../prova/comune/grana.png';
+import { datiNegozio } from '../../../prova/comune/negozio';
+import Apertura from '../../../prova/salvia-social/Apertura.astro';
+import BarraTelefono from '../../../prova/salvia-social/BarraTelefono.astro';
+import Collezioni from '../../../prova/salvia-social/Collezioni.astro';
+import DialogStorie from '../../../prova/salvia-social/DialogStorie.astro';
+import Diario from '../../../prova/salvia-social/Diario.astro';
+import FilaStorie from '../../../prova/salvia-social/FilaStorie.astro';
+import Negozio from '../../../prova/salvia-social/Negozio.astro';
+import Piede from '../../../prova/salvia-social/Piede.astro';
+import Selezione from '../../../prova/salvia-social/Selezione.astro';
+import Testata from '../../../prova/salvia-social/Testata.astro';
+import { storie, storieInEvidenza } from '../../../prova/salvia-social/dati';
+import '../../../prova/salvia-social/tema.css';
+
+const voce = await getEntry('negozio', 'negozio');
+if (!voce) throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
+const negozio = datiNegozio(voce.data);
+
+// La grana delle fasce salvia, come sulla tavola: una tessera ripetuta in CSS.
+const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
+---
+
+<LayoutProva
+  title="Salvia social | Alma Living, prova di design"
+  description="Variante di prova del sito di Alma Living: bianco e verde salvia, storie dal negozio e il profilo di Martina."
+  caratteri={CARATTERI_PER_VARIANTE['salvia-social']}
+  variante="salvia-social"
+>
+  <div class="pagina" id="inizio" style={`--grana: url('${tessera.src}')`}>
+    <Testata negozio={negozio} />
+    <FilaStorie />
+    <main>
+      <Apertura negozio={negozio} />
+      <Collezioni />
+      <Diario negozio={negozio} />
+      <Selezione negozio={negozio} />
+      <Negozio negozio={negozio} />
+    </main>
+    <Piede negozio={negozio} />
+    <BarraTelefono negozio={negozio} />
+  </div>
+
+  <DialogStorie storie={storie} etichetta="Storie dal negozio" negozio={negozio} />
+  <DialogStorie storie={storieInEvidenza} etichetta="Storie in evidenza" negozio={negozio} />
+  <Interazioni />
+</LayoutProva>
+
+<style>
+  /* `clip` e non `hidden`: le decorazioni che sbordano non allargano la pagina
+     e l'header resta `sticky`. */
+  .pagina {
+    position: relative;
+    overflow-x: clip;
+  }
+</style>

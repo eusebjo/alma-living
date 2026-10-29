@@ -1,0 +1,154 @@
+/* Gettoni della variante Salvia social: colori, raggi, caratteri e misure, con
+   i valori della tavola `SalviaSocial.dc.html`. Tutti i componenti della
+   variante usano solo queste proprietà: per cambiare la palette basta questo file.
+   Le variabili `--font-…` le scrive il componente Font di Astro (LayoutProva). */
+[data-variante='salvia-social'] {
+  /* Colori della tavola */
+  --bianco: #ffffff;
+  --latte: #f6f5f0;
+  --salvia: #9aa893;
+  --salvia-chiara: #dce2d6;
+  --salvia-scura: #46553f;
+  --verde-notte: #2a3326;
+  --nero: #1c1c1a;
+  --grigio-testo: #5b5e57;
+  --sabbia: #e8e1d5;
+
+  /* Sfumature della tavola: stati al passaggio, linee e puntini */
+  --salvia-scura-sopra: #35412f;
+  --latte-sopra: #f1efe9;
+  --testo-morbido: #3e413b;
+  --linea: #eceae3;
+  --linea-testata: #e6e3db;
+  --bordo: #d6d3c9;
+  --bordo-chiaro: #e2dfd6;
+  --anello-visto: #c9c5ba;
+  --grigio-chiaro: #edebe6;
+  --punto-aperto: #4e8a3a;
+  --punto-chiuso: #9c998f;
+  --punto-aperto-chiaro: #bfe0a6;
+  --punto-chiuso-chiaro: #c9c5ba;
+  --vetro: rgb(255 255 255 / 0.94);
+  --vetro-chiaro: rgb(255 255 255 / 0.5);
+  --vetro-sopra: rgb(255 255 255 / 0.4);
+  --vetro-poi: rgb(255 255 255 / 0.12);
+  --bordo-poi: rgb(255 255 255 / 0.3);
+  --sfondo-storie: rgb(24 28 22 / 0.88);
+  --sfondo-post: rgb(24 28 22 / 0.8);
+  --velo-foto: rgb(28 33 26 / 0.5);
+  --velo-post: rgb(28 33 26 / 0.62);
+  --velo-post-alto: rgb(28 33 26 / 0.12);
+  --velo-storia: rgb(0 0 0 / 0.8);
+  --velo-storia-alto: rgb(0 0 0 / 0.5);
+  --contatore-foto: rgb(28 33 26 / 0.72);
+  --linea-chiara: rgb(255 255 255 / 0.2);
+  --barra-storia: rgb(255 255 255 / 0.38);
+  --bordo-storia: rgb(255 255 255 / 0.85);
+  --punto-spento: rgb(255 255 255 / 0.6);
+
+  /* Ombre della tavola */
+  --ombra-pillola: 0 10px 28px -12px rgb(28 28 26 / 0.45);
+  --ombra-bottone: 0 14px 30px -18px rgb(28 40 24 / 0.8);
+  --ombra-etichetta: 0 18px 40px -22px rgb(28 33 26 / 0.55);
+  --ombra-biglietto: 0 24px 50px -36px rgb(28 40 24 / 0.5);
+  --ombra-profilo: 0 40px 80px -50px rgb(28 40 24 / 0.5);
+  --ombra-scheda: 0 30px 50px -30px rgb(28 40 24 / 0.45);
+  --ombra-pannello: 0 30px 60px -36px rgb(28 33 26 / 0.5);
+  --ombra-foto: 0 40px 80px -40px rgb(28 40 24 / 0.55);
+  --ombra-recensioni: 0 30px 60px -28px rgb(28 40 24 / 0.55);
+  --ombra-oggi: 0 10px 24px -16px rgb(28 40 24 / 0.5);
+  --ombra-barra: 0 0 0 1px var(--bordo-chiaro), 0 20px 40px -18px rgb(28 33 26 / 0.5);
+  --ombra-dialog: 0 40px 120px -30px rgb(0 0 0 / 0.7);
+  --linea-orari: rgb(28 28 26 / 0.14);
+  --ombra-punto: 0 1px 3px rgb(0 0 0 / 0.3);
+  --ombra-icona: 0 1px 2px rgb(0 0 0 / 0.5);
+
+  /* Raggi */
+  --raggio: 20px;
+  --pillola: 999px;
+  --raggio-grande: 28px;
+  --raggio-scheda: 24px;
+  --raggio-medio: 16px;
+  --raggio-piccolo: 12px;
+  /* Sul telefono la tavola arrotonda un po' meno. */
+  --raggio-telefono: 18px;
+  --raggio-profilo-telefono: 22px;
+
+  /* Caratteri */
+  --titoli: var(--font-libre-caslon-display), Georgia, serif;
+  --corsivo: var(--font-libre-caslon-text), Georgia, serif;
+  --testo: var(--font-instrument-sans), 'Helvetica Neue', Arial, sans-serif;
+  --firma: var(--font-beth-ellen), cursive;
+
+  /* Misure: dal telefono (390 px) al computer (1440 px) */
+  --larghezza: 1440px;
+  --margine: clamp(20px, 4vw, 56px);
+  --sezione: clamp(72px, 4.6vw + 54px, 120px);
+  --fascia: clamp(64px, 3.8vw + 49px, 104px);
+  --h2: clamp(34px, 2.1vw + 26px, 56px);
+  --occhiello: 12px;
+  --testo-sezione: 16px;
+  --ancora: 72px;
+
+  margin: 0;
+  background: var(--bianco);
+  color: var(--nero);
+  font-family: var(--testo);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (min-width: 960px) {
+  [data-variante='salvia-social'] {
+    --occhiello: 13px;
+    --testo-sezione: 17px;
+    --ancora: 96px;
+  }
+}
+
+[data-variante='salvia-social'] *,
+[data-variante='salvia-social'] *::before,
+[data-variante='salvia-social'] *::after {
+  box-sizing: border-box;
+}
+
+[data-variante='salvia-social'] :focus-visible {
+  outline: 2px solid var(--salvia-scura);
+  outline-offset: 3px;
+}
+
+[data-variante='salvia-social'] button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Testo per chi usa un lettore di schermo, non visibile. */
+[data-variante='salvia-social'] .solo-lettori {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-variante='salvia-social']) {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-variante='salvia-social'] *,
+  [data-variante='salvia-social'] *::before,
+  [data-variante='salvia-social'] *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}

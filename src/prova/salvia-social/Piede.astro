@@ -1,0 +1,244 @@
+---
+// Piè di pagina su verde notte: marchio, dove siamo, orari, contatti e le
+// sezioni della pagina. Tutti link semplici: funzionano anche senza JavaScript.
+import { Image } from 'astro:assets';
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import logo from '../comune/logo/alma-bianco.png';
+import Icona from './Icona.astro';
+import { messaggi, sezioni } from './dati';
+import { settimana } from './settimana';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+---
+
+<footer class="piede">
+  <div class="dentro">
+    <div class="colonne">
+      <div class="marchio">
+        <Image src={logo} alt="Alma Living" widths={[110, 150, 220, 300, 343]} sizes="(min-width: 960px) 149px, 114px" />
+        <p class="motto">Rendiamo la tua casa ancora più casa.</p>
+        <a class="instagram" href={negozio.instagram.url}>
+          <Icona nome="instagram" misura={18} />Segui {negozio.instagram.handle}
+        </a>
+      </div>
+
+      <div>
+        <h2 class="titoletto">Dove siamo</h2>
+        <p>Via Ricasoli 51-53<br />57125 Livorno<br />Isola pedonale del centro</p>
+        <a class="sottolineato" href={negozio.mappeUrl}>Indicazioni</a>
+      </div>
+
+      <div>
+        <h2 class="titoletto">Orari</h2>
+        <p>
+          {
+            settimana(negozio.orari).map(({ giorni, ore, chiuso }, i) => (
+              <>
+                {i > 0 && <br />}
+                {chiuso ? (
+                  `${giorni} ${ore}`
+                ) : (
+                  <>
+                    {giorni}
+                    <br />
+                    {ore}
+                  </>
+                )}
+              </>
+            ))
+          }
+        </p>
+      </div>
+
+      <div>
+        <h2 class="titoletto">Contatti</h2>
+        <p>Telefono e WhatsApp</p>
+        <a class="sottolineato riga" href={negozio.telefonoHref}>{negozio.telefono}</a>
+        <a class="sottolineato riga" href={linkWhatsApp(negozio.whatsapp, messaggi.generico)}
+          >Scrivici su WhatsApp</a
+        >
+      </div>
+
+      <nav aria-label="Sezioni della pagina, piè di pagina">
+        <h2 class="titoletto">Nel sito</h2>
+        <ul role="list">
+          {
+            sezioni.map(({ nome, href }) => (
+              <li>
+                <a class="sezione" href={href}>
+                  {nome}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </div>
+
+    <div class="fondo">
+      <p>© 2026 {negozio.nome} · {negozio.indirizzo}</p>
+      <a class="sottolineato" href="#inizio">Torna su</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .piede {
+    background: var(--verde-notte);
+    color: var(--bianco);
+  }
+
+  .piede :focus-visible {
+    outline-color: var(--bianco);
+  }
+
+  /* Sul telefono, in fondo, 72 px per la barra dei contatti (BarraTelefono.astro). */
+  .dentro {
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: 56px var(--margine) calc(24px + 72px);
+  }
+
+  .colonne {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .marchio {
+    grid-column: 1 / -1;
+  }
+
+  .marchio :global(img) {
+    display: block;
+    width: auto;
+    height: 40px;
+  }
+
+  .motto {
+    max-width: 14em;
+    margin: 22px 0 0;
+    font-family: var(--titoli);
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  .instagram {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    margin-top: 12px;
+    color: var(--bianco);
+    text-decoration: none;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .instagram:hover {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+
+  .titoletto {
+    margin: 0 0 10px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.6;
+    text-transform: uppercase;
+    color: var(--salvia-chiara);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .sottolineato {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--bianco);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+  }
+
+  .sottolineato:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  .riga {
+    display: flex;
+    width: fit-content;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sezione {
+    display: flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 44px;
+    color: var(--bianco);
+    text-decoration: none;
+  }
+
+  .sezione:hover {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+
+  .fondo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 24px;
+    margin-top: 36px;
+    padding-top: 16px;
+    border-top: 1px solid var(--linea-chiara);
+    font-size: 14px;
+    color: var(--salvia-chiara);
+  }
+
+  @media (min-width: 960px) {
+    .dentro {
+      padding: 88px var(--margine) 28px;
+    }
+
+    .colonne {
+      grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr));
+      gap: 40px;
+      font-size: 15px;
+    }
+
+    .marchio {
+      grid-column: auto;
+    }
+
+    .marchio :global(img) {
+      height: 52px;
+    }
+
+    .motto {
+      font-size: 28px;
+    }
+
+    .fondo {
+      margin-top: 64px;
+    }
+  }
+</style>

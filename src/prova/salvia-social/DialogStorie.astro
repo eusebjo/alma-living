@@ -1,0 +1,479 @@
+---
+// Il lettore delle storie (protocollo "Storie" dello script comune): un dialog
+// con un gruppo per storia, in ognuno le foto con la loro frase e una barra
+// d'avanzamento per foto. Sul computer una scheda verticale con le frecce ai
+// lati e, sull'ultima foto, l'anteprima della storia dopo; sul telefono la
+// scheda occupa lo schermo e le frecce stanno sopra la foto.
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import { messaggioStoria, type Storia } from './dati';
+
+interface Props {
+  storie: Storia[];
+  /** Nome del dialog per chi usa un lettore di schermo. */
+  etichetta: string;
+  negozio: DatiNegozio;
+}
+
+const { storie, etichetta, negozio } = Astro.props;
+---
+
+<dialog class="storie" data-storie aria-label={etichetta}>
+  <div class="scena">
+    <button type="button" class="freccia prec" data-storia-prec aria-label="Indietro">
+      <Icona nome="prec" misura={22} />
+    </button>
+
+    <div class="scheda">
+      {
+        storie.map((storia, g) => {
+          const copertina = storia.foto[0]!;
+          const prossima = storie[g + 1];
+          return (
+            <div
+              class="gruppo"
+              role="group"
+              aria-label={`Storia ${storia.nome}, ${storia.data}`}
+              data-storia-gruppo={storia.id}
+              hidden={g > 0}
+            >
+              <ul class="pila" role="list">
+                {storia.foto.map((foto, i) => (
+                  <li class="foto" data-storia-foto hidden={i > 0}>
+                    <Foto
+                      scatto={foto}
+                      larghezze={[420, 640, 840]}
+                      sizes="(min-width: 960px) 420px, 100vw"
+                    />
+                    <p class="frase">{foto.testo}</p>
+                  </li>
+                ))}
+              </ul>
+              <div class="barre" aria-hidden="true">
+                {storia.foto.map(() => (
+                  <span class="barra" data-storia-barra />
+                ))}
+              </div>
+              <div class="testa">
+                <Foto scatto={copertina} alt="" larghezze={[72]} sizes="36px" />
+                <div class="chi">
+                  <p class="nome">{storia.nome}</p>
+                  <p class="data">Alma Living · {storia.data}</p>
+                </div>
+              </div>
+              <div class="azioni">
+                <a class="chiedi" href={linkWhatsApp(negozio.whatsapp, messaggioStoria(storia))}>
+                  <Icona nome="whatsapp" misura={18} />
+                  Chiedi su WhatsApp
+                </a>
+                <a class="instagram" href={negozio.instagram.url}>
+                  <Icona nome="instagram" misura={18} />
+                  Vedi su Instagram
+                </a>
+              </div>
+              {prossima && (
+                <button
+                  type="button"
+                  class="poi"
+                  data-storia-succ
+                  aria-label={`Poi: ${prossima.nome}`}
+                >
+                  <Foto scatto={prossima.foto[0]!} alt="" larghezze={[88]} sizes="44px" />
+                  <span class="poi-testo">
+                    <span class="poi-occhiello">Poi</span>
+                    <span class="poi-nome">{prossima.nome}</span>
+                  </span>
+                </button>
+              )}
+            </div>
+          );
+        })
+      }
+
+      <div class="comandi">
+        <button
+          type="button"
+          class="comando pausa"
+          data-storia-pausa
+          aria-pressed="false"
+          aria-label="Metti in pausa la storia"
+        >
+          <Icona nome="pausa" misura={20} class="se-avanza" />
+          <Icona nome="riproduci" misura={20} class="se-ferma" />
+        </button>
+        <button
+          type="button"
+          class="comando"
+          data-storia-chiudi
+          aria-label="Chiudi la storia"
+          autofocus
+        >
+          <Icona nome="chiudi" misura={22} />
+        </button>
+      </div>
+    </div>
+
+    <button type="button" class="freccia succ" data-storia-succ aria-label="Avanti">
+      <Icona nome="succ" misura={22} />
+    </button>
+  </div>
+</dialog>
+
+<style>
+  /* Il dialog copre lo schermo e non ha riempimento: un clic fuori dalla
+     scheda cade sul dialog stesso e lo chiude (vedi lo script comune). */
+  .storie {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--sfondo-storie);
+    color: var(--bianco);
+    overflow: hidden;
+  }
+
+  .storie[open] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .storie::backdrop {
+    background: transparent;
+  }
+
+  .storie :focus-visible {
+    outline-color: var(--bianco);
+  }
+
+  .scena {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* --- La scheda: 9:16, a tutto schermo sul telefono --- */
+  .scheda {
+    position: relative;
+    flex: none;
+    width: min(100vw, calc(100dvh * 9 / 16));
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    background: var(--verde-notte);
+  }
+
+  .gruppo,
+  .pila,
+  .foto {
+    position: absolute;
+    inset: 0;
+  }
+
+  .pila {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .foto :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Velature in alto (per la testata) e in basso (per la frase e le azioni). */
+  .foto::before,
+  .foto::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+  }
+
+  .foto::before {
+    top: 0;
+    height: 160px;
+    background: linear-gradient(to bottom, var(--velo-storia-alto), transparent);
+  }
+
+  .foto::after {
+    bottom: 0;
+    height: 60%;
+    background: linear-gradient(to top, var(--velo-storia), transparent);
+  }
+
+  .frase {
+    position: absolute;
+    z-index: 1;
+    left: 20px;
+    right: 20px;
+    bottom: 146px;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.45;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+  }
+
+  /* --- Barre d'avanzamento: lo script scrive --avanzamento (da 0 a 1) --- */
+  .barre {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .barra {
+    position: relative;
+    flex: 1 1 0;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--barra-storia);
+    overflow: hidden;
+  }
+
+  .barra::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--bianco);
+    transform: scaleX(var(--avanzamento, 0));
+    transform-origin: left center;
+  }
+
+  /* --- Testata: copertina, nome e data; a destra pausa e chiudi --- */
+  .testa {
+    position: absolute;
+    z-index: 2;
+    top: 24px;
+    left: 12px;
+    right: 104px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+  }
+
+  .testa :global(img) {
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px var(--bordo-storia);
+  }
+
+  .chi {
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .nome {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .data {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--grigio-chiaro);
+  }
+
+  .comandi {
+    position: absolute;
+    z-index: 3;
+    top: 24px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .comando {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--bianco);
+  }
+
+  /* Le icone sono di Icona.astro: le loro classi vanno indicate con :global. */
+  .pausa[aria-pressed='true'] :global(.se-avanza),
+  .pausa:not([aria-pressed='true']) :global(.se-ferma) {
+    display: none;
+  }
+
+  /* Con il movimento ridotto le storie non avanzano da sole: niente pausa. */
+  @media (prefers-reduced-motion: reduce) {
+    .pausa {
+      display: none;
+    }
+  }
+
+  /* --- Azioni in basso --- */
+  .azioni {
+    position: absolute;
+    z-index: 2;
+    left: 20px;
+    right: 20px;
+    bottom: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .azioni a {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: var(--pillola);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .chiedi {
+    background: var(--bianco);
+    color: var(--nero);
+  }
+
+  .instagram {
+    box-shadow: inset 0 0 0 1.5px var(--bordo-storia);
+    color: var(--bianco);
+  }
+
+  /* --- Frecce: sopra la foto sul telefono, ai lati della scheda sul computer --- */
+  .freccia {
+    position: absolute;
+    z-index: 4;
+    top: 44%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--vetro);
+    color: var(--nero);
+  }
+
+  .prec {
+    left: 8px;
+  }
+
+  .succ {
+    right: 8px;
+  }
+
+  .freccia :focus-visible,
+  .freccia:focus-visible {
+    outline-color: var(--bianco);
+  }
+
+  .poi {
+    display: none;
+  }
+
+  @media (min-width: 960px) {
+    .scena {
+      gap: 28px;
+      padding: 28px 56px;
+    }
+
+    .scheda {
+      width: min(420px, calc((100dvh - 56px) * 9 / 16));
+      border-radius: var(--raggio-scheda);
+      box-shadow: var(--ombra-dialog);
+    }
+
+    .frase {
+      bottom: 88px;
+    }
+
+    .azioni {
+      flex-direction: row;
+    }
+
+    .freccia {
+      position: static;
+      flex: none;
+      width: 52px;
+      height: 52px;
+      background: var(--bianco);
+    }
+
+    /* Sull'ultima foto di una storia, in basso a destra, quella che viene dopo. */
+    .gruppo:has(.foto:last-child:not([hidden])) .poi {
+      position: fixed;
+      right: 56px;
+      bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 60px;
+      padding: 8px 22px 8px 8px;
+      border: 0;
+      border-radius: var(--pillola);
+      background: var(--vetro-poi);
+      box-shadow: inset 0 0 0 1px var(--bordo-poi);
+      color: var(--bianco);
+      text-align: left;
+    }
+
+    .poi :global(img) {
+      display: block;
+      flex: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 0 0 2px var(--bianco);
+    }
+
+    .poi-testo {
+      display: block;
+      line-height: 1.3;
+    }
+
+    .poi-occhiello {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--salvia-chiara);
+    }
+
+    .poi-nome {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+    }
+  }
+</style>

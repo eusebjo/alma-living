@@ -1,0 +1,694 @@
+---
+// La sezione di Martina come profilo: a sinistra l'introduzione con il
+// biglietto firmato; a destra la scheda del profilo (avatar che apre la storia
+// di oggi, storie in evidenza, griglia 3 x 3 di post che si aprono, "Mostra
+// altri post"). Sul telefono le due parti si impilano.
+import { Image } from 'astro:assets';
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import logo from '../comune/logo/alma-nero.png';
+import CerchioStoria from './CerchioStoria.astro';
+import DialogPost from './DialogPost.astro';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import StatoNegozio from './StatoNegozio.astro';
+import { messaggi, post, POST_VISIBILI, storie, storieInEvidenza } from './dati';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+const handle = negozio.instagram.handle.replace(/^@/, '');
+const storiaDiOggi = storie[0];
+if (!storiaDiOggi) throw new Error('Manca la storia di oggi.');
+---
+
+<section id="diario" class="diario" aria-labelledby="diario-titolo">
+  <div class="dentro">
+    <div class="intro">
+      <p class="occhiello">Il diario di Martina</p>
+      <h2 id="diario-titolo">Dal negozio</h2>
+      <p class="presentazione">
+        Ogni settimana Martina fotografa quello che succede in Via Ricasoli: gli arrivi, la vetrina
+        che cambia, le confezioni preparate al banco. Tocca una foto per aprirla.
+      </p>
+      <figure class="biglietto">
+        <div class="biglietto-autore">
+          <span class="avatar-piccolo" aria-hidden="true">
+            <Image src={logo} alt="" widths={[48, 72]} sizes="24px" />
+          </span>
+          <span><span class="forte">{negozio.nome}</span> · Via Ricasoli · 28 ottobre</span>
+        </div>
+        <blockquote>
+          “Se vedete qualcosa che vi piace, scriveteci: vi mandiamo altre foto e ve lo teniamo da
+          parte.”
+        </blockquote>
+        <figcaption><span class="firma">Martina</span><span>dal negozio</span></figcaption>
+      </figure>
+      <p class="frequenza">
+        <Icona nome="orologio" />Nuovi post ogni settimana · l’ultimo il 27 ottobre
+      </p>
+    </div>
+
+    <div class="profilo">
+      <div class="profilo-testa">
+        <div class="profilo-riga">
+          <button
+            type="button"
+            class="avatar"
+            data-storia-apri={storiaDiOggi.id}
+            aria-label="Apri la storia di oggi"
+          >
+            <Image src={logo} alt="" widths={[140, 170, 252]} sizes="(min-width: 600px) 84px, 70px" />
+          </button>
+          <div class="profilo-dati">
+            <p class="handle">{handle}</p>
+            <p class="sottotitolo">{negozio.nome} · Negozio di biancheria</p>
+            <p class="bio">{negozio.frase}</p>
+            <p class="meta">
+              <span class="meta-voce"><Icona nome="luogo" misura={16} />Via Ricasoli 51-53, Livorno</span>
+              <span class="meta-voce meta-stato"><StatoNegozio orari={negozio.orari} /></span>
+            </p>
+            <div class="profilo-azioni">
+              <a class="pieno" href={negozio.instagram.url}>
+                <Icona nome="instagram" misura={18} />Segui su Instagram
+              </a>
+              <a class="filo" href={linkWhatsApp(negozio.whatsapp, messaggi.generico)}>
+                <Icona nome="whatsapp" misura={18} />Scrivici
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <ul class="evidenza" role="list" aria-label="Storie in evidenza">
+          {
+            storieInEvidenza.map((storia) => (
+              <li>
+                <CerchioStoria storia={storia} />
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="schede">
+        <span class="scheda-post"><Icona nome="griglia" misura={16} />Post</span>
+        <span class="aggiornato">Aggiornato il 27 ottobre</span>
+      </div>
+
+      <div class="griglia">
+        {
+          post.map((voce, i) => {
+            const prima = voce.foto[0]!;
+            const piegato = i >= POST_VISIBILI;
+            const quante = voce.foto.length;
+            return (
+              <button
+                type="button"
+                class="cella"
+                data-post-apri={voce.id}
+                data-altro={piegato ? 'post' : undefined}
+                hidden={piegato}
+                aria-label={`Apri il post del ${voce.data}, ${voce.rubrica}${quante > 1 ? `, ${quante} foto` : ''}`}
+              >
+                <Foto
+                  scatto={prima}
+                  larghezze={[200, 300, 400, 600]}
+                  sizes="(min-width: 960px) 22vw, 33vw"
+                />
+                {quante > 1 && <Icona nome="multi" class="multi" />}
+                <span class="velo">
+                  <span class="velo-rubrica">{voce.rubrica}</span>
+                  <span class="velo-data">{voce.data}</span>
+                </span>
+              </button>
+            );
+          })
+        }
+      </div>
+
+      <div class="altri">
+        <button type="button" class="contorno mostra" data-mostra-altri="post">
+          <span class="contorno-dentro">Mostra altri post<Icona nome="giu" misura={18} /></span>
+        </button>
+        <a class="contorno tutti" href={negozio.instagram.url}>
+          <span class="contorno-dentro">
+            <Icona nome="instagram" misura={18} />Vedi tutti i post su Instagram
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {post.map((voce) => <DialogPost post={voce} negozio={negozio} />)}
+</section>
+
+<style>
+  .diario {
+    margin-top: var(--sezione);
+    background: var(--salvia-chiara);
+    scroll-margin-top: var(--ancora);
+  }
+
+  .dentro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: var(--fascia) 12px;
+  }
+
+  /* --- Introduzione --- */
+  .intro {
+    min-width: 0;
+    padding: 0 8px;
+  }
+
+  .occhiello {
+    margin: 0;
+    font-size: var(--occhiello);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--verde-notte);
+  }
+
+  h2 {
+    margin: 12px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--h2);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+
+  .presentazione {
+    margin: 16px 0 0;
+    font-size: var(--testo-sezione);
+    color: var(--verde-notte);
+    text-wrap: pretty;
+  }
+
+  .biglietto {
+    margin: 24px 0 0;
+    padding: 18px 18px 14px;
+    border-radius: var(--raggio);
+    background: var(--bianco);
+    box-shadow: var(--ombra-biglietto);
+  }
+
+  .biglietto-autore {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--grigio-testo);
+  }
+
+  .forte {
+    font-weight: 600;
+    color: var(--nero);
+  }
+
+  .avatar-piccolo {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--latte);
+    box-shadow: 0 0 0 1px var(--bordo-chiaro);
+  }
+
+  .avatar-piccolo :global(img) {
+    display: block;
+    width: 24px;
+    height: auto;
+  }
+
+  blockquote {
+    margin: 16px 0 0;
+    font-family: var(--corsivo);
+    font-size: 17px;
+    font-style: italic;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  figcaption {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  .firma {
+    font-family: var(--firma);
+    font-size: 28px;
+    line-height: 1.5;
+    color: var(--verde-notte);
+  }
+
+  .frequenza {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 22px 0 0;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--verde-notte);
+  }
+
+  .frequenza :global(svg) {
+    flex: none;
+  }
+
+  /* --- Scheda del profilo --- */
+  .profilo {
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--raggio-profilo-telefono);
+    background: var(--bianco);
+    box-shadow: var(--ombra-profilo);
+  }
+
+  .profilo-testa {
+    padding: 28px 18px 20px;
+  }
+
+  .profilo-riga {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 92px;
+    height: 92px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--latte);
+    box-shadow:
+      0 0 0 4px var(--bianco),
+      0 0 0 6px var(--salvia-scura);
+    transition: box-shadow 400ms ease;
+  }
+
+  .avatar[data-vista] {
+    box-shadow:
+      0 0 0 4px var(--bianco),
+      0 0 0 6px var(--anello-visto);
+  }
+
+  .avatar:focus-visible {
+    outline-offset: 8px;
+  }
+
+  .avatar :global(img) {
+    display: block;
+    width: 70px;
+    height: auto;
+  }
+
+  .profilo-dati {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .handle {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .sottotitolo {
+    margin: 4px 0 0;
+    font-size: 15px;
+    color: var(--grigio-testo);
+  }
+
+  .bio {
+    margin: 12px 0 0;
+    font-size: 16px;
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 4px 16px;
+    margin: 10px 0 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--grigio-testo);
+  }
+
+  .meta-voce {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .meta-stato {
+    color: var(--verde-notte);
+    font-weight: 500;
+  }
+
+  .profilo-azioni {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .profilo-azioni a {
+    flex: 1 1 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 46px;
+    padding: 0 22px 0 18px;
+    border-radius: var(--pillola);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 200ms ease;
+  }
+
+  .pieno {
+    background: var(--salvia-scura);
+    color: var(--bianco);
+  }
+
+  .pieno:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  .filo {
+    background: var(--bianco);
+    box-shadow: inset 0 0 0 1px var(--nero);
+    color: var(--nero);
+  }
+
+  .filo:hover {
+    background: var(--latte-sopra);
+  }
+
+  .evidenza {
+    display: flex;
+    gap: 12px;
+    margin: 22px -18px 0;
+    padding: 8px 18px 6px;
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .evidenza::-webkit-scrollbar {
+    display: none;
+  }
+
+  .schede {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 18px;
+    box-shadow: inset 0 1px 0 var(--linea);
+  }
+
+  .scheda-post {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 50px;
+    box-shadow: inset 0 1.5px 0 var(--nero);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .aggiornato {
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  /* --- Griglia dei post --- */
+  .griglia {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .cella {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    overflow: hidden;
+    background: var(--sabbia);
+    color: var(--bianco);
+    text-align: left;
+  }
+
+  .cella:focus-visible {
+    z-index: 1;
+    outline-offset: -4px;
+    outline-color: var(--bianco);
+    box-shadow: inset 0 0 0 6px var(--salvia-scura);
+  }
+
+  .cella :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .cella :global(.multi) {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 16px;
+    height: 16px;
+    filter: drop-shadow(var(--ombra-icona));
+  }
+
+  /* Al passaggio (o con il focus) la rubrica e la data del post. */
+  .velo {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 10px 12px;
+    background: linear-gradient(to top, var(--velo-post), var(--velo-post-alto));
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+
+  .velo-rubrica {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .velo-data {
+    font-family: var(--titoli);
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .cella:focus-visible .velo {
+    opacity: 1;
+  }
+
+  @media (hover: hover) and (min-width: 960px) {
+    .cella:hover .velo {
+      opacity: 1;
+    }
+
+    .cella:hover :global(img) {
+      transform: scale(1.04);
+    }
+  }
+
+  /* --- Mostra altri post / Vedi tutti su Instagram --- */
+  .altri {
+    display: flex;
+    justify-content: center;
+    padding: 14px 16px 16px;
+    box-shadow: inset 0 1px 0 var(--linea);
+  }
+
+  .contorno {
+    min-height: 46px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    box-shadow: inset 0 0 0 1px var(--nero);
+    color: var(--nero);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .contorno:hover {
+    background: var(--latte-sopra);
+  }
+
+  .contorno-dentro {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+  }
+
+  /* Il collegamento a Instagram arriva quando non ci sono più post da mostrare. */
+  .tutti {
+    display: none;
+  }
+
+  .altri:has(.mostra[hidden]) .tutti {
+    display: inline-flex;
+  }
+
+  /* --- Tablet e computer: la scheda del profilo come sulla tavola del computer --- */
+  @media (min-width: 600px) {
+    .dentro {
+      padding: var(--fascia) var(--margine);
+    }
+
+    .intro {
+      padding: 0;
+    }
+
+    .profilo {
+      border-radius: var(--raggio-grande);
+    }
+
+    .profilo-testa {
+      padding: 36px 36px 26px;
+    }
+
+    .profilo-riga {
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 28px;
+      text-align: left;
+    }
+
+    .avatar {
+      width: 112px;
+      height: 112px;
+    }
+
+    .avatar :global(img) {
+      width: 84px;
+    }
+
+    .handle {
+      font-size: 22px;
+    }
+
+    .meta,
+    .profilo-azioni {
+      justify-content: flex-start;
+    }
+
+    .profilo-azioni a {
+      flex: 0 0 auto;
+    }
+
+    .evidenza {
+      gap: 18px;
+      margin: 22px 0 0;
+      padding: 8px 6px 6px;
+    }
+
+    .schede {
+      padding: 0 36px;
+    }
+  }
+
+  /* --- Computer: introduzione a sinistra, ferma mentre si scorre --- */
+  @media (min-width: 960px) {
+    .dentro {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+      gap: clamp(40px, 4.4vw, 64px);
+    }
+
+    .intro {
+      position: sticky;
+      top: 120px;
+      padding: 8px 0 0;
+    }
+
+    .biglietto {
+      margin-top: 32px;
+      padding: 24px 26px 18px;
+    }
+
+    blockquote {
+      font-size: 20px;
+    }
+
+    .griglia {
+      gap: 4px;
+    }
+
+    .velo {
+      padding: 18px 20px;
+    }
+
+    .velo-data {
+      font-size: 24px;
+    }
+
+    .cella :global(.multi) {
+      top: 12px;
+      right: 12px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .altri {
+      padding: 18px 24px 20px;
+    }
+  }
+</style>

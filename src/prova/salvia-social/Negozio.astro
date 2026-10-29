@@ -1,0 +1,497 @@
+---
+// Il negozio, su fondo salvia con la grana: indirizzo, stato di oggi, orari con
+// la riga di oggi in evidenza (protocollo "Stato del negozio"), indicazioni,
+// telefono e la foto dello scaffale con le stelle di Google.
+import type { DatiNegozio } from '../comune/negozio';
+import { righeOrari } from '../comune/orari';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import StatoNegozio from './StatoNegozio.astro';
+import { fotoDelNegozio } from './dati';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+const orari = righeOrari(negozio.orari).map((riga) => ({
+  ...riga,
+  testo: riga.testo.replaceAll(', ', ' · '),
+}));
+const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
+---
+
+<section id="negozio" class="negozio" aria-labelledby="negozio-titolo">
+  <div class="dentro">
+    <div class="intro">
+      <p class="occhiello">Il negozio</p>
+      <h2 id="negozio-titolo">Vieni a trovarci in Via Ricasoli</h2>
+      <p class="descrizione">
+        {negozio.indirizzo}, nell’isola pedonale del centro. Dentro trovi gli scaffali bianchi fino al
+        soffitto<span class="solo-largo">, la parete verde salvia e la biancheria piegata per colore</span
+        ><span class="solo-stretto"> e la parete verde salvia</span>.
+      </p>
+    </div>
+
+    <div class="foto">
+      <Foto
+        scatto={fotoDelNegozio}
+        larghezze={[400, 600, 800, 1000]}
+        sizes="(min-width: 960px) 40vw, 100vw"
+      />
+      <div class="google">
+        <p class="google-occhiello">Su Google</p>
+        <div class="google-voto">
+          <span class="google-media">{negozio.google.media}</span>
+          <span class="stelle" role="img" aria-label={`${stelle} stelle su 5`}>
+            {Array.from({ length: 5 }, () => <Icona nome="stella" misura={17} />)}
+          </span>
+        </div>
+        <p class="google-quante">{negozio.google.recensioni} recensioni</p>
+        <a class="google-link" href={negozio.recensioniUrl}>Leggi le recensioni</a>
+      </div>
+    </div>
+
+    <div class="dettagli">
+      <p class="stato"><StatoNegozio orari={negozio.orari} /></p>
+      <dl class="orari">
+        {
+          orari.map(({ giorno, etichetta, testo }) => (
+            <div class="riga" data-orario-giorno={giorno}>
+              <dt>
+                {etichetta}
+                <span class="oggi">Oggi</span>
+              </dt>
+              <dd>{testo}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <div class="azioni">
+        <a class="pieno" href={negozio.mappeUrl}><Icona nome="luogo" />Indicazioni</a>
+        <a class="filo" href={negozio.telefonoHref}><Icona nome="telefono" />Chiama {negozio.telefono}</a>
+      </div>
+      <ul class="note" role="list">
+        <li>Confezioni regalo con spago e cartellino</li>
+        <li>Attività di proprietà di donne</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .negozio {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--salvia);
+    scroll-margin-top: var(--ancora);
+  }
+
+  /* La grana della tavola sopra il salvia. */
+  .negozio::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--grana);
+    background-size: 320px 320px;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+
+  .dentro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'intro'
+      'foto'
+      'dettagli';
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: 64px var(--margine);
+  }
+
+  .intro {
+    grid-area: intro;
+  }
+
+  .occhiello {
+    margin: 0;
+    font-size: var(--occhiello);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--verde-notte);
+  }
+
+  h2 {
+    margin: 10px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--h2);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .descrizione {
+    max-width: 32em;
+    margin: 14px 0 0;
+    font-size: 16px;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  .solo-largo {
+    display: none;
+  }
+
+  /* --- Foto e stelle di Google --- */
+  .foto {
+    grid-area: foto;
+    position: relative;
+    margin-top: 26px;
+  }
+
+  .foto :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: var(--raggio);
+    box-shadow: var(--ombra-foto);
+  }
+
+  .google {
+    position: relative;
+    width: 236px;
+    max-width: calc(100% - 24px);
+    margin: -72px 12px 0 auto;
+    padding: 18px 20px 10px;
+    border-radius: var(--raggio-telefono);
+    background: var(--bianco);
+    box-shadow: var(--ombra-recensioni);
+  }
+
+  .google-occhiello {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--salvia-scura);
+  }
+
+  .google-voto {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .google-media {
+    font-family: var(--titoli);
+    font-size: 44px;
+    line-height: 1;
+  }
+
+  .stelle {
+    display: inline-flex;
+    gap: 2px;
+    color: var(--nero);
+  }
+
+  .stelle :global(svg) {
+    width: 15px;
+    height: 15px;
+  }
+
+  .google-quante {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  .google-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--nero);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+  }
+
+  .google-link:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* --- Stato, orari e azioni --- */
+  .dettagli {
+    grid-area: dettagli;
+    min-width: 0;
+  }
+
+  .stato {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    margin: 26px 0 0;
+    padding: 6px 16px;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .orari {
+    margin: 14px 0 0;
+    font-size: 15px;
+  }
+
+  .riga {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 42px;
+    padding: 0 12px;
+    border-radius: var(--raggio-piccolo);
+    box-shadow: inset 0 -1px 0 var(--linea-orari);
+  }
+
+  .riga[data-oggi] {
+    background: var(--bianco);
+    box-shadow: var(--ombra-oggi);
+    font-weight: 600;
+  }
+
+  dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+  }
+
+  .oggi {
+    display: none;
+    padding: 3px 8px;
+    border-radius: var(--pillola);
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+
+  .riga[data-oggi] .oggi {
+    display: inline-block;
+  }
+
+  .azioni {
+    display: grid;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .azioni a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 0 28px 0 22px;
+    border-radius: var(--pillola);
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .pieno {
+    background: var(--salvia-scura);
+    color: var(--bianco);
+  }
+
+  .pieno:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  .filo {
+    box-shadow: inset 0 0 0 1px var(--nero);
+    color: var(--nero);
+  }
+
+  .filo:hover {
+    background: var(--vetro-sopra);
+  }
+
+  .note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+  }
+
+  .note li {
+    padding: 7px 12px;
+    border-radius: var(--pillola);
+    background: var(--vetro-chiaro);
+  }
+
+  /* --- Tablet: foto meno alta, orari e azioni come sul computer --- */
+  @media (min-width: 600px) {
+    .foto {
+      max-width: 520px;
+    }
+
+    .stato {
+      display: inline-flex;
+    }
+
+    .orari {
+      max-width: 520px;
+    }
+
+    .azioni {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  }
+
+  /* --- Computer: testo a sinistra, foto a destra --- */
+  @media (min-width: 960px) {
+    .dentro {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+      grid-template-rows: auto auto;
+      grid-template-areas:
+        'intro foto'
+        'dettagli foto';
+      column-gap: clamp(64px, 7.2vw, 104px);
+      align-content: center;
+      padding: 112px var(--margine);
+    }
+
+    h2 {
+      margin-top: 12px;
+    }
+
+    .descrizione {
+      margin-top: 18px;
+      font-size: 18px;
+    }
+
+    .solo-largo {
+      display: inline;
+    }
+
+    .solo-stretto {
+      display: none;
+    }
+
+    .foto {
+      align-self: center;
+      margin-top: 0;
+    }
+
+    .google {
+      position: absolute;
+      left: -64px;
+      bottom: 56px;
+      width: 256px;
+      max-width: none;
+      margin: 0;
+      padding: 22px 24px 12px;
+      border-radius: var(--raggio);
+    }
+
+    .google-occhiello {
+      font-size: 12px;
+    }
+
+    .google-voto {
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .google-media {
+      font-size: 52px;
+    }
+
+    .stelle :global(svg) {
+      width: 17px;
+      height: 17px;
+    }
+
+    .google-quante {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .stato {
+      display: inline-flex;
+      margin-top: 22px;
+    }
+
+    .orari {
+      max-width: 520px;
+      margin-top: 20px;
+      font-size: 16px;
+    }
+
+    .riga {
+      gap: 16px;
+      padding: 0 14px;
+    }
+
+    .oggi {
+      padding: 3px 9px;
+      font-size: 12px;
+    }
+
+    .azioni {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .azioni a {
+      display: inline-flex;
+      min-height: 54px;
+    }
+
+    .note {
+      margin-top: 22px;
+      font-size: 14px;
+    }
+
+    .note li {
+      padding: 8px 14px;
+    }
+  }
+
+  /* Tra 960 e 1199 px lo spazio tra le colonne è minore: la scheda di Google
+     sporge meno, per non coprire gli orari. */
+  @media (min-width: 960px) and (max-width: 1199px) {
+    .google {
+      left: -32px;
+    }
+  }
+</style>

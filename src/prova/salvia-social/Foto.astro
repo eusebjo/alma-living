@@ -1,0 +1,35 @@
+---
+// Una foto di prova con `<Picture>`: AVIF e WebP alle larghezze indicate (Astro
+// scarta da sé quelle oltre l'originale), taglio centrato su `scatto.posizione`.
+// Le misure e il taglio (`object-fit`) li decide il contenitore.
+import { Picture } from 'astro:assets';
+import { foto } from '../comune/foto';
+import type { Scatto } from './dati';
+
+interface Props {
+  scatto: Scatto;
+  /** Larghezze in px da generare, per `srcset`. */
+  larghezze: number[];
+  /** Attributo `sizes`: quanto è larga la foto nella pagina. */
+  sizes: string;
+  /** La foto principale della pagina: subito e con priorità alta. */
+  principale?: boolean;
+  /** Testo alternativo diverso da quello della foto (vuoto se decorativa). */
+  alt?: string;
+  class?: string;
+}
+
+const { scatto, larghezze, sizes, principale = false, alt = scatto.alt, class: classe } = Astro.props;
+---
+
+<Picture
+  src={foto(scatto.foto)}
+  formats={['avif', 'webp']}
+  widths={larghezze}
+  sizes={sizes}
+  alt={alt}
+  loading={principale ? 'eager' : 'lazy'}
+  fetchpriority={principale ? 'high' : undefined}
+  class={classe}
+  style={`object-position: ${scatto.posizione}`}
+/>

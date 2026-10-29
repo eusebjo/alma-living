@@ -1,0 +1,413 @@
+---
+// La selezione dal negozio: filtri per collezione (protocollo "Filtri") e un
+// carosello di articoli (protocollo "Carosello"), in fondo la tessera "Non lo
+// trovi qui?". Un filtro senza articoli (Mare) mostra al loro posto la tessera
+// "Il mare torna in primavera", mai un carosello vuoto.
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import Icona from './Icona.astro';
+import SchedaArticolo from './SchedaArticolo.astro';
+import { articoli, categorie, messaggi } from './dati';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+
+const filtri = [
+  { id: 'tutti', nome: 'Tutto', quanti: articoli.length },
+  ...categorie.map(({ id, nome }) => ({
+    id,
+    nome,
+    quanti: articoli.filter((a) => a.categorie.includes(id)).length,
+  })),
+];
+---
+
+<section id="selezione" class="selezione" aria-labelledby="selezione-titolo">
+  <div class="intestazione">
+    <div class="titoli">
+      <p class="occhiello">Selezione dal negozio</p>
+      <h2 id="selezione-titolo">Sugli scaffali adesso</h2>
+    </div>
+    <p class="avviso">
+      <Icona nome="info" />Prezzi e disponibilità in negozio o su WhatsApp
+    </p>
+  </div>
+
+  <div class="carosello" data-carosello>
+    <div class="comandi">
+      <div class="filtri" role="group" aria-label="Filtra per collezione" data-filtri="selezione">
+        {
+          filtri.map(({ id, nome, quanti }) => (
+            <button
+              type="button"
+              class="filtro"
+              data-filtro={id}
+              aria-pressed={id === 'tutti' ? 'true' : 'false'}
+            >
+              {nome}
+              {quanti > 0 && (
+                <span class="quanti">
+                  {quanti}
+                  <span class="solo-lettori">{quanti === 1 ? ' articolo' : ' articoli'}</span>
+                </span>
+              )}
+            </button>
+          ))
+        }
+      </div>
+      <div class="frecce">
+        <button type="button" class="freccia" data-carosello-prec aria-label="Articoli precedenti">
+          <Icona nome="prec" />
+        </button>
+        <button type="button" class="freccia" data-carosello-succ aria-label="Articoli successivi">
+          <Icona nome="succ" />
+        </button>
+      </div>
+    </div>
+
+    <ul class="binario" data-carosello-binario role="list">
+      {
+        articoli.map((articolo) => (
+          <li class="voce" data-filtrabile="selezione" data-categorie={articolo.categorie.join(' ')}>
+            <SchedaArticolo articolo={articolo} negozio={negozio} />
+          </li>
+        ))
+      }
+      <li class="voce" data-filtro-vuoto="selezione" hidden>
+        <div class="tessera">
+          <div class="tessera-testo">
+            <p class="tessera-occhiello">Collezione mare</p>
+            <h3>Il mare torna in primavera</h3>
+            <p>
+              Teli e plaid leggeri arrivano con la bella stagione. Se ti serve qualcosa adesso, chiedici
+              cosa è rimasto in negozio.
+            </p>
+          </div>
+          <a class="tessera-azione" href={linkWhatsApp(negozio.whatsapp, messaggi.mare)}>
+            <Icona nome="whatsapp" misura={18} />Chiedi su WhatsApp
+          </a>
+        </div>
+      </li>
+      <li class="voce voce-altro">
+        <div class="tessera">
+          <div class="tessera-testo">
+            <p class="tessera-occhiello">Non lo trovi qui?</p>
+            <h3>In negozio c’è molto di più</h3>
+            <p>
+              Dicci cosa cerchi, per quale stanza e in che colore: ti rispondiamo con le foto su
+              WhatsApp.
+            </p>
+          </div>
+          <a class="tessera-azione" href={linkWhatsApp(negozio.whatsapp, messaggi.cerco)}>
+            <Icona nome="whatsapp" misura={18} />Scrivici su WhatsApp
+          </a>
+        </div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<style>
+  .selezione {
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: var(--sezione) 0 44px;
+    scroll-margin-top: var(--ancora);
+  }
+
+  .intestazione {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px 48px;
+    padding: 0 var(--margine);
+  }
+
+  .titoli {
+    max-width: 640px;
+  }
+
+  .occhiello {
+    margin: 0;
+    font-size: var(--occhiello);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--salvia-scura);
+  }
+
+  h2 {
+    margin: 12px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--h2);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+
+  .avviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--salvia-scura);
+  }
+
+  .avviso :global(svg) {
+    flex: none;
+  }
+
+  /* --- Filtri e frecce --- */
+  .comandi {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 20px;
+    padding: 0 var(--margine);
+  }
+
+  .filtri {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    gap: 8px;
+    margin: 0 calc(-1 * var(--margine));
+    /* Spazio per il focus, che altrimenti lo scorrimento taglierebbe. */
+    padding: 4px var(--margine) 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filtri::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filtro {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow: inset 0 0 0 1px var(--bordo);
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      background-color 200ms ease,
+      box-shadow 200ms ease,
+      color 200ms ease;
+  }
+
+  .quanti {
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  .filtro:hover {
+    box-shadow: inset 0 0 0 1px var(--nero);
+  }
+
+  .filtro[aria-pressed='true'] {
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    box-shadow: inset 0 0 0 1px var(--salvia-scura);
+  }
+
+  .filtro[aria-pressed='true'] .quanti {
+    color: var(--salvia-chiara);
+  }
+
+  .frecce {
+    display: none;
+  }
+
+  .freccia {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow: inset 0 0 0 1px var(--nero);
+    transition:
+      background-color 200ms ease,
+      color 200ms ease,
+      opacity 200ms ease;
+  }
+
+  .freccia:not([aria-disabled='true']):hover {
+    background: var(--nero);
+    color: var(--bianco);
+  }
+
+  .freccia[aria-disabled='true'] {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* --- Carosello --- */
+  .binario {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+    margin: 18px 0 0;
+    padding: 6px var(--margine) 28px;
+    list-style: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--margine);
+    scrollbar-width: none;
+  }
+
+  .binario::-webkit-scrollbar {
+    display: none;
+  }
+
+  .voce {
+    flex: 0 0 256px;
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  /* Quando il filtro non ha articoli resta solo la sua tessera. */
+  .binario:has(> [data-filtro-vuoto]:not([hidden])) > .voce-altro {
+    display: none;
+  }
+
+  .tessera {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 24px;
+    height: 100%;
+    min-height: 420px;
+    overflow: hidden;
+    padding: 30px 26px 26px;
+    border-radius: var(--raggio-scheda);
+    background: var(--salvia);
+  }
+
+  /* La grana della tavola sopra il salvia. */
+  .tessera::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--grana);
+    background-size: 320px 320px;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+
+  .tessera-occhiello {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--verde-notte);
+  }
+
+  .tessera h3 {
+    margin: 12px 0 0;
+    font-family: var(--titoli);
+    font-size: 25px;
+    font-weight: 400;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+
+  .tessera-testo > p:last-child {
+    margin: 14px 0 0;
+    font-size: 16px;
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  .tessera-azione {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    border-radius: var(--pillola);
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .tessera-azione:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  /* --- Computer --- */
+  @media (min-width: 960px) {
+    .selezione {
+      padding-bottom: 88px;
+    }
+
+    .comandi {
+      margin-top: 32px;
+    }
+
+    .filtri {
+      flex-wrap: wrap;
+      margin: 0;
+      padding: 4px 0;
+      overflow: visible;
+    }
+
+    .frecce {
+      flex: none;
+      display: flex;
+      gap: 10px;
+    }
+
+    .binario {
+      gap: 20px;
+      margin-top: 20px;
+      padding: 12px var(--margine) 32px;
+    }
+
+    .voce {
+      flex-basis: 300px;
+    }
+
+    .tessera h3 {
+      font-size: 28px;
+    }
+  }
+
+  /* Oltre i 1440 px della tavola il carosello arriva al bordo destro dello
+     schermo invece di fermarsi a metà (la pagina taglia con `overflow-x: clip`
+     i pochi pixel sotto la barra di scorrimento). */
+  @media (min-width: 1441px) {
+    .binario {
+      margin-right: calc((var(--larghezza) - 100vw) / 2);
+    }
+  }
+</style>

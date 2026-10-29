@@ -1,6 +1,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { GIORNI } from '../../src/content/limits';
+import { ORARI_PROVA } from '../../src/prova/comune/orari';
+import {
+  articoli,
+  categorie,
+  post,
+  POST_VISIBILI,
+  storie,
+  storieInEvidenza,
+} from '../../src/prova/salvia-social/dati';
 import { VARIANTI } from '../../src/prova/varianti';
 
 // Questi test guardano la build locale (`npm run build` senza SITE_LAUNCHED né
@@ -392,7 +402,8 @@ describe('pagine di prova (/prova/)', () => {
 
     it('ogni immagine ha un alt, e una foto servita da /_astro/', () => {
       for (const [tag] of html().matchAll(/<img\b[^>]*>/gi)) {
-        expect(tag, tag).toMatch(/\salt=/i);
+        // Un'immagine decorativa ha l'alt vuoto, che Astro scrive senza valore (`alt`).
+        expect(tag, tag).toMatch(/\salt(?:=|(?=[\s/>]))/i);
         const src = /\ssrc=["']?([^"'\s>]*)/i.exec(tag)?.[1];
         if (src !== undefined) expect(src, tag).toMatch(/^\/_astro\//);
       }
@@ -435,6 +446,189 @@ describe('caratteri: nessun indirizzo esterno, in nessuna pagina', () => {
       expect(indirizzo, indirizzo).toMatch(/^\/(?!\/)/);
       expect(existsSync(join('dist', ...indirizzo.split('/'))), indirizzo).toBe(true);
     }
+  });
+});
+
+// La variante Salvia social (Task 5): oltre ai controlli comuni delle pagine di
+// prova, il markup che lo script comune fa funzionare e i contenuti che devono
+// restare leggibili anche senza JavaScript (didascalie, storie, orari, contatti).
+describe('Salvia social (/prova/salvia-social/)', () => {
+  const FILE = join('dist', 'prova', 'salvia-social', 'index.html');
+  const html = () => readFileSync(FILE, 'utf8');
+
+  // Il testo come lo legge il browser: Astro scrive alcune entità nei valori.
+  const decodifica = (testo: string) =>
+    testo
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+
+  /** I tag di apertura `<nome …>` che hanno l'attributo `attributo`. */
+  const tagCon = (nome: string, attributo: string) =>
+    [
+      ...html().matchAll(new RegExp(`<${nome}\\b[^>]*\\s${attributo}(?=[\\s=>])[^>]*>`, 'gi')),
+    ].map((m) => m[0]);
+
+  /** Valore di `attributo` in un tag di apertura (decodificato), o undefined. */
+  const valore = (tag: string, attributo: string) => {
+    const trovato = new RegExp(`\\s${attributo}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(
+      tag,
+    );
+    if (!trovato) return undefined;
+    return decodifica(trovato[1] ?? trovato[2] ?? trovato[3] ?? '');
+  };
+
+  /** Il tag di apertura e il contenuto di ogni `<dialog>` con l'attributo `attributo`. */
+  const dialogCon = (attributo: string) =>
+    [
+      ...html().matchAll(
+        new RegExp(`<dialog\\b[^>]*\\s${attributo}(?=[\\s=>])[^>]*>([\\s\\S]*?)<\\/dialog>`, 'gi'),
+      ),
+    ].map((m) => ({ apertura: m[0].slice(0, m[0].indexOf('>') + 1), contenuto: m[1]! }));
+
+  it('esiste e il body porta data-variante="salvia-social"', () => {
+    expect(existsSync(FILE)).toBe(true);
+    expect(html()).toMatch(/<body\b[^>]*\sdata-variante="salvia-social"/);
+  });
+
+  it('la fila di storie ha almeno 6 storie da aprire, e ogni storia sta in un dialog di storie', () => {
+    const apri = tagCon('button', 'data-storia-apri');
+    expect(apri.length).toBeGreaterThanOrEqual(6);
+    const dialog = dialogCon('data-storie');
+    expect(dialog.length).toBeGreaterThanOrEqual(1);
+    const gruppi = dialog.flatMap(({ contenuto }) =>
+      [...contenuto.matchAll(/\sdata-storia-gruppo="([^"]+)"/g)].map((m) => m[1]),
+    );
+    for (const id of new Set(apri.map((t) => valore(t, 'data-storia-apri')))) {
+      expect(gruppi, id).toContain(id);
+    }
+  });
+
+  it('ogni storia ha le sue foto e una barra per foto, e ogni dialog il pulsante di pausa', () => {
+    const dialog = dialogCon('data-storie');
+    for (const { contenuto } of dialog) {
+      expect(contenuto).toMatch(/<button\b[^>]*\sdata-storia-pausa\b[^>]*\saria-pressed="false"/);
+    }
+    const tutto = dialog.map((d) => d.contenuto).join('\n');
+    const inizi = [...tutto.matchAll(/\sdata-storia-gruppo="([^"]+)"/g)];
+    const gruppi = new Map(
+      inizi.map((m, i) => [m[1], tutto.slice(m.index, inizi[i + 1]?.index ?? tutto.length)]),
+    );
+    for (const storia of [...storie, ...storieInEvidenza]) {
+      const gruppo = gruppi.get(storia.id) ?? '';
+      expect(gruppo.match(/\sdata-storia-foto\b/g) ?? [], storia.id).toHaveLength(
+        storia.foto.length,
+      );
+      expect(gruppo.match(/\sdata-storia-barra\b/g) ?? [], storia.id).toHaveLength(
+        storia.foto.length,
+      );
+      for (const foto of storia.foto) expect(decodifica(gruppo), storia.id).toContain(foto.testo);
+    }
+  });
+
+  it(`griglia del profilo: ${POST_VISIBILI} post visibili, gli altri piegati, ognuno con il suo dialog`, () => {
+    const pulsanti = tagCon('button', 'data-post-apri');
+    const visibili = pulsanti.filter((t) => !/\sdata-altro=/.test(t));
+    const piegati = pulsanti.filter((t) => /\sdata-altro=/.test(t));
+    expect(visibili).toHaveLength(POST_VISIBILI);
+    for (const tag of visibili) expect(tag).not.toMatch(/\shidden(?=[\s=>])/);
+    expect(piegati).toHaveLength(post.length - POST_VISIBILI);
+    expect(piegati.length).toBeGreaterThan(0);
+    for (const tag of piegati) expect(tag).toMatch(/\shidden(?=[\s=>])/);
+
+    // Il pulsante "Mostra altri" apre proprio il gruppo dei post piegati.
+    const gruppiAltri = new Set(piegati.map((t) => valore(t, 'data-altro')));
+    expect(gruppiAltri.size).toBe(1);
+    const mostra = tagCon('button', 'data-mostra-altri').map((t) =>
+      valore(t, 'data-mostra-altri'),
+    );
+    expect(mostra).toEqual([...gruppiAltri]);
+
+    expect(pulsanti.map((t) => valore(t, 'data-post-apri'))).toEqual(post.map((p) => p.id));
+    const dialog = dialogCon('data-post').map(({ apertura }) => valore(apertura, 'data-post'));
+    expect(dialog).toEqual(post.map((p) => p.id));
+  });
+
+  it("le didascalie dei post sono nell'HTML, ciascuna nel dialog del suo post", () => {
+    const dialog = new Map(
+      dialogCon('data-post').map(({ apertura, contenuto }) => [
+        valore(apertura, 'data-post'),
+        contenuto,
+      ]),
+    );
+    for (const voce of post) {
+      expect(decodifica(dialog.get(voce.id) ?? ''), voce.id).toContain(voce.testo);
+    }
+  });
+
+  it('la selezione ha i filtri, il messaggio del filtro vuoto e un articolo filtrabile per voce', () => {
+    expect(tagCon('[a-z]+', 'data-filtri').map((t) => valore(t, 'data-filtri'))).toEqual([
+      'selezione',
+    ]);
+    const filtri = tagCon('button', 'data-filtro');
+    expect(filtri.map((t) => valore(t, 'data-filtro'))).toEqual([
+      'tutti',
+      ...categorie.map((c) => c.id),
+    ]);
+    expect(filtri.map((t) => valore(t, 'aria-pressed'))).toEqual([
+      'true',
+      ...categorie.map(() => 'false'),
+    ]);
+
+    const vuoto = tagCon('[a-z]+', 'data-filtro-vuoto');
+    expect(vuoto).toHaveLength(1);
+    expect(valore(vuoto[0]!, 'data-filtro-vuoto')).toBe('selezione');
+    expect(vuoto[0]).toMatch(/\shidden(?=[\s=>])/);
+
+    const voci = tagCon('[a-z]+', 'data-filtrabile');
+    expect(voci.map((t) => valore(t, 'data-filtrabile'))).toEqual(articoli.map(() => 'selezione'));
+    expect(voci.map((t) => valore(t, 'data-categorie'))).toEqual(
+      articoli.map((a) => a.categorie.join(' ')),
+    );
+  });
+
+  it('per ogni articolo, un link WhatsApp con il messaggio di disponibilità già scritto', () => {
+    for (const { nome } of articoli) {
+      const messaggio = `Buongiorno, ho visto sul sito «${nome}». È disponibile? Misura o colore: …`;
+      expect(html(), nome).toContain(
+        `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}"`,
+      );
+    }
+  });
+
+  it('lo stato del negozio porta gli orari della prova, e la tabella ha i sette giorni', () => {
+    const stati = tagCon('[a-z]+', 'data-stato-negozio');
+    expect(stati.length).toBeGreaterThan(0);
+    for (const tag of stati) {
+      expect(JSON.parse(valore(tag, 'data-orari') ?? '')).toEqual(ORARI_PROVA);
+    }
+    expect(
+      tagCon('[a-z]+', 'data-orario-giorno').map((t) => valore(t, 'data-orario-giorno')),
+    ).toEqual([...GIORNI]);
+  });
+
+  it('telefono, WhatsApp, Instagram e le sezioni sono link nel piè di pagina, anche senza JavaScript', () => {
+    const piede = /<footer\b[\s\S]*?<\/footer>/.exec(html())?.[0] ?? '';
+    expect(piede).toContain('href="tel:+393345205451"');
+    expect(piede).toMatch(/href="https:\/\/wa\.me\/393345205451(?:\?text=[^"]*)?"/);
+    expect(piede).toContain('href="https://www.instagram.com/almaliving.viaricasoli/"');
+    for (const ancora of ['#collezioni', '#diario', '#selezione', '#negozio']) {
+      expect(piede, ancora).toContain(`href="${ancora}"`);
+    }
+  });
+
+  it("solo la foto d'apertura si carica subito e con priorità alta", () => {
+    const immagini = [...html().matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
+    const prioritarie = immagini.filter((t) => /\sfetchpriority="high"/.test(t));
+    expect(prioritarie).toHaveLength(1);
+    expect(prioritarie[0]).toMatch(/\sloading="eager"/);
+    // Delle altre immagini, si caricano subito solo i loghi in alto.
+    const subito = immagini.filter(
+      (t) => !/\sloading="lazy"/.test(t) && !/\sfetchpriority=/.test(t),
+    );
+    for (const tag of subito) expect(tag).toMatch(/\salt="Alma Living"/);
   });
 });
 

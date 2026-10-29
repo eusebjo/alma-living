@@ -1,0 +1,416 @@
+---
+// Barra in alto (indirizzo, stato del negozio, telefono) e header fisso: sul
+// computer navigazione, logo e contatti; sul telefono "Menu", logo e WhatsApp,
+// con il menu a tendina (protocollo "Menu" dello script comune). Senza
+// JavaScript il menu resta chiuso: le sezioni sono anche nel piè di pagina.
+import { Image } from 'astro:assets';
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import logo from '../comune/logo/alma-nero.png';
+import Icona from './Icona.astro';
+import StatoNegozio from './StatoNegozio.astro';
+import { messaggi, sezioni } from './dati';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
+---
+
+<div class="barra">
+  <div class="barra-dentro">
+    <span class="barra-luogo">
+      <Icona nome="luogo" misura={16} />
+      <span>Via Ricasoli 51-53, Livorno<span class="barra-isola"> · isola pedonale del centro</span></span>
+    </span>
+    <p class="barra-stato">
+      <StatoNegozio orari={negozio.orari} chiaro /><span class="barra-via"> · Via Ricasoli</span>
+    </p>
+    <a class="barra-telefono" href={negozio.telefonoHref}>Telefono e WhatsApp {negozio.telefono}</a>
+  </div>
+</div>
+
+<header class="testata">
+  <div class="testata-dentro">
+    <button
+      type="button"
+      class="menu-apri"
+      data-menu-apri
+      aria-controls="menu-telefono"
+      aria-expanded="false"
+    >
+      <Icona nome="menu" misura={22} class="se-chiuso" />
+      <Icona nome="chiudi" misura={22} class="se-aperto" />
+      <span class="se-chiuso">Menu</span>
+      <span class="se-aperto">Chiudi</span>
+    </button>
+
+    <nav class="nav" aria-label="Sezioni della pagina">
+      {sezioni.map(({ nome, href }) => <a href={href}>{nome}</a>)}
+    </nav>
+
+    <a class="logo" href="#inizio" aria-label="Alma Living, torna all’inizio">
+      <Image
+        src={logo}
+        alt="Alma Living"
+        widths={[100, 140, 200, 280, 343]}
+        sizes="(min-width: 960px) 137px, 97px"
+        loading="eager"
+      />
+    </a>
+
+    <div class="contatti">
+      <a class="instagram" href={negozio.instagram.url} aria-label="Instagram di Alma Living">
+        <Icona nome="instagram" />
+      </a>
+      <a class="whatsapp" href={whatsapp}>
+        <Icona nome="whatsapp" />
+        <span class="whatsapp-testo">Scrivici su WhatsApp</span>
+      </a>
+    </div>
+  </div>
+
+  <nav id="menu-telefono" class="menu" data-menu hidden aria-label="Sezioni della pagina">
+    <div class="menu-dentro">
+      {sezioni.map(({ nome, href }) => <a class="menu-voce" href={href}>{nome}</a>)}
+      <div class="menu-negozio">
+        <p class="menu-stato"><StatoNegozio orari={negozio.orari} /></p>
+        <p class="menu-indirizzo">{negozio.indirizzo}</p>
+        <div class="menu-azioni">
+          <a class="pieno" href={whatsapp}><Icona nome="whatsapp" misura={18} />WhatsApp</a>
+          <a class="filo" href={negozio.telefonoHref}><Icona nome="telefono" misura={18} />Chiama</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<style>
+  /* --- Barra in alto --- */
+  .barra {
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .barra :focus-visible {
+    outline-color: var(--bianco);
+  }
+
+  .barra-dentro {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 6px 16px;
+    text-align: center;
+  }
+
+  .barra-luogo,
+  .barra-telefono {
+    display: none;
+  }
+
+  .barra-stato {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 960px) {
+    .barra {
+      font-size: 14px;
+    }
+
+    .barra-dentro {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 24px;
+      max-width: var(--larghezza);
+      min-height: 44px;
+      margin: 0 auto;
+      padding: 0 var(--margine);
+      text-align: left;
+    }
+
+    .barra-luogo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .barra-via {
+      display: none;
+    }
+
+    .barra-telefono {
+      display: inline-flex;
+      align-items: center;
+      justify-self: end;
+      min-height: 44px;
+      color: var(--bianco);
+      text-decoration: none;
+    }
+
+    .barra-telefono:hover {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+  }
+
+  @media (min-width: 960px) and (max-width: 1199px) {
+    .barra-isola {
+      display: none;
+    }
+  }
+
+  /* --- Header --- */
+  .testata {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bianco);
+    box-shadow: 0 1px 0 var(--linea-testata);
+  }
+
+  .testata-dentro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    max-width: var(--larghezza);
+    min-height: 64px;
+    margin: 0 auto;
+    padding: 0 12px;
+  }
+
+  .menu-apri {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 10px 0 6px;
+    border: 0;
+    border-radius: var(--pillola);
+    background: none;
+    color: var(--nero);
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  /* Le icone sono di Icona.astro: le loro classi vanno indicate con :global. */
+  .menu-apri[aria-expanded='true'] :global(.se-chiuso),
+  .menu-apri:not([aria-expanded='true']) :global(.se-aperto) {
+    display: none;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .logo {
+    display: block;
+    border-radius: 4px;
+  }
+
+  .logo :global(img) {
+    display: block;
+    width: auto;
+    height: 34px;
+  }
+
+  .contatti {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .instagram {
+    display: none;
+  }
+
+  .whatsapp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .whatsapp-testo {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .whatsapp:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  @media (min-width: 960px) {
+    .testata-dentro {
+      gap: 32px;
+      min-height: 88px;
+      padding: 0 var(--margine);
+    }
+
+    .menu-apri {
+      display: none;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: clamp(18px, 2vw, 30px);
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      color: var(--nero);
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      box-shadow: inset 0 -1px 0 transparent;
+      transition: box-shadow 200ms ease;
+    }
+
+    .nav a:hover {
+      box-shadow: inset 0 -1px 0 var(--nero);
+    }
+
+    .logo :global(img) {
+      height: 48px;
+    }
+
+    .instagram {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--bianco);
+      box-shadow: inset 0 0 0 1px var(--bordo);
+      color: var(--nero);
+      transition: background-color 200ms ease;
+    }
+
+    .instagram:hover {
+      background: var(--latte-sopra);
+    }
+
+    .whatsapp {
+      gap: 10px;
+      width: auto;
+      height: auto;
+      min-height: 46px;
+      padding: 0 22px 0 18px;
+      border-radius: var(--pillola);
+      white-space: nowrap;
+    }
+
+    .whatsapp-testo {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip-path: none;
+    }
+  }
+
+  /* --- Menu del telefono --- */
+  /* Con il telefono ruotato il menu può essere più alto dello schermo: scorre. */
+  .menu-dentro {
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 20px 24px;
+    border-top: 1px solid var(--linea);
+    background: var(--bianco);
+  }
+
+  .menu-voce {
+    display: flex;
+    align-items: center;
+    min-height: 60px;
+    border-bottom: 1px solid var(--linea);
+    color: var(--nero);
+    text-decoration: none;
+    font-family: var(--titoli);
+    font-size: 30px;
+    line-height: 1.1;
+  }
+
+  .menu-negozio {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: var(--raggio-telefono);
+    background: var(--latte);
+  }
+
+  .menu-stato {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .menu-indirizzo {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--grigio-testo);
+  }
+
+  .menu-azioni {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .menu-azioni a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    border-radius: var(--pillola);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .pieno {
+    background: var(--salvia-scura);
+    color: var(--bianco);
+  }
+
+  .filo {
+    box-shadow: inset 0 0 0 1px var(--nero);
+    color: var(--nero);
+  }
+
+  @media (min-width: 960px) {
+    /* Sul computer la navigazione è sempre visibile: il menu non serve. */
+    .menu-dentro {
+      display: none;
+    }
+  }
+</style>
