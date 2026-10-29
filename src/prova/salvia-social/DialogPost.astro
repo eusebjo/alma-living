@@ -387,6 +387,15 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
     background: var(--latte-sopra);
   }
 
+  /* --- Telefono ruotato: la foto quadrata a tutta larghezza spingerebbe la
+     didascalia molto sotto; resta quadrata, alta al più il 70% dello schermo. --- */
+  @media (orientation: landscape) and (max-height: 500px) and (max-width: 959px) {
+    .foto {
+      justify-self: center;
+      width: min(100%, 70dvh);
+    }
+  }
+
   /* --- Computer: foto a sinistra, testo a destra --- */
   @media (min-width: 960px) {
     .post[open] {
