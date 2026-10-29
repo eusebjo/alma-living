@@ -391,7 +391,6 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
   @media (min-width: 960px) {
     .post[open] {
       align-items: center;
-      padding: 40px 56px;
     }
 
     .scheda {
@@ -403,6 +402,9 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
       /* La foto è quadrata e larga 3/5: la scheda sta nello schermo anche in altezza. */
       width: min(1000px, calc(100vw - 112px), calc((100dvh - 80px) / 0.6));
       min-height: 0;
+      /* Lo spazio attorno sta sulla scheda: il dialog non ha riempimento, così
+         un clic fuori dalla scheda cade sul dialog e lo chiude. */
+      margin: 40px 56px;
       overflow: hidden;
       border-radius: var(--raggio-scheda);
       box-shadow: var(--ombra-dialog);

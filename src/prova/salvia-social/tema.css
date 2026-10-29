@@ -38,8 +38,11 @@
   --velo-foto: rgb(28 33 26 / 0.5);
   --velo-post: rgb(28 33 26 / 0.62);
   --velo-post-alto: rgb(28 33 26 / 0.12);
+  /* Veli delle storie: con 0,65 di nero il bianco fa circa 7:1 anche su una foto
+     bianca (serve almeno 0,54 per 4,5:1, 0,58 per la data in grigio chiaro). */
   --velo-storia: rgb(0 0 0 / 0.8);
-  --velo-storia-alto: rgb(0 0 0 / 0.5);
+  --velo-storia-alto: rgb(0 0 0 / 0.65);
+  --velo-storia-testo: rgb(0 0 0 / 0.65);
   --contatore-foto: rgb(28 33 26 / 0.72);
   --linea-chiara: rgb(255 255 255 / 0.2);
   --barra-storia: rgb(255 255 255 / 0.38);
@@ -88,7 +91,6 @@
   --h2: clamp(34px, 2.1vw + 26px, 56px);
   --occhiello: 12px;
   --testo-sezione: 16px;
-  --ancora: 72px;
 
   margin: 0;
   background: var(--bianco);
@@ -104,7 +106,22 @@
   [data-variante='salvia-social'] {
     --occhiello: 13px;
     --testo-sezione: 17px;
-    --ancora: 96px;
+  }
+}
+
+/* Barre fisse: l'header in alto (64 px sul telefono, 88 sul computer) e, sul
+   telefono, la barra dei contatti in basso (72 px). Lo scorrimento della pagina,
+   sia verso un'ancora sia verso un elemento che riceve il focus da tastiera,
+   lascia loro posto (più 8 px), così nulla resta coperto (WCAG 2.2, 2.4.11). */
+html:has(> body[data-variante='salvia-social']) {
+  scroll-padding-top: 72px;
+  scroll-padding-bottom: 80px;
+}
+
+@media (min-width: 960px) {
+  html:has(> body[data-variante='salvia-social']) {
+    scroll-padding-top: 96px;
+    scroll-padding-bottom: 0;
   }
 }
 

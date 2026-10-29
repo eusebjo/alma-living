@@ -181,6 +181,11 @@ const { storie, etichetta, negozio } = Astro.props;
     list-style: none;
   }
 
+  /* Ogni foto è un livello a sé: sopra l'immagine i veli, sopra i veli la frase. */
+  .foto {
+    isolation: isolate;
+  }
+
   .foto :global(img) {
     position: absolute;
     inset: 0;
@@ -189,20 +194,31 @@ const { storie, etichetta, negozio } = Astro.props;
     object-fit: cover;
   }
 
-  /* Velature in alto (per la testata) e in basso (per la frase e le azioni). */
+  /* Velature in alto (per la testata) e in basso (per la frase e le azioni).
+     Il velo in alto viene prima dell'immagine nel markup: senza z-index
+     finirebbe sotto la foto. */
   .foto::before,
   .foto::after {
     content: '';
     position: absolute;
+    z-index: 1;
     left: 0;
     right: 0;
     pointer-events: none;
   }
 
+  /* In alto il velo è pieno sotto la testata (nome, data e comandi stanno nei
+     primi 68 px) e sfuma dopo: il testo resta leggibile (almeno 4,5:1) anche
+     su una foto bianca. */
   .foto::before {
     top: 0;
-    height: 160px;
-    background: linear-gradient(to bottom, var(--velo-storia-alto), transparent);
+    height: 180px;
+    background: linear-gradient(
+      to bottom,
+      var(--velo-storia-alto) 0,
+      var(--velo-storia-alto) 80px,
+      transparent
+    );
   }
 
   .foto::after {
@@ -213,7 +229,7 @@ const { storie, etichetta, negozio } = Astro.props;
 
   .frase {
     position: absolute;
-    z-index: 1;
+    z-index: 2;
     left: 20px;
     right: 20px;
     bottom: 146px;
@@ -223,6 +239,17 @@ const { storie, etichetta, negozio } = Astro.props;
     line-height: 1.45;
     text-wrap: pretty;
     overflow-wrap: anywhere;
+  }
+
+  /* Sotto la frase, qualunque sia la sua lunghezza, un velo pieno che sfuma
+     verso l'alto: con il velo in basso fa almeno 4,5:1 anche su una foto bianca. */
+  .frase::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -96px -20px -18px;
+    background: linear-gradient(to bottom, transparent, var(--velo-storia-testo) 96px);
+    pointer-events: none;
   }
 
   /* --- Barre d'avanzamento: lo script scrive --avanzamento (da 0 a 1) --- */
