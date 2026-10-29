@@ -21,4 +21,10 @@ describe('includiInSitemap', () => {
   it('il pannello è escluso anche se il sito sta in una sottocartella', () => {
     expect(includiInSitemap('https://x.dev/base/admin/')).toBe(false);
   });
+
+  it('esclude le pagine di prova, per segmento', () => {
+    expect(includiInSitemap('https://x.dev/prova/')).toBe(false);
+    expect(includiInSitemap('https://x.dev/prova/salvia-social/')).toBe(false);
+    expect(includiInSitemap('https://x.dev/provare/')).toBe(true);
+  });
 });

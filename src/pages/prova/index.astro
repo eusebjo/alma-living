@@ -1,0 +1,75 @@
+---
+import LayoutProva from '../../prova/comune/LayoutProva.astro';
+import { VARIANTI } from '../../prova/varianti';
+---
+
+<LayoutProva
+  title="Varianti di prova | Alma Living"
+  description="Le tre varianti di design del sito di Alma Living, in prova."
+  caratteri={[]}
+>
+  <main>
+    <h1>Varianti di prova</h1>
+    <p>
+      Tre proposte di design del sito di Alma Living, da provare su telefono e
+      computer. Pagine di lavoro: non sono indicizzate dai motori di ricerca.
+    </p>
+    <ul>
+      {
+        VARIANTI.map(({ id, nome, descrizione }) => (
+          <li>
+            <a href={`/prova/${id}/`}>{nome}</a>
+            <p>{descrizione}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </main>
+</LayoutProva>
+
+<style>
+  main {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+    font-family:
+      system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+      sans-serif;
+    line-height: 1.5;
+    color: #1a1a1a;
+  }
+
+  ul {
+    list-style: none;
+    margin: 2rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  li {
+    border: 1px solid #d9d9d9;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+  }
+
+  li a {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  li a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  li a:focus-visible {
+    outline: 3px solid #1a1a1a;
+    outline-offset: 3px;
+  }
+
+  li p {
+    margin: 0.25rem 0 0;
+    color: #4a4a4a;
+  }
+</style>

@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CARATTERI_PER_VARIANTE } from '../src/prova/comune/caratteri';
+import { VARIANTI } from '../src/prova/varianti';
 
 // La configurazione di Astro legge le variabili d'ambiente quando viene
 // caricata: per provarla con valori diversi la si reimporta ogni volta.
@@ -62,5 +64,37 @@ describe('astro.config: site e sitemap', { timeout: 30_000 }, () => {
   it('build locale: nessuna sitemap', async () => {
     const config = await caricaConfig({});
     expect(nomiIntegrazioni(config)).toEqual([]);
+  });
+});
+
+describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
+  it('dichiara i caratteri della prova, dal provider Google', async () => {
+    const config = await caricaConfig({});
+    const nomi = (config.fonts ?? []).map((f: { name: string }) => f.name);
+    expect(nomi).toEqual(
+      expect.arrayContaining([
+        'Libre Caslon Display',
+        'Libre Caslon Text',
+        'Instrument Sans',
+        'Beth Ellen',
+        'DM Serif Display',
+        'Plus Jakarta Sans',
+      ]),
+    );
+  });
+
+  it('ogni variante ha i suoi caratteri, e sono tutti dichiarati', async () => {
+    const config = await caricaConfig({});
+    const dichiarati = (config.fonts ?? []).map(
+      (f: { cssVariable: string }) => f.cssVariable,
+    );
+    expect(Object.keys(CARATTERI_PER_VARIANTE).sort()).toEqual(
+      VARIANTI.map((variante) => variante.id).sort(),
+    );
+    for (const [id, variabili] of Object.entries(CARATTERI_PER_VARIANTE)) {
+      for (const variabile of variabili) {
+        expect(dichiarati, `${id}: ${variabile}`).toContain(variabile);
+      }
+    }
   });
 });

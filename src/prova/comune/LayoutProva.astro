@@ -1,0 +1,44 @@
+---
+// Pagina di una variante di prova (o dell'indice /prova/): sempre `noindex`,
+// con i soli caratteri che le servono. Gli stili, i colori e la struttura sono
+// della variante: qui non c'è nulla di grafico, solo `body { margin: 0 }`.
+import { Font } from 'astro:assets';
+import SeoHead from '../../components/SeoHead.astro';
+import type { VarianteId } from '../varianti';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Variabili CSS dei caratteri da caricare (`CARATTERI_PER_VARIANTE`). */
+  caratteri: string[];
+  /** Assente nella pagina indice /prova/. */
+  variante?: VarianteId;
+}
+
+const { title, description, caratteri, variante } = Astro.props;
+---
+
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <SeoHead title={title} description={description} noindex />
+    {
+      caratteri.map((cssVariable, indice) => (
+        // Solo il primo carattere si precarica: gli altri non bloccano la prima vista.
+        <Font cssVariable={cssVariable} preload={indice === 0} />
+      ))
+    }
+  </head>
+  <body data-variante={variante}>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  body {
+    margin: 0;
+  }
+</style>

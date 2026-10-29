@@ -6,9 +6,11 @@ import { buildStoreJsonLd, serializeJsonLd } from '../lib/schemaOrg';
 interface Props {
   title: string;
   description: string;
+  /** Pagina da tenere sempre fuori dai motori di ricerca, anche a sito lanciato. */
+  noindex?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, noindex = false } = Astro.props;
 
 const { siteUrl, indexable } = getSiteConfig(process.env);
 const canonical = absoluteUrl(siteUrl, Astro.url.pathname);
@@ -20,16 +22,18 @@ if (!negozioEntry) {
 const negozio = negozioEntry.data;
 
 // I dati strutturati vanno pubblicati solo a sito lanciato, su produzione:
-// prima descriverebbero un negozio che sul web non c'è ancora.
-const jsonLd = indexable
-  ? serializeJsonLd(buildStoreJsonLd(negozio, siteUrl))
-  : null;
+// prima descriverebbero un negozio che sul web non c'è ancora. Una pagina con
+// `noindex` non ne ha mai.
+const jsonLd =
+  indexable && !noindex
+    ? serializeJsonLd(buildStoreJsonLd(negozio, siteUrl))
+    : null;
 ---
 
 <title>{title}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
-{!indexable && <meta name="robots" content="noindex, nofollow" />}
+{(noindex || !indexable) && <meta name="robots" content="noindex, nofollow" />}
 
 <meta property="og:type" content="website" />
 <meta property="og:locale" content="it_IT" />

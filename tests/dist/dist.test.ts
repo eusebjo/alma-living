@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { VARIANTI } from '../../src/prova/varianti';
 
 // Questi test guardano la build locale (`npm run build` senza SITE_LAUNCHED né
 // WORKERS_CI_BRANCH), che non è indicizzabile: niente JSON-LD, niente sitemap,
@@ -255,3 +256,82 @@ describe('llms.txt', () => {
     expect(llms()).toMatch(/\]\(https?:\/\/[^)\s]+\/\):/);
   });
 });
+
+// Le pagine di prova (/prova/…) sono un lavoro a parte, in un ramo di sviluppo:
+// ogni pagina deve restare fuori dai motori di ricerca e dal resto del sito, e
+// non deve chiedere nulla a terzi (vedi spec "varianti di prova", §8 e §10).
+describe('pagine di prova (/prova/)', () => {
+  const CARTELLA_PROVA = join('dist', 'prova');
+  const pagineProva = pagine.filter((file) => file.startsWith(CARTELLA_PROVA + sep));
+  const leggi = (file: string) => readFileSync(file, 'utf8');
+
+  it('la pagina /prova/ esiste e ha un link per ogni variante', () => {
+    const indice = join(CARTELLA_PROVA, 'index.html');
+    expect(existsSync(indice)).toBe(true);
+    const html = leggi(indice);
+    expect(VARIANTI.length).toBeGreaterThan(0);
+    for (const { id } of VARIANTI) {
+      expect(html, id).toContain(`href="/prova/${id}/"`);
+    }
+  });
+
+  describe.each(pagineProva)('%s', (file) => {
+    const html = () => leggi(file);
+
+    it('è in italiano', () => {
+      expect(html()).toContain('<html lang="it"');
+    });
+
+    it('ha noindex e nessun JSON-LD', () => {
+      expect(html()).toContain('<meta name="robots" content="noindex, nofollow"');
+      expect(html()).not.toContain('application/ld+json');
+    });
+
+    it('ha esattamente un h1', () => {
+      expect(html().match(/<h1[\s>]/gi) ?? []).toHaveLength(1);
+    });
+
+    it('ogni immagine ha un alt, e una foto servita da /_astro/', () => {
+      for (const [tag] of html().matchAll(/<img\b[^>]*>/gi)) {
+        expect(tag, tag).toMatch(/\salt=/i);
+        const src = /\ssrc=["']?([^"'\s>]*)/i.exec(tag)?.[1];
+        if (src !== undefined) expect(src, tag).toMatch(/^\/_astro\//);
+      }
+    });
+  });
+
+  it('nessuna pagina di prova è in llms.txt', () => {
+    expect(readFileSync('dist/llms.txt', 'utf8')).not.toContain('/prova/');
+  });
+});
+
+// Astro scrive le regole @font-face dei caratteri in un <style> dentro ogni
+// pagina che usa il componente Font, e i file in /_astro/fonts/: qui si guarda
+// ovunque, non solo nei fogli di stile emessi (che il test del pannello copre).
+describe('caratteri: nessun indirizzo esterno, in nessuna pagina', () => {
+  function indirizziFontFace(testo: string): string[] {
+    return (testo.match(/@font-face\s*\{[^}]*\}/g) ?? []).flatMap((regola) =>
+      [...regola.matchAll(/url\(\s*["']?([^"')]*)/g)].map((m) => m[1]!),
+    );
+  }
+
+  const fogli = readdirSync(join('dist', '_astro'))
+    .filter((nome) => nome.endsWith('.css'))
+    .map((nome) => join('dist', '_astro', nome));
+
+  it('il controllo trova gli indirizzi di una regola @font-face', () => {
+    expect(
+      indirizziFontFace(
+        '@font-face{font-family:x;src:url("/_astro/fonts/a.woff2") format("woff2"),url(https://f.example/a.woff2)}',
+      ),
+    ).toEqual(['/_astro/fonts/a.woff2', 'https://f.example/a.woff2']);
+  });
+
+  it.each([...pagine, ...fogli])('%s: ogni @font-face punta a un file del sito', (file) => {
+    for (const indirizzo of indirizziFontFace(readFileSync(file, 'utf8'))) {
+      expect(indirizzo, indirizzo).toMatch(/^\/(?!\/)/);
+      expect(existsSync(join('dist', ...indirizzo.split('/'))), indirizzo).toBe(true);
+    }
+  });
+});
+
