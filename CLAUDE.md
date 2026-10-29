@@ -16,8 +16,8 @@ Node `>=22.22.0` (come richiede Astro), npm. Funziona su Windows (PowerShell e G
 | Comando | Cosa fa |
 |---|---|
 | `npm ci` | Installa le dipendenze dal lockfile |
-| `npm run dev` | Server di sviluppo su `http://localhost:4321` |
-| `npm run build` | Build statica in `dist/` |
+| `npm run dev` | Prepara le foto di prova (vedi "Prova delle varianti"), poi server di sviluppo su `http://localhost:4321` |
+| `npm run build` | Prepara le foto di prova, poi build statica in `dist/`; serve rete verso Google Fonts (vedi "Vincoli globali") |
 | `npm run preview` | Serve `dist/` in locale |
 | `npm test` | Test unitari e di contenuto (esclude `tests/dist`) |
 | `npm run test:dist` | Test sui file generati in `dist/`: da lanciare **dopo** `npm run build` |
@@ -100,6 +100,16 @@ Atteso in `dist/`: `index.html` con JSON-LD e senza `noindex`, `sitemap-index.xm
 
 Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LAUNCHED=true` su Cloudflare) lo decide eusebjo.
 
+## Prova delle varianti
+
+Il ramo `fase2/1-varianti` ospita le pagine di prova del design (spec: `docs/superpowers/specs/2026-10-29-varianti-di-prova-design.md`). Per decisione di eusebjo del 2026-10-30 si costruisce una sola variante, Salvia social. Le pagine sono `/prova/` (indice) e `/prova/salvia-social/`; il codice sta in `src/pages/prova/` e `src/prova/`, l'elenco delle varianti in `src/prova/varianti.ts`.
+
+- **Ramo e anteprima:** il lavoro resta su `fase2/1-varianti` (branch di sviluppo: solo gli admin lo toccano) e si guarda su `https://fase2-1-varianti-alma-living.sebjomuho.workers.dev/prova/`. Durante la prova il ramo non si unisce a `main`.
+- **Sempre `noindex`:** `LayoutProva` passa `noindex` a `SeoHead`, quindi le pagine `/prova/` non hanno mai indicizzazione né JSON-LD, anche in una build di lancio. Restano fuori dalla sitemap (`src/lib/sitemap.ts`) e da `llms.txt` (che elenca solo la collection `pagine`).
+- **Foto di prova:** non entrano mai in git (cartella di destinazione `src/prova/foto/` in `.gitignore`). `scripts/foto-prova/prepara.mjs` gira prima di `astro build` e di `astro dev` (vedi `package.json`) e, per ogni nome di `scripts/foto-prova/elenco.json`, usa la foto già presente in `src/prova/foto/`, altrimenti la copia da `foto/prova/` (cartella locale, esclusa da git con `.git/info/exclude`), altrimenti la scarica dal bucket R2 pubblico `alma-living-prova` (indirizzo base in `scripts/foto-prova/config.mjs`). Se una foto manca ovunque, la build si ferma. Per aggiornare una foto si elimina dalla cartella `src/prova/foto/` e si rilancia la preparazione.
+- **Caratteri:** vedi "Vincoli globali" (scaricati alla build, serviti da `/_astro/fonts`).
+- **Ogni modifica durante la prova** è un commit piccolo sul ramo, con gli stessi controlli di sempre (`npm test`, `npm run build`, `npm run test:dist`).
+
 ## Vincoli globali
 
 - Output Astro completamente statico: niente parti generate a ogni richiesta in fase 1.
@@ -108,7 +118,7 @@ Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LA
 - Sveltia CMS: versione esatta fissata in `package.json`, backend `github`, `publish_mode: editorial_workflow`, `publish: false` su ogni collection, trasformazioni delle foto in un riquadro di 2400 x 2400 px (larghezza e altezza massime insieme), `create: false` e `delete: false` sulla collection a cartella (`pagine`; le collection a file, come `negozio`, non hanno queste opzioni: i file si modificano soltanto). Il pannello è la pagina Astro `src/pages/admin/index.astro` (nessun layout del sito, `noindex`), che importa il pacchetto npm `@sveltia/cms` e chiama `CMS.init()`; la configurazione è `public/admin/config.yml`. Non si usa la build "CDN" (`dist/sveltia-cms.js`) né si copia nulla da `node_modules`: Vite impacchetta il pannello in `/_astro/`. `/admin/` non entra nella sitemap (`src/lib/sitemap.ts`).
 - Il pannello contatta solo questi host esterni: `api.github.com` (e gli indirizzi degli avatar di GitHub) per leggere e salvare i contenuti, `www.githubstatus.com` (stato del servizio, già dalla schermata di accesso, non si disattiva) e il Worker di autenticazione (`sveltia-cms-auth.sebjomuho.workers.dev`, vedi "Accesso al pannello"). Font, traduzioni, decoder delle immagini e librerie sono locali. Dopo un aggiornamento di `@sveltia/cms` si ricontrollano le richieste di rete di `/admin/` nel browser: `tests/dist` guarda gli indirizzi scritti nei file ma non può provare cosa il pacchetto carica a runtime.
 - Per provare il pannello sul computer: `npm run build` e `npm run preview`, poi `/admin/`. Con `npm run dev` funziona, ma la documentazione di Sveltia sconsiglia una pagina Astro perché il server di sviluppo la ricarica a ogni modifica di un file e un salvataggio con "Work with Local Repository" può restare a metà.
-- Nessun tracciamento. Nessuna risorsa da CDN di terzi sul sito. Sul pannello nessuna risorsa da CDN (jsDelivr, unpkg): vedi gli host elencati sopra. Font di sistema in fase 1.
+- Nessun tracciamento. Nessuna risorsa da CDN di terzi sul sito. Sul pannello nessuna risorsa da CDN (jsDelivr, unpkg): vedi gli host elencati sopra. Caratteri: quelli delle pagine di prova (`/prova/`) li scarica la build con la Fonts API di Astro (provider Google, dichiarati in `src/prova/comune/caratteri-config.ts`) e il sito li serve da `/_astro/fonts`, quindi ogni build (locale, di Cloudflare e delle anteprime) ha bisogno della rete verso Google Fonts, mentre a pagina aperta non parte nessuna richiesta a terzi. `caratteri-config.ts` importa `astro/config` e lo legge solo `astro.config.mjs`: le pagine usano `src/prova/comune/caratteri.ts`. Il resto del sito resta con i font di sistema.
 - Anteprime e sito pre-lancio con `noindex`; robots, sitemap e JSON-LD solo con `SITE_LAUNCHED=true` e build del ramo `main`.
 - Il testo delle pagine passa da `rehype-sanitize`: l'HTML grezzo scritto nei contenuti non finisce nella pagina. Subito dopo, `rimuoviImmaginiEsterne` (`src/lib/markdown.ts`) toglie ogni immagine il cui indirizzo ha uno schema (`https:`, `data:`...) o comincia con `//`: nessuna risorsa di terzi nel testo. Nel pannello il campo `body` ha `editor_components: []`, quindi non offre l'inserimento di immagini; i test in `tests/dist` cercano anche gli indirizzi senza schema (`//host`).
 - Messaggi verso la redattrice in italiano, senza gergo di Git (niente "branch", "commit", "merge").
@@ -124,6 +134,6 @@ src/content/            schemi Zod, limiti, negozio.json, pagine, immagini
 src/lib/                schemaOrg, robots, llms, markdown, sitemap
 src/components/         SeoHead (title, canonical, Open Graph, noindex, JSON-LD)
 src/layouts/            BaseLayout
-src/pages/              index, admin (pannello), robots.txt, llms.txt
+src/pages/              index, admin (pannello), prova (varianti di prova), robots.txt, llms.txt
 tests/                  test unitari; tests/dist sui file generati
 ```
