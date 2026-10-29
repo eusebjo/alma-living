@@ -17,7 +17,13 @@
     display: none !important;
   }
 
-  /* Con un dialog aperto (storia o post) la pagina dietro non scorre. */
+  /* Con un dialog aperto (storia o post) la pagina dietro non scorre. Lo spazio
+     della barra di scorrimento resta riservato: dove la barra occupa spazio
+     (Windows) la pagina non scatta di lato quando sparisce. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   html:has(dialog[open]) {
     overflow: hidden;
   }
