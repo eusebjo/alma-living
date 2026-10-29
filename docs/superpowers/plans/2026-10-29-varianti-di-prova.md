@@ -2,10 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** portare in Astro, sul ramo `fase2/1-varianti`, le tre varianti di design scelte (Salvia social, Salvia bianca, Cipria app). Ognuna è una pagina singola responsive sotto `/prova/`, da provare sull'anteprima Cloudflare del ramo.
+**Goal:** portare in Astro, sul ramo `fase2/1-varianti`, la variante di design Salvia social: una pagina singola responsive sotto `/prova/`, da provare sull'anteprima Cloudflare del ramo. (Aggiornato il 2026-10-30: in origine le varianti erano tre; Salvia bianca e Cipria app sono state annullate da eusebjo, vedi Task 6 e 7.)
 
 **Architecture:**
-- Le tre varianti condividono:
+- La parte comune (`src/prova/comune/`), pensata per più varianti e oggi usata dalla sola Salvia social (aggiornato il 2026-10-30), comprende:
   - una piccola logica pura e testata: orari e stato del negozio, link di contatto, navigazione di storie e gallerie, filtri;
   - un solo script del browser che dà vita al markup attraverso attributi `data-*` convenzionali;
   - un layout di prova sempre `noindex`.
@@ -44,7 +44,7 @@
   - tutto da tastiera con focus visibile; Esc chiude storie e post, che restituiscono il focus;
   - `prefers-reduced-motion` rispettato;
   - un solo `h1` per pagina, ogni `img` con `alt`.
-- **Prestazioni:** foto principale `loading="eager"` e `fetchpriority="high"` senza animazione d'ingresso, le altre `loading="lazy"`; JavaScript solo lo script comune e quello eventuale della variante.
+- **Prestazioni:** foto principale `loading="eager"` e `fetchpriority="high"` senza animazione d'ingresso, le altre `loading="lazy"` (aggiornato il 2026-10-30: le altre diapositive dell'apertura, nascoste fino al primo cambio, si caricano subito ma senza priorità); JavaScript solo lo script comune e quello eventuale della variante.
 - **Comandi:**
   - prima di ogni commit: `npm test`, `npm run build`, `npm run test:dist` verdi e senza avvisi;
   - script npm compatibili con Windows: niente `VAR=x comando`, gli script di build in Node puro (`.mjs`), non `tsx`.
@@ -470,6 +470,6 @@ git push -u origin fase2/1-varianti
 
 - [ ] **Step 5: verificare l'anteprima**
   - Attendere la build di Cloudflare del ramo; se fallisce, leggere il log e correggere.
-  - Aprire `https://fase2-1-varianti-alma-living.sebjomuho.workers.dev/prova/` nel browser integrato e verificare le tre varianti a 390 e 1440 px.
+  - Aprire `https://fase2-1-varianti-alma-living.sebjomuho.workers.dev/prova/` nel browser integrato e verificare Salvia social a 390 e 1440 px (aggiornato il 2026-10-30: è l'unica variante).
   - Controllare le richieste di rete: solo il proprio dominio. Controllare l'intestazione `X-Robots-Tag: noindex`.
 - [ ] **Step 6: consegnare a eusebjo** l'indirizzo dell'anteprima e l'elenco di cosa provare. Da qui si entra nel ciclo di prova della spec (§11): ogni cambio richiesto è un commit piccolo sul ramo, con gli stessi controlli.
