@@ -119,8 +119,10 @@ if (!storiaDiOggi) throw new Error('Manca la storia di oggi.');
                 />
                 {quante > 1 && <Icona nome="multi" class="multi" />}
                 <span class="velo">
-                  <span class="velo-rubrica">{voce.rubrica}</span>
-                  <span class="velo-data">{voce.data}</span>
+                  <span class="velo-testo">
+                    <span class="velo-rubrica">{voce.rubrica}</span>
+                    <span class="velo-data">{voce.data}</span>
+                  </span>
                 </span>
               </button>
             );
@@ -504,17 +506,37 @@ if (!storiaDiOggi) throw new Error('Manca la storia di oggi.');
 
   /* Al passaggio (o con il focus) la rubrica e la data del post. */
   .velo {
+    --velo-margine-x: 12px;
+    --velo-margine-y: 10px;
     position: absolute;
     inset: 0;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    align-items: flex-start;
-    gap: 2px;
-    padding: 10px 12px;
+    padding: var(--velo-margine-y) var(--velo-margine-x);
     background: linear-gradient(to top, var(--velo-post), var(--velo-post-alto));
     opacity: 0;
     transition: opacity 300ms ease;
+  }
+
+  .velo-testo {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  /* Sotto il testo, alto quanto serve (sul telefono rubrica e data possono
+     andare a capo), un secondo velo pieno che sfuma verso l'alto: la sfumatura
+     del riquadro da sola, a metà altezza, non basta per 4,5:1 su una foto chiara. */
+  .velo-testo::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -24px calc(-1 * var(--velo-margine-x)) calc(-1 * var(--velo-margine-y));
+    background: linear-gradient(to bottom, transparent, var(--velo-post-testo) 24px);
   }
 
   .velo-rubrica {
@@ -672,7 +694,8 @@ if (!storiaDiOggi) throw new Error('Manca la storia di oggi.');
     }
 
     .velo {
-      padding: 18px 20px;
+      --velo-margine-x: 20px;
+      --velo-margine-y: 18px;
     }
 
     .velo-data {

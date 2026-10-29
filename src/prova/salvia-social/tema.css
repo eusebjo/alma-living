@@ -38,6 +38,9 @@
   --velo-foto: rgb(28 33 26 / 0.5);
   --velo-post: rgb(28 33 26 / 0.62);
   --velo-post-alto: rgb(28 33 26 / 0.12);
+  /* Sotto rubrica e data di un post: sopra il velo del riquadro (almeno 0,12)
+     arriva ad almeno 0,62, cioè 4,6:1 per il bianco anche su una foto bianca. */
+  --velo-post-testo: rgb(28 33 26 / 0.57);
   /* Veli delle storie: con 0,65 di nero il bianco fa circa 7:1 anche su una foto
      bianca (serve almeno 0,54 per 4,5:1, 0,58 per la data in grigio chiaro). */
   --velo-storia: rgb(0 0 0 / 0.8);
