@@ -26,3 +26,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# foto di prova: si preparano alla build da foto/prova o dal bucket R2
+/src/prova/foto/

@@ -7,8 +7,8 @@
     "node": ">=22.22.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "node scripts/foto-prova/prepara.mjs && astro dev",
+    "build": "node scripts/foto-prova/prepara.mjs && astro build",
     "preview": "astro preview",
     "astro": "astro",
     "test": "vitest run",
