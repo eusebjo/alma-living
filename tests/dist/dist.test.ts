@@ -257,6 +257,105 @@ describe('llms.txt', () => {
   });
 });
 
+/**
+ * Valori dell'attributo `attributo` nei tag `<tag …>` di `html` (in tutti i tag
+ * se `tag` manca).
+ */
+function valoriAttributo(html: string, attributo: string, tag = '[a-z][a-z0-9-]*'): string[] {
+  const valori: string[] = [];
+  for (const [elemento] of html.matchAll(new RegExp(`<${tag}\\b[^>]*>`, 'gi'))) {
+    const valore = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(elemento)?.[1];
+    if (valore !== undefined) valori.push(valore);
+  }
+  return valori;
+}
+
+/**
+ * Rimandi dei protocolli di markup (`src/prova/comune/interazioni.ts`) che non
+ * hanno la destinazione: un messaggio per ogni valore, anche se il rimando si
+ * ripete. Lo script non può segnalarli (sta zitto), quindi li cerca la build.
+ */
+function incoerenzeProtocolli(html: string): string[] {
+  const problemi = new Set<string>();
+  const manca = (attributo: string, valore: string, serve: string) =>
+    problemi.add(`${attributo}="${valore}" senza ${serve}="${valore}"`);
+
+  const destinazioni = (attributo: string, tag?: string) =>
+    new Set(valoriAttributo(html, attributo, tag));
+
+  const dialogPost = destinazioni('data-post', 'dialog');
+  for (const valore of valoriAttributo(html, 'data-post-apri')) {
+    if (!dialogPost.has(valore)) manca('data-post-apri', valore, 'dialog data-post');
+  }
+  const gruppi = destinazioni('data-storia-gruppo');
+  for (const valore of valoriAttributo(html, 'data-storia-apri')) {
+    if (!gruppi.has(valore)) manca('data-storia-apri', valore, 'data-storia-gruppo');
+  }
+  const pannelli = destinazioni('data-chiedi-pannello');
+  for (const valore of valoriAttributo(html, 'data-chiedi')) {
+    if (!pannelli.has(valore)) manca('data-chiedi', valore, 'data-chiedi-pannello');
+  }
+  const contenitori = destinazioni('data-filtri');
+  const vuoti = destinazioni('data-filtro-vuoto');
+  for (const valore of valoriAttributo(html, 'data-filtrabile')) {
+    if (!contenitori.has(valore)) manca('data-filtrabile', valore, 'data-filtri');
+    if (!vuoti.has(valore)) manca('data-filtrabile', valore, 'data-filtro-vuoto');
+  }
+  return [...problemi];
+}
+
+describe('controllo dei rimandi tra i protocolli di markup', () => {
+  it.each([
+    '<button data-post-apri="x">Apri</button>',
+    '<button data-post-apri="x">Apri</button><dialog data-post="y"></dialog>',
+    // la destinazione di un post deve essere un dialog, non un elemento qualunque
+    '<button data-post-apri="x">Apri</button><div data-post="x"></div>',
+    '<button data-storia-apri="arrivi">Arrivi</button>',
+    '<button data-storia-apri="a"></button><section data-storia-gruppo="b"></section>',
+    '<button data-chiedi="lenzuola">Chiedi</button>',
+    '<button data-chiedi="a"></button><div data-chiedi-pannello="b" hidden></div>',
+    '<li data-filtrabile="selezione" data-categorie="letto">Lenzuola</li>',
+  ])('segnala %s', (frammento) => {
+    expect(incoerenzeProtocolli(`<p>testo</p>${frammento}`).length).toBeGreaterThan(0);
+  });
+
+  it('per le voci filtrabili chiede sia il contenitore dei filtri sia il messaggio "nessuna voce"', () => {
+    const voce = '<li data-filtrabile="n" data-categorie="a">x</li>';
+    const filtri = '<div data-filtri="n"><button data-filtro="a">A</button></div>';
+    const vuoto = '<p data-filtro-vuoto="n" hidden>Nessuna voce</p>';
+    expect(incoerenzeProtocolli(voce)).toHaveLength(2);
+    expect(incoerenzeProtocolli(voce + filtri)).toHaveLength(1);
+    expect(incoerenzeProtocolli(voce + vuoto)).toHaveLength(1);
+    expect(incoerenzeProtocolli(voce + filtri + vuoto)).toEqual([]);
+  });
+
+  it('un messaggio per valore, anche se il rimando si ripete, e dice quale manca', () => {
+    const doppio = '<button data-post-apri="x"></button><button data-post-apri="x"></button>';
+    expect(incoerenzeProtocolli(doppio)).toEqual(['data-post-apri="x" senza dialog data-post="x"']);
+  });
+
+  it.each([
+    '<p>niente da collegare</p>',
+    '<button data-post-apri="x">Apri</button><dialog data-post="x"><p>Post</p></dialog>',
+    // più pulsanti per lo stesso dialog, attributi in qualunque ordine e senza virgolette
+    '<button data-post-apri=x></button><button class="b" data-post-apri="x"></button>' +
+      '<dialog class="post" open data-post=x></dialog>',
+    '<button data-storia-apri="arrivi">Arrivi</button>' +
+      '<dialog data-storie><section data-storia-gruppo="arrivi"></section></dialog>',
+    '<button data-chiedi="lenzuola" aria-expanded="false">Chiedi</button>' +
+      '<div data-chiedi-pannello="lenzuola" hidden></div>',
+    // un pulsante dentro il pannello può usare lo stesso data-chiedi per chiuderlo
+    '<button data-chiedi="a"></button><div data-chiedi-pannello="a"><button data-chiedi="a"></button></div>',
+    '<div data-filtri="selezione"><button data-filtro="tutti" aria-pressed="true">Tutti</button></div>' +
+      '<ul><li data-filtrabile="selezione" data-categorie="letto bagno">x</li></ul>' +
+      '<p data-filtro-vuoto="selezione" hidden>Nessun articolo</p>',
+    // data-filtro (il pulsante) e data-post (il dialog) da soli non sono rimandi
+    '<button data-filtro="letto">Letto</button><dialog data-post="x"></dialog>',
+  ])('non segnala %s', (frammento) => {
+    expect(incoerenzeProtocolli(frammento)).toEqual([]);
+  });
+});
+
 // Le pagine di prova (/prova/…) sono un lavoro a parte, in un ramo di sviluppo:
 // ogni pagina deve restare fuori dai motori di ricerca e dal resto del sito, e
 // non deve chiedere nulla a terzi (vedi spec "varianti di prova", §8 e §10).
@@ -297,6 +396,10 @@ describe('pagine di prova (/prova/)', () => {
         const src = /\ssrc=["']?([^"'\s>]*)/i.exec(tag)?.[1];
         if (src !== undefined) expect(src, tag).toMatch(/^\/_astro\//);
       }
+    });
+
+    it('ogni rimando dei protocolli di markup ha la sua destinazione', () => {
+      expect(incoerenzeProtocolli(html())).toEqual([]);
     });
   });
 
