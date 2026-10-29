@@ -24,7 +24,10 @@
 //   (`aria-pressed`; `tutti` non filtra); voci `[data-filtrabile="<nome>"]` con
 //   `data-categorie="a b"`; `[data-filtro-vuoto="<nome>"]` si vede solo con zero
 //   voci. Un filtro diverso da `tutti` mostra anche le voci piegate da "Mostra
-//   altri" e ne nasconde il pulsante.
+//   altri" e ne nasconde il pulsante. Da fuori dei filtri, un link
+//   `a[href="#<sezione>"][data-filtro-scegli="<nome>:<id>"]` preme il pulsante
+//   `[data-filtri="<nome>"] [data-filtro="<id>"]` come un clic e lascia andare il
+//   link alla sezione (senza JavaScript ci porta e basta).
 // - Chiedi: `button[data-chiedi="<id>"]` (`aria-expanded`) mostra o nasconde
 //   `[data-chiedi-pannello="<id>"]`. Altri pulsanti con lo stesso `<id>`, anche
 //   dentro il pannello, fanno lo stesso. Esc lo chiude.
@@ -241,6 +244,20 @@ function scegliFiltro(c: Contesto, bottone: HTMLElement): void {
   );
   for (const binario of binari) binario?.scrollTo({ left: 0 });
   aggiornaCaroselli(c);
+}
+
+/** Un link `data-filtro-scegli="<nome>:<id>"`: preme quel filtro; il link poi fa il suo. */
+function scegliFiltroDaLink(c: Contesto, link: HTMLElement): void {
+  const valore = link.dataset.filtroScegli ?? '';
+  const due = valore.indexOf(':');
+  if (due < 0) return;
+  const contenitore = c.radice.querySelector<HTMLElement>(
+    conValore('data-filtri', valore.slice(0, due)),
+  );
+  const bottone = contenitore?.querySelector<HTMLElement>(
+    conValore('data-filtro', valore.slice(due + 1)),
+  );
+  if (bottone) scegliFiltro(c, bottone);
 }
 
 function mostraAltri(c: Contesto, bottone: HTMLElement): void {
@@ -481,6 +498,8 @@ const AZIONI: [selettore: string, azione: (c: Contesto, el: HTMLElement) => void
   ],
   [APRITORI, alternaPannello],
   ['[data-filtro]', scegliFiltro],
+  // Niente preventDefault: il link porta comunque alla sua sezione.
+  ['[data-filtro-scegli]', scegliFiltroDaLink],
   ['[data-mostra-altri]', mostraAltri],
   ['[data-galleria-prec]', (_c, el) => spostaGalleria(el, -1)],
   ['[data-galleria-succ]', (_c, el) => spostaGalleria(el, 1)],

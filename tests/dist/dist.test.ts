@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
 import { ORARI_PROVA } from '../../src/prova/comune/orari';
 import {
+  altreCollezioni,
   articoli,
   categorie,
+  collezioni,
   post,
   POST_VISIBILI,
   storie,
@@ -311,7 +313,49 @@ function incoerenzeProtocolli(html: string): string[] {
     if (!contenitori.has(valore)) manca('data-filtrabile', valore, 'data-filtri');
     if (!vuoti.has(valore)) manca('data-filtrabile', valore, 'data-filtro-vuoto');
   }
+  // Un link `data-filtro-scegli="<nome>:<id>"` preme il filtro `<id>` che sta
+  // dentro `[data-filtri="<nome>"]`.
+  for (const valore of valoriAttributo(html, 'data-filtro-scegli')) {
+    const due = valore.indexOf(':');
+    const nome = due < 0 ? '' : valore.slice(0, due);
+    const filtro = due < 0 ? '' : valore.slice(due + 1);
+    const presente = contenutiCon(html, 'data-filtri', nome).some((contenuto) =>
+      valoriAttributo(contenuto, 'data-filtro').includes(filtro),
+    );
+    if (!presente) {
+      problemi.add(
+        `data-filtro-scegli="${valore}" senza [data-filtri="${nome}"] con data-filtro="${filtro}"`,
+      );
+    }
+  }
   return [...problemi];
+}
+
+/**
+ * Il contenuto (fino al tag di chiusura corrispondente) di ogni elemento di
+ * `html` con `attributo="valore"`.
+ */
+function contenutiCon(html: string, attributo: string, valore: string): string[] {
+  const contenuti: string[] = [];
+  for (const apertura of html.matchAll(/<([a-z][a-z0-9-]*)\b[^>]*>/gi)) {
+    const trovato = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(apertura[0])?.[1];
+    if (trovato !== valore) continue;
+    const tag = apertura[1]!;
+    const inizio = apertura.index + apertura[0].length;
+    const tagStesso = new RegExp(`<(/?)${tag}\\b[^>]*>`, 'gi');
+    tagStesso.lastIndex = inizio;
+    let profondita = 1;
+    let fine = html.length;
+    for (let m = tagStesso.exec(html); m; m = tagStesso.exec(html)) {
+      profondita += m[1] ? -1 : 1;
+      if (profondita === 0) {
+        fine = m.index;
+        break;
+      }
+    }
+    contenuti.push(html.slice(inizio, fine));
+  }
+  return contenuti;
 }
 
 describe('controllo dei rimandi tra i protocolli di markup', () => {
@@ -325,6 +369,16 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<button data-chiedi="lenzuola">Chiedi</button>',
     '<button data-chiedi="a"></button><div data-chiedi-pannello="b" hidden></div>',
     '<li data-filtrabile="selezione" data-categorie="letto">Lenzuola</li>',
+    // un link che sceglie un filtro vuole il contenitore e, dentro, quel filtro
+    '<a href="#s" data-filtro-scegli="selezione:letto">Letto</a>',
+    '<a href="#s" data-filtro-scegli="selezione:letto"></a>' +
+      '<div data-filtri="selezione"><button data-filtro="bagno">Bagno</button></div>',
+    '<a href="#s" data-filtro-scegli="altri:letto"></a>' +
+      '<div data-filtri="selezione"><button data-filtro="letto">Letto</button></div>',
+    '<a href="#s" data-filtro-scegli="selezione:letto"></a><div data-filtri="selezione"></div>' +
+      '<button data-filtro="letto">Letto</button>',
+    '<a href="#s" data-filtro-scegli="letto"></a>' +
+      '<div data-filtri="letto"><button data-filtro="letto">Letto</button></div>',
   ])('segnala %s', (frammento) => {
     expect(incoerenzeProtocolli(`<p>testo</p>${frammento}`).length).toBeGreaterThan(0);
   });
@@ -361,6 +415,10 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
       '<p data-filtro-vuoto="selezione" hidden>Nessun articolo</p>',
     // data-filtro (il pulsante) e data-post (il dialog) da soli non sono rimandi
     '<button data-filtro="letto">Letto</button><dialog data-post="x"></dialog>',
+    // il filtro scelto dal link sta dentro il suo contenitore, anche dopo altri elementi
+    '<a href="#s" data-filtro-scegli="selezione:letto">Letto</a>' +
+      '<div data-filtri="selezione"><button data-filtro="tutti">Tutto</button>' +
+      '<div><span>x</span></div><button class="f" data-filtro=letto>Letto</button></div>',
   ])('non segnala %s', (frammento) => {
     expect(incoerenzeProtocolli(frammento)).toEqual([]);
   });
@@ -587,6 +645,14 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(voci.map((t) => valore(t, 'data-categorie'))).toEqual(
       articoli.map((a) => a.categorie.join(' ')),
     );
+  });
+
+  it('i riquadri delle collezioni e le pillole scelgono il loro filtro e portano alla selezione', () => {
+    const link = tagCon('a', 'data-filtro-scegli');
+    expect(link.map((t) => valore(t, 'data-filtro-scegli'))).toEqual(
+      [...collezioni, ...altreCollezioni].map((c) => `selezione:${c.id}`),
+    );
+    for (const tag of link) expect(valore(tag, 'href')).toBe('#selezione');
   });
 
   it('per ogni articolo, un link WhatsApp con il messaggio di disponibilità già scritto', () => {

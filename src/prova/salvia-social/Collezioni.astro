@@ -1,7 +1,8 @@
 ---
 // Le collezioni per stanza: quattro riquadri di misure diverse (sul computer
 // una griglia a 12 colonne, sul telefono a 2) e le pillole "In negozio trovi
-// anche". Portano alla selezione.
+// anche". Portano alla selezione già filtrata sulla loro collezione
+// (`data-filtro-scegli`, protocollo "Filtri" dello script comune).
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
 import { altreCollezioni, collezioni } from './dati';
@@ -31,7 +32,7 @@ const MISURE = [
     {
       collezioni.map((stanza, i) => (
         <li class="riquadro">
-          <a class="stanza" href="#selezione">
+          <a class="stanza" href="#selezione" data-filtro-scegli={`selezione:${stanza.id}`}>
             <Foto
               scatto={stanza}
               larghezze={[300, 450, 600, 800, 1000]}
@@ -58,7 +59,7 @@ const MISURE = [
       {
         altreCollezioni.map((altra) => (
           <li>
-            <a class="pillola" href="#selezione">
+            <a class="pillola" href="#selezione" data-filtro-scegli={`selezione:${altra.id}`}>
               <Foto scatto={altra} alt="" larghezze={[80]} sizes="40px" />
               {altra.nome}
             </a>
