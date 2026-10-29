@@ -13,10 +13,4 @@ export const CARATTERI_PER_VARIANTE: Record<VarianteId, string[]> = {
     '--font-instrument-sans',
     '--font-beth-ellen',
   ],
-  'salvia-bianca': [
-    '--font-dm-serif-display',
-    '--font-instrument-sans',
-    '--font-beth-ellen',
-  ],
-  'cipria-app': ['--font-plus-jakarta-sans'],
 };

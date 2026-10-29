@@ -5,6 +5,8 @@
 - **Ambito:** portare in codice, dentro l'architettura esistente, le tre varianti di design scelte da eusebjo, per provarle e correggerle finché una convince. La messa in produzione della variante scelta è un passo successivo con un suo documento (§12).
 - **Riferimenti:** architettura in `docs/superpowers/specs/2026-10-19-architettura-alma-living-design.md`; regole di sviluppo in `CLAUDE.md`.
 
+**Aggiornamento del 2026-10-30:** su decisione di eusebjo si costruisce solo la variante Salvia social; Salvia bianca e Cipria app non si realizzano. Il resto del documento vale per Salvia social.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:

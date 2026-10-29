@@ -442,6 +442,15 @@ describe('pagine di prova (/prova/)', () => {
     }
   });
 
+  it('la pagina /prova/ non ha link a varianti che non sono in VARIANTI', () => {
+    const html = leggi(join(CARTELLA_PROVA, 'index.html'));
+    const attesi = VARIANTI.map(({ id }) => `/prova/${id}/`).sort();
+    const trovati = [...html.matchAll(/href="(\/prova\/[^"]*)"/g)]
+      .map((m) => m[1]!)
+      .sort();
+    expect(trovati).toEqual(attesi);
+  });
+
   describe.each(pagineProva)('%s', (file) => {
     const html = () => leggi(file);
 

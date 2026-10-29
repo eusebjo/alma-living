@@ -20,7 +20,7 @@
 
 - **Ramo e indirizzi:**
   - si lavora solo sul ramo `fase2/1-varianti`, creato da `main`; nessuna unione in `main` durante la prova; anteprima `https://fase2-1-varianti-alma-living.sebjomuho.workers.dev`;
-  - pagine: `/prova/`, `/prova/salvia-social/`, `/prova/salvia-bianca/`, `/prova/cipria-app/`;
+  - pagine: `/prova/` e `/prova/salvia-social/`;
   - home `/` e pannello `/admin/` invariati.
 - **Indicizzazione:** le pagine `/prova/` hanno sempre `<meta name="robots" content="noindex, nofollow">`, nessun JSON-LD e restano fuori da sitemap e `llms.txt`.
 - **Risorse esterne:** nessuna a pagina aperta (script, immagini, fogli di stile, `@font-face`); niente iframe, niente feed di Instagram, niente mappa di Google; Instagram, mappe e WhatsApp solo come link.
@@ -408,6 +408,8 @@ Comportamenti comuni:
 
 ### Task 6: variante Salvia bianca
 
+**Annullato il 2026-10-30** su decisione di eusebjo: si costruisce solo Salvia social.
+
 Come Task 5, con la tavola `SalviaBianca.dc.html`, la cartella `src/prova/salvia-bianca/` e la pagina `src/pages/prova/salvia-bianca/index.astro`.
 
 **Interfaces:**
@@ -425,6 +427,8 @@ Come Task 5, con la tavola `SalviaBianca.dc.html`, la cartella `src/prova/salvia
 ---
 
 ### Task 7: variante Cipria app
+
+**Annullato il 2026-10-30** su decisione di eusebjo: si costruisce solo Salvia social.
 
 Come Task 5, con la tavola `CipriaApp.dc.html`, la cartella `src/prova/cipria-app/` e la pagina `src/pages/prova/cipria-app/index.astro`.
 

@@ -71,15 +71,15 @@ describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
   it('dichiara i caratteri della prova, dal provider Google', async () => {
     const config = await caricaConfig({});
     const nomi = (config.fonts ?? []).map((f: { name: string }) => f.name);
-    expect(nomi).toEqual(
-      expect.arrayContaining([
+    // Elenco esatto: un carattere in più sarebbe scaricato a ogni build senza
+    // che nessuna pagina lo usi (come i due delle varianti annullate).
+    expect([...nomi].sort()).toEqual(
+      [
         'Libre Caslon Display',
         'Libre Caslon Text',
         'Instrument Sans',
         'Beth Ellen',
-        'DM Serif Display',
-        'Plus Jakarta Sans',
-      ]),
+      ].sort(),
     );
   });
 
@@ -95,6 +95,17 @@ describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
       for (const variabile of variabili) {
         expect(dichiarati, `${id}: ${variabile}`).toContain(variabile);
       }
+    }
+  });
+
+  it('ogni carattere dichiarato è usato da almeno una variante', async () => {
+    const config = await caricaConfig({});
+    const dichiarati = (config.fonts ?? []).map(
+      (f: { cssVariable: string }) => f.cssVariable,
+    );
+    const usati = new Set(Object.values(CARATTERI_PER_VARIANTE).flat());
+    for (const variabile of dichiarati) {
+      expect(usati, variabile).toContain(variabile);
     }
   });
 });

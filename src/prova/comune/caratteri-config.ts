@@ -46,22 +46,4 @@ export const CARATTERI_PROVA: NonNullable<AstroUserConfig['fonts']> = [
     styles: ['normal'],
     subsets: ['latin'],
   },
-  {
-    provider: google,
-    name: 'DM Serif Display',
-    cssVariable: '--font-dm-serif-display',
-    fallbacks: ['serif'],
-    weights: [400],
-    styles: ['normal', 'italic'],
-    subsets: ['latin'],
-  },
-  {
-    provider: google,
-    name: 'Plus Jakarta Sans',
-    cssVariable: '--font-plus-jakarta-sans',
-    // Carattere variabile: un solo file per l'intero intervallo di pesi.
-    weights: ['400 700'],
-    styles: ['normal'],
-    subsets: ['latin'],
-  },
 ];
