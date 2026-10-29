@@ -11,5 +11,5 @@ export const FOTO_PROVA_BASE = 'https://pub-02e2834056a84517a87c5431c6904c14.r2.
 // legge le foto che Astro ottimizza.
 export const FOTO_PROVA_DESTINAZIONE = 'src/prova/foto';
 
-// Cartella locale con gli originali, anch'essa fuori da git (`.git/info/exclude`).
+// Cartella locale con gli originali, anch'essa fuori da git (`.gitignore`).
 export const FOTO_PROVA_LOCALE = 'foto/prova';
