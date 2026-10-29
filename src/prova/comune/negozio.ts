@@ -9,6 +9,13 @@ export interface DatiNegozio {
   nome: string;
   /** Su una riga: "Via Ricasoli 51-53, 57125 Livorno". */
   indirizzo: string;
+  /** Su una riga, senza CAP: "Via Ricasoli 51-53, Livorno". */
+  indirizzoBreve: string;
+  /** Le parti dell'indirizzo, per gli altri formati: "Via Ricasoli", "51-53", "57125", "Livorno". */
+  via: string;
+  civico: string;
+  cap: string;
+  citta: string;
   telefono: string;
   telefonoHref: string;
   /** Link `https://wa.me/<numero>`: per il messaggio già scritto vedi `linkWhatsApp`. */
@@ -31,6 +38,11 @@ export function datiNegozio(negozio: Negozio): DatiNegozio {
   return {
     nome: negozio.nome,
     indirizzo: `${via} ${civico}, ${cap} ${citta}`,
+    indirizzoBreve: `${via} ${civico}, ${citta}`,
+    via,
+    civico,
+    cap,
+    citta,
     telefono: negozio.telefono,
     telefonoHref: linkTelefono(negozio.telefono),
     whatsapp: linkWhatsApp(numeroInternazionale(negozio.telefono)),

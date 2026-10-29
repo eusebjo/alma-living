@@ -29,7 +29,9 @@ const { negozio } = Astro.props;
 
       <div>
         <h2 class="titoletto">Dove siamo</h2>
-        <p>Via Ricasoli 51-53<br />57125 Livorno<br />Isola pedonale del centro</p>
+        <p>
+          {negozio.via} {negozio.civico}<br />{negozio.cap} {negozio.citta}<br />Isola pedonale del centro
+        </p>
         <a class="sottolineato" href={negozio.mappeUrl}>Indicazioni</a>
       </div>
 

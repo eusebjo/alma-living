@@ -26,6 +26,24 @@ describe('datiNegozio', () => {
     expect(dati.telefono).toBe('334 520 5451');
   });
 
+  it("dà anche le parti dell'indirizzo e la forma breve, senza CAP", () => {
+    expect(dati.via).toBe('Via Ricasoli');
+    expect(dati.civico).toBe('51-53');
+    expect(dati.cap).toBe('57125');
+    expect(dati.citta).toBe('Livorno');
+    expect(dati.indirizzoBreve).toBe('Via Ricasoli 51-53, Livorno');
+  });
+
+  it("segue l'indirizzo scritto nel pannello", () => {
+    const altrove = datiNegozio({
+      ...negozio,
+      indirizzo: { via: 'Via Grande', civico: '10', cap: '57123', citta: 'Livorno', provincia: 'LI' },
+    });
+    expect(altrove.indirizzo).toBe('Via Grande 10, 57123 Livorno');
+    expect(altrove.indirizzoBreve).toBe('Via Grande 10, Livorno');
+    expect(altrove.via).toBe('Via Grande');
+  });
+
   it('i contatti hanno i valori fissati per la prova', () => {
     expect(dati.telefonoHref).toBe('tel:+393345205451');
     expect(dati.whatsapp).toBe('https://wa.me/393345205451');

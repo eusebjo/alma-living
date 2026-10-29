@@ -23,10 +23,10 @@ const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
   <div class="barra-dentro">
     <span class="barra-luogo">
       <Icona nome="luogo" misura={16} />
-      <span>Via Ricasoli 51-53, Livorno<span class="barra-isola"> · isola pedonale del centro</span></span>
+      <span>{negozio.indirizzoBreve}<span class="barra-isola"> · isola pedonale del centro</span></span>
     </span>
     <p class="barra-stato">
-      <StatoNegozio orari={negozio.orari} chiaro /><span class="barra-via"> · Via Ricasoli</span>
+      <StatoNegozio orari={negozio.orari} chiaro /><span class="barra-via"> · {negozio.via}</span>
     </p>
     <a class="barra-telefono" href={negozio.telefonoHref}>Telefono e WhatsApp {negozio.telefono}</a>
   </div>

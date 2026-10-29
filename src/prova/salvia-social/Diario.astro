@@ -38,7 +38,7 @@ if (!storiaDiOggi) throw new Error('Manca la storia di oggi.');
           <span class="avatar-piccolo" aria-hidden="true">
             <Image src={logo} alt="" widths={[48, 72]} sizes="24px" />
           </span>
-          <span><span class="forte">{negozio.nome}</span> · Via Ricasoli · 28 ottobre</span>
+          <span><span class="forte">{negozio.nome}</span> · {negozio.via} · 28 ottobre</span>
         </div>
         <blockquote>
           “Se vedete qualcosa che vi piace, scriveteci: vi mandiamo altre foto e ve lo teniamo da
@@ -67,7 +67,7 @@ if (!storiaDiOggi) throw new Error('Manca la storia di oggi.');
             <p class="sottotitolo">{negozio.nome} · Negozio di biancheria</p>
             <p class="bio">{negozio.frase}</p>
             <p class="meta">
-              <span class="meta-voce"><Icona nome="luogo" misura={16} />Via Ricasoli 51-53, Livorno</span>
+              <span class="meta-voce"><Icona nome="luogo" misura={16} />{negozio.indirizzoBreve}</span>
               <span class="meta-voce meta-stato"><StatoNegozio orari={negozio.orari} /></span>
             </p>
             <div class="profilo-azioni">
