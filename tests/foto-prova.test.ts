@@ -1,8 +1,17 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { preparaFoto } from '../scripts/foto-prova/prepara.mjs';
+import { eseguitoComeComando, preparaFoto } from '../scripts/foto-prova/prepara.mjs';
 
 const BASE = 'https://esempio.r2.dev';
 
@@ -82,7 +91,9 @@ describe('preparaFoto', () => {
     });
 
     expect(fetchFn).toHaveBeenCalledTimes(1);
-    expect(fetchFn).toHaveBeenCalledWith('https://esempio.r2.dev/mare.jpg');
+    expect(fetchFn).toHaveBeenCalledWith('https://esempio.r2.dev/mare.jpg', {
+      signal: expect.any(AbortSignal),
+    });
     expect(esito.scaricate).toContain('mare.jpg');
     expect(esito.copiate).toEqual([]);
     expect([...readFileSync(join(destinazione, 'mare.jpg'))]).toEqual([7, 8, 9]);
@@ -132,6 +143,71 @@ describe('preparaFoto', () => {
         fetchFn,
       }),
     ).rejects.toThrow(/Foto di prova mancanti: a\.jpg/);
+  });
+
+  it('un bucket che non risponde entro il tempo massimo conta come foto mancante', async () => {
+    // Come `fetch`: la richiesta resta appesa finché il segnale non la interrompe.
+    const fetchFn = vi.fn(
+      (_indirizzo: string, { signal }: { signal: AbortSignal }) =>
+        new Promise((_risolvi, rifiuta) => {
+          signal.addEventListener('abort', () => rifiuta(signal.reason));
+        }),
+    );
+
+    await expect(
+      preparaFoto({
+        elenco: ['a.jpg'],
+        destinazione,
+        sorgenteLocale,
+        base: BASE,
+        fetchFn,
+        attesaMs: 20,
+      }),
+    ).rejects.toThrow(/Foto di prova mancanti: a\.jpg \(nessuna risposta entro 0,02 s\)/);
+    expect(existsSync(join(destinazione, 'a.jpg'))).toBe(false);
+  });
+});
+
+describe('eseguitoComeComando', () => {
+  let radice: string;
+  let vera: string;
+  let script: string;
+
+  beforeEach(() => {
+    radice = mkdtempSync(join(tmpdir(), 'foto-prova-main-'));
+    vera = join(radice, 'vera');
+    mkdirSync(vera);
+    script = join(vera, 'prepara.mjs');
+    writeFileSync(script, '');
+  });
+
+  afterEach(() => {
+    rmSync(radice, { recursive: true, force: true });
+  });
+
+  it('riconosce il file lanciato, con il percorso diretto', () => {
+    expect(eseguitoComeComando(pathToFileURL(script).href, script)).toBe(true);
+  });
+
+  it('riconosce il file lanciato da una giunzione o da un collegamento simbolico', () => {
+    // Su Windows una giunzione non chiede permessi da amministratore; altrove
+    // `junction` è ignorato e si crea un collegamento simbolico alla cartella.
+    const collegamento = join(radice, 'collegamento');
+    symlinkSync(vera, collegamento, 'junction');
+
+    expect(eseguitoComeComando(pathToFileURL(script).href, join(collegamento, 'prepara.mjs'))).toBe(
+      true,
+    );
+  });
+
+  it('non scambia per comando un altro file, un file che non esiste o nessun file', () => {
+    const altro = join(vera, 'altro.mjs');
+    writeFileSync(altro, '');
+    const url = pathToFileURL(script).href;
+
+    expect(eseguitoComeComando(url, altro)).toBe(false);
+    expect(eseguitoComeComando(url, join(vera, 'manca.mjs'))).toBe(false);
+    expect(eseguitoComeComando(url, undefined)).toBe(false);
   });
 });
 

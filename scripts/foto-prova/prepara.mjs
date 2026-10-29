@@ -8,15 +8,19 @@
 //
 // Uso: `node scripts/foto-prova/prepara.mjs` (lo lanciano `npm run build` e
 // `npm run dev`). Solo Node, nessuna dipendenza.
-import { constants } from 'node:fs';
+import { constants, realpathSync } from 'node:fs';
 import { access, copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import {
   FOTO_PROVA_BASE,
   FOTO_PROVA_DESTINAZIONE,
   FOTO_PROVA_LOCALE,
 } from './config.mjs';
+
+// Tempo massimo per scaricare una foto dal bucket: una rete appesa non deve
+// bloccare la build per sempre.
+const ATTESA_MS = 30_000;
 
 async function esiste(percorso) {
   try {
@@ -49,6 +53,7 @@ async function consegna(destinazione, nome, scrivi) {
  * @param {string} opzioni.sorgenteLocale cartella locale con gli originali
  * @param {string} opzioni.base indirizzo pubblico del bucket, senza barra finale
  * @param {typeof fetch} [opzioni.fetchFn] sostituibile nei test
+ * @param {number} [opzioni.attesaMs] tempo massimo per ogni foto da scaricare
  * @returns {Promise<{ presenti: string[]; copiate: string[]; scaricate: string[] }>}
  */
 export async function preparaFoto({
@@ -57,6 +62,7 @@ export async function preparaFoto({
   sorgenteLocale,
   base,
   fetchFn = fetch,
+  attesaMs = ATTESA_MS,
 }) {
   await mkdir(destinazione, { recursive: true });
 
@@ -72,13 +78,18 @@ export async function preparaFoto({
 
       const indirizzo = `${base}/${nome}`;
       try {
-        const risposta = await fetchFn(indirizzo);
+        // Il segnale vale anche per la lettura del contenuto, non solo per la risposta.
+        const risposta = await fetchFn(indirizzo, { signal: AbortSignal.timeout(attesaMs) });
         if (!risposta.ok) return { nome, motivo: `HTTP ${risposta.status}` };
         const byte = Buffer.from(await risposta.arrayBuffer());
         if (byte.length === 0) return { nome, motivo: 'risposta vuota' };
         await consegna(destinazione, nome, (temporaneo) => writeFile(temporaneo, byte));
         return { nome, esito: 'scaricate' };
       } catch (errore) {
+        if (errore instanceof Error && errore.name === 'TimeoutError') {
+          const secondi = String(attesaMs / 1000).replace('.', ',');
+          return { nome, motivo: `nessuna risposta entro ${secondi} s` };
+        }
         return { nome, motivo: errore instanceof Error ? errore.message : String(errore) };
       }
     }),
@@ -96,6 +107,23 @@ export async function preparaFoto({
 
   const per = (chiave) => esiti.filter((e) => e.esito === chiave).map((e) => e.nome);
   return { presenti: per('presenti'), copiate: per('copiate'), scaricate: per('scaricate') };
+}
+
+/**
+ * Vero se il modulo `urlModulo` (`import.meta.url`) è il file lanciato con
+ * `node <argv1>`. Si confrontano i percorsi reali: Node risolve i collegamenti
+ * simbolici e le giunzioni del modulo, ma non quelli di `process.argv[1]`.
+ * @param {string} urlModulo
+ * @param {string | undefined} argv1
+ */
+export function eseguitoComeComando(urlModulo, argv1) {
+  if (!argv1) return false;
+  try {
+    return realpathSync.native(fileURLToPath(urlModulo)) === realpathSync.native(resolve(argv1));
+  } catch {
+    // Un percorso che non esiste non è il file lanciato.
+    return false;
+  }
 }
 
 // Eseguito come comando: i percorsi di `config.mjs` sono relativi alla radice
@@ -117,7 +145,7 @@ async function main() {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (eseguitoComeComando(import.meta.url, process.argv[1])) {
   main().catch((errore) => {
     console.error(errore instanceof Error ? errore.message : errore);
     process.exitCode = 1;
