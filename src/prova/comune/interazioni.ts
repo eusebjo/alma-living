@@ -41,7 +41,10 @@
 //   `[data-storia-barra]` (avanzamento in `--avanzamento`, da 0 a 1). Pulsanti
 //   `[data-storia-prec|succ|chiudi]`, frecce della tastiera; alla fine
 //   dell'ultima foto si chiude. Il pulsante di un gruppo mostrato riceve
-//   `data-vista`.
+//   `data-vista`. L'avanzamento automatico si può fermare: tenendo premuto su una
+//   foto; con `button[data-storia-pausa]` (`aria-pressed`, da mettere in ogni
+//   storia: ferma e riprende); e da tastiera, perché portare il focus su un
+//   controllo della storia la mette in pausa (si riprende con quel pulsante).
 // - Post: `button[data-post-apri="<id>"]` apre `dialog[data-post="<id>"]`; dentro
 //   può esserci una galleria; `button[data-post-chiudi]` lo chiude.
 // - Mostra altri: `button[data-mostra-altri="<nome>"]` toglie `hidden` a
@@ -72,7 +75,9 @@ type StatoStoria = {
   /** Millisecondi passati sulla foto corrente. */
   trascorso: number;
   /** Vero mentre si tiene premuto sulla foto. */
-  inPausa: boolean;
+  premuto: boolean;
+  /** Pausa scelta: dal pulsante, o da un focus arrivato con la tastiera. */
+  pausaUtente: boolean;
   frame: number;
   ultimoFrame: number;
 };
@@ -364,12 +369,27 @@ function apriStoria(c: Contesto, bottone: HTMLElement): void {
     gruppi,
     posizione: { gruppo: indice, foto: 0 },
     trascorso: 0,
-    inPausa: false,
+    premuto: false,
+    pausaUtente: false,
     frame: 0,
     ultimoFrame: 0,
   };
+  // Aperta con la tastiera, il focus arriva sul primo controllo e la mette già in pausa.
   apriDialog(c, dialog, bottone);
+  sincronizzaPausa(c.storia);
   mostraStoria(c, { gruppo: indice, foto: 0 });
+}
+
+function sincronizzaPausa(s: StatoStoria): void {
+  for (const pulsante of elementi(s.dialog, '[data-storia-pausa]')) {
+    pulsante.setAttribute('aria-pressed', String(s.pausaUtente));
+  }
+}
+
+function alternaPausa(c: Contesto): void {
+  if (!c.storia) return;
+  c.storia.pausaUtente = !c.storia.pausaUtente;
+  sincronizzaPausa(c.storia);
 }
 
 function mostraStoria(c: Contesto, posizione: Posizione): void {
@@ -405,7 +425,7 @@ function mostraStoria(c: Contesto, posizione: Posizione): void {
 function fotogramma(c: Contesto, ora: number): void {
   const s = c.storia;
   if (!s) return;
-  if (!s.inPausa) s.trascorso += Math.max(0, ora - s.ultimoFrame);
+  if (!s.premuto && !s.pausaUtente) s.trascorso += Math.max(0, ora - s.ultimoFrame);
   s.ultimoFrame = ora;
   const avanzamento = Math.min(s.trascorso / DURATA_FOTO_MS, 1);
   s.gruppi[s.posizione.gruppo]?.barre[s.posizione.foto]?.style.setProperty(
@@ -470,6 +490,7 @@ const AZIONI: [selettore: string, azione: (c: Contesto, el: HTMLElement) => void
   ['[data-storia-apri]', apriStoria],
   ['[data-storia-prec]', (c) => indietroStoria(c)],
   ['[data-storia-succ]', (c) => avantiStoria(c)],
+  ['[data-storia-pausa]', (c) => alternaPausa(c)],
   ['[data-storia-chiudi], [data-post-chiudi]', (_c, el) => chiudiDialog(el)],
   ['[data-post-apri]', apriPost],
 ];
@@ -552,14 +573,31 @@ export function avviaInterazioni(radice: ParentNode = document): void {
       c.storia.dialog.contains(bersaglio) &&
       !bersaglio.closest('button, a')
     ) {
-      c.storia.inPausa = true;
+      c.storia.premuto = true;
     }
   });
   const rilascia = () => {
-    if (c.storia) c.storia.inPausa = false;
+    if (c.storia) c.storia.premuto = false;
   };
   radice.addEventListener('pointerup', rilascia);
   radice.addEventListener('pointercancel', rilascia);
+
+  // Un focus arrivato con la tastiera (`:focus-visible`: non un clic) su un
+  // controllo della storia la ferma, perché si possa leggere e usare senza
+  // rincorrere il tempo. Il pulsante `data-storia-pausa` la riprende e il focus
+  // che non si sposta non la ferma di nuovo (le frecce continuano a funzionare).
+  radice.addEventListener('focusin', (evento) => {
+    const bersaglio = evento.target;
+    if (
+      c.storia &&
+      bersaglio instanceof Element &&
+      c.storia.dialog.contains(bersaglio) &&
+      bersaglio.matches(':focus-visible')
+    ) {
+      c.storia.pausaUtente = true;
+      sincronizzaPausa(c.storia);
+    }
+  });
 
   // Una scheda in secondo piano non avanza (il browser ferma i fotogrammi): al
   // ritorno il tempo di assenza non conta.
