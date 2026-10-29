@@ -5,6 +5,7 @@ import { GIORNI } from '../../src/content/limits';
 import { ORARI_PROVA } from '../../src/prova/comune/orari';
 import {
   altreCollezioni,
+  apertura,
   articoli,
   categorie,
   collezioni,
@@ -705,16 +706,38 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
-  it("solo la foto d'apertura si carica subito e con priorità alta", () => {
+  /** I tag `<img>` delle diapositive dell'apertura, nell'ordine. */
+  const fotoApertura = () =>
+    [
+      ...(contenutiCon(html(), 'id', 'apertura')[0] ?? '').matchAll(
+        /<li\b[^>]*\sdata-galleria-foto\b[^>]*>([\s\S]*?)<\/li>/gi,
+      ),
+    ].map((m) => /<img\b[^>]*>/i.exec(m[1]!)?.[0] ?? '');
+
+  it("solo la prima foto d'apertura si carica subito e con priorità alta", () => {
     const immagini = [...html().matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
     const prioritarie = immagini.filter((t) => /\sfetchpriority="high"/.test(t));
     expect(prioritarie).toHaveLength(1);
     expect(prioritarie[0]).toMatch(/\sloading="eager"/);
-    // Delle altre immagini, si caricano subito solo i loghi in alto.
+    expect(prioritarie[0]).toBe(fotoApertura()[0]);
+    // Delle altre immagini, si caricano subito solo i loghi in alto e le altre
+    // foto dell'apertura.
+    const altreApertura = fotoApertura().slice(1);
     const subito = immagini.filter(
       (t) => !/\sloading="lazy"/.test(t) && !/\sfetchpriority=/.test(t),
     );
-    for (const tag of subito) expect(tag).toMatch(/\salt="Alma Living"/);
+    for (const tag of subito) {
+      if (!altreApertura.includes(tag)) expect(tag).toMatch(/\salt="Alma Living"/);
+    }
+  });
+
+  it("le altre foto d'apertura si caricano subito, senza priorità: al primo cambio sono già pronte", () => {
+    const foto = fotoApertura();
+    expect(foto).toHaveLength(apertura.length);
+    for (const tag of foto.slice(1)) {
+      expect(tag).toMatch(/\sloading="eager"/);
+      expect(tag).not.toMatch(/\sfetchpriority=/);
+    }
   });
 });
 

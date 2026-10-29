@@ -24,6 +24,9 @@ if (apertura.length !== 3) {
   throw new Error(`L'apertura di Salvia social prevede 3 diapositive, non ${apertura.length}.`);
 }
 const totale = apertura.length;
+// La prima foto si carica subito e con priorità alta; le altre, nascoste con
+// `hidden`, subito ma senza priorità: con `lazy` il browser le chiederebbe solo
+// al primo cambio, e per un attimo si vedrebbe il fondo color sabbia.
 ---
 
 <section id="apertura" class="apertura" aria-label="Oggi in negozio" data-galleria>
@@ -37,6 +40,7 @@ const totale = apertura.length;
               larghezze={[400, 600, 800, 1000, 1200]}
               sizes="(min-width: 960px) min(52vw, 760px), 100vw"
               principale={i === 0}
+              subito={i > 0}
             />
           </li>
         ))
