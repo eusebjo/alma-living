@@ -128,6 +128,20 @@ html:has(> body[data-variante='salvia-social']) {
   }
 }
 
+/* Con una storia o un post aperti la pagina non scorre, ma dove la barra di
+   scorrimento occupa spazio (Windows) la sua striscia resta riservata e mostra
+   lo sfondo della radice: senza queste regole sarebbe una striscia bianca
+   accanto al velo scuro. Le tinte sono i veli del dialog (`--sfondo-storie`,
+   `--sfondo-post`) sopra il bianco della pagina; il `body` continua a dipingere
+   il suo bianco, quindi la pagina non cambia. */
+html:has(> body[data-variante='salvia-social']):has(dialog[data-storie][open]) {
+  background-color: color-mix(in srgb, rgb(24 28 22) 88%, #ffffff);
+}
+
+html:has(> body[data-variante='salvia-social']):has(dialog[data-post][open]) {
+  background-color: color-mix(in srgb, rgb(24 28 22) 80%, #ffffff);
+}
+
 [data-variante='salvia-social'] *,
 [data-variante='salvia-social'] *::before,
 [data-variante='salvia-social'] *::after {
