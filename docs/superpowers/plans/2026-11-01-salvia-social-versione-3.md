@@ -869,3 +869,36 @@ Aggiunto il 2026-11-01.
 - [ ] **Step 3: implementare.** Adeguare i test esistenti che contano i post (da 12 a 13) o che citano i vecchi testi d'esempio.
 - [ ] **Step 4: verificare.** `npm test && npm run build && npm run test:dist`. La build trova le foto nuove in `foto/prova/`.
 - [ ] **Step 5: commit.** `feat: the diary shows the real Alma Living posts`
+
+---
+
+## Note finali (2026-11-01): rimandato alla messa in produzione
+
+Il piano è eseguito e l'anteprima è aggiornata (commit 09312b9). Queste osservazioni minori, emerse dalle revisioni, sono rimandate al piano di produzione (spec §12):
+- **Test del codice nel browser.** Serve un ambiente DOM (per esempio happy-dom) per `interazioni.ts`, perché limite, trascinamento e tocchi delle storie oggi sono provati solo con funzioni pure e verifiche a mano. Il file (oltre 870 righe) va diviso per protocollo.
+- **Prova su telefoni veri** (iOS Safari e Android Chrome):
+  - scorrere la pagina partendo dalla foto d'apertura;
+  - una strisciata laterale;
+  - tocchi a sinistra, al centro e a destra di una storia;
+  - pressione lunga e rilascio;
+  - zoom con due dita sulla foto.
+- **"Chiedi disponibilità" sul telefono:** il pannello largo quanto la riga copre la scheda vicina. Va chiuso quando il focus esce. Inoltre un cambio di limite può nascondere la scheda che ha il focus.
+- **Pillola "Chiedi disponibilità" sul tablet:** a 768 px restano circa 5 px di margine, quindi con caratteri più grandi il testo esce.
+- **Tocchi delle storie:**
+  - `premuto` non distingue il dito principale né il tasto del mouse;
+  - lo spazio tra i comandi in alto assorbe i tocchi;
+  - con movimento ridotto il tocco al centro non ha effetto visibile.
+- **Fila delle storie:** a 1380 px restano 13 px di margine. Le due regole su `.invito p` dipendono dall'ordine nel file.
+- **`npm run foto:carica`:**
+  - le virgolette valgono solo per `--file` con spazi;
+  - un errore di wrangler dice sempre "serve wrangler login";
+  - i controlli HEAD partono tutti insieme;
+  - nessun test fissa l'ordine "prima controlla tutto, poi invia";
+  - non dice come sostituire una foto già nel bucket.
+- **Contenuti di prova:**
+  - le storie e le didascalie dell'apertura sono ancora inventate;
+  - la data del biglietto di Martina è scritta a mano;
+  - tre foto della banca non sono più usate (`plaid-verde`, `asciugamano-bianco`, `asciugamani-bimbo`);
+  - alcuni ritagli quadrati tagliano dettagli secondari (p3, p7, p9, p13);
+  - "l’ultimo il" e "Aggiornato il" vorrebbero "l’8" e "l’11" se l'ultimo post cadesse in quei giorni.
+- **Protocollo Limite:** le regole non sono validate (un limite negativo) e `incoerenzeProtocolli` non richiede `data-limite-regole` né `data-limite-testo`.
