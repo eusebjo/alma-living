@@ -245,7 +245,9 @@ const pallini = colori.map((colore) => {
     position: relative;
     min-width: 0;
     aspect-ratio: 3 / 4;
-    overflow: hidden;
+    /* `clip` e non `hidden`: il secondo scatto ingrandito non rende la foto
+       scorrevole, nemmeno per script o per il focus da tastiera. */
+    overflow: clip;
     border-radius: var(--raggio-foto-rapida);
     background: var(--sabbia);
   }
@@ -546,6 +548,14 @@ const pallini = colori.map((colore) => {
 
     .foto {
       min-height: 0;
+    }
+
+    /* La testa resta in alto mentre il foglio scorre: la X si vede sempre. */
+    .testa {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--bianco);
     }
   }
 </style>

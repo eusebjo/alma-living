@@ -76,7 +76,9 @@ const titolo = `articolo-${articolo.id}`;
     --interruttore-basso: 4px;
     position: relative;
     aspect-ratio: 3 / 4;
-    overflow: hidden;
+    /* `clip` e non `hidden`: il secondo scatto ingrandito non rende la foto
+       scorrevole, nemmeno per script o per il focus da tastiera. */
+    overflow: clip;
     border-radius: var(--raggio-telefono);
     background: var(--sabbia);
   }
