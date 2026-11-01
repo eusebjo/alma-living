@@ -670,7 +670,7 @@ EOF
 
 ---
 
-### Task 6: verifica nel browser integrato e invio del ramo
+### Task 6: verifica nel browser integrato e invio del ramo (da eseguire dopo i Task 7 e 8)
 
 **Files:**
 - Modify: solo i file da correggere, se la verifica trova qualcosa. Ogni correzione è un commit `fix:` piccolo, con i tre comandi verdi.
@@ -729,3 +729,143 @@ git push origin fase2/1-varianti
 ```
 
 Attendere la build Cloudflare del ramo, poi ripetere i controlli a 390 e 1440 px sull'anteprima `https://fase2-1-varianti-alma-living.sebjomuho.workers.dev/prova/salvia-social/`. Infine consegnare a eusebjo l'indirizzo e l'elenco dei cambi da provare.
+
+---
+
+### Task 7: caricare le foto di prova nel bucket con un comando
+
+Aggiunto il 2026-11-01 su richiesta di eusebjo: d'ora in poi le foto nuove si caricano nel bucket R2 con un comando, senza passare dal pannello Cloudflare.
+
+**Files:**
+- Create: `scripts/foto-prova/carica.mjs`
+- Modify: `scripts/foto-prova/config.mjs`, `package.json`, `CLAUDE.md` (tabella dei comandi e sezione "Prova delle varianti")
+- Test: `tests/foto-prova.test.ts`
+
+**Interfaces:**
+- `config.mjs`: `export const FOTO_PROVA_BUCKET = 'alma-living-prova';` e `export const FOTO_PROVA_PREFISSO = 'prova';`, con un commento: `FOTO_PROVA_BASE` è l'indirizzo pubblico dello stesso prefisso.
+- `carica.mjs`:
+  - `export function daCaricare(nomi: string[], nelBucket: Set<string>, inLocale: Set<string>): { carica: string[]; mancanti: string[] }`.
+    - `carica` sono i nomi che non sono nel bucket ma ci sono in locale.
+    - `mancanti` sono i nomi che non sono né nel bucket né in locale.
+    - Entrambi tengono l'ordine di `nomi`.
+  - `export async function caricaFoto({ elenco, locale, base, bucket, prefisso, prova = false, controlla, invia, log })` restituisce `{ caricate: string[]; giaPresenti: string[]; mancanti: string[] }`.
+    - `controlla(url)` dice se la foto c'è nel bucket. La versione predefinita fa una richiesta `HEAD` con un tempo massimo di 30 secondi.
+      - 200: la foto c'è.
+      - 404: la foto non c'è.
+      - Qualsiasi altro stato, o un errore di rete, lancia un errore in italiano: non si carica alla cieca.
+    - `invia(nome, percorso)` carica la foto. La versione predefinita esegue `npx wrangler r2 object put <bucket>/<prefisso>/<nome> --file=<percorso> --content-type=image/jpeg --remote` con `spawnSync`, `stdio: 'inherit'` e `shell: true` solo su Windows.
+      - Se il comando esce con un codice diverso da 0, lancia un errore: "Caricamento non riuscito: <nome>. Serve `npx wrangler login` (lo fa eusebjo)."
+    - Dopo ogni invio, `controlla` deve rispondere 200; altrimenti lancia un errore.
+    - Con `prova: true` elenca quello che caricherebbe e non invia nulla.
+  - Come comando, `node scripts/foto-prova/carica.mjs [--prova]`:
+    - legge `elenco.json` e guarda in `FOTO_PROVA_LOCALE`;
+    - stampa un riepilogo;
+    - esce con codice 1 se ci sono `mancanti`;
+    - riusa `eseguitoComeComando` di `prepara.mjs`.
+- `package.json`: `"foto:carica": "node scripts/foto-prova/carica.mjs"`. Niente sintassi `VAR=x`.
+- `CLAUDE.md`:
+  - nella tabella dei comandi, la riga `npm run foto:carica`: "Carica nel bucket R2 le foto di `elenco.json` che mancano, prendendole da `foto/prova/`; serve `npx wrangler login`, fatto da eusebjo. Con `-- --prova` stampa solo l'elenco";
+  - in "Prova delle varianti", una riga sul flusso per aggiungere una foto: copiarla in `foto/prova/`, aggiungerla a `elenco.json` e lanciare `npm run foto:carica`.
+
+- [ ] **Step 1: scrivere i test che falliscono.** In `tests/foto-prova.test.ts`, `describe('daCaricare')` e `describe('caricaFoto')`. `controlla` e `invia` sono finti e passati come argomenti: niente rete, niente wrangler. Casi:
+  - `daCaricare(['a.jpg','b.jpg','c.jpg'], new Set(['a.jpg']), new Set(['b.jpg']))` → `{ carica: ['b.jpg'], mancanti: ['c.jpg'] }`;
+  - tutte le foto già nel bucket → due liste vuote;
+  - `caricaFoto` carica solo le foto assenti dal bucket e presenti in locale, ricontrolla dopo l'invio e restituisce `caricate`, `giaPresenti` e `mancanti`;
+  - con `prova: true` non chiama `invia`;
+  - un `controlla` che lancia (stato 500) fa fallire senza invii;
+  - un invio dopo il quale la foto risulta ancora assente fa fallire.
+- [ ] **Step 2: verificare che falliscano.** `npm test -- tests/foto-prova.test.ts`
+- [ ] **Step 3: implementare** come da Interfaces. Niente segreti nel codice; nessun token letto o stampato.
+- [ ] **Step 4: verificare.**
+  - `npm test && npm run build && npm run test:dist`.
+  - Poi `npm run foto:carica -- --prova`: elenca le foto `ig-*.jpg` nuove se il Task 8 le ha già aggiunte all'elenco, altrimenti nessuna.
+  - Non lanciare il caricamento vero: lo fa il controllore dopo il login di eusebjo.
+- [ ] **Step 5: commit.** `feat: upload missing trial photos to the R2 bucket with one command`
+
+---
+
+### Task 8: i post del diario sono i post veri di Alma Living
+
+Aggiunto il 2026-11-01.
+- eusebjo ha scaricato i 14 post del profilo Instagram e ha scelto di usarne 13: tutti tranne la partita di calcio, che è un post in collaborazione con un altro account.
+- Le foto nuove sono già in `foto/prova/`, fuori da git. Le ha preparate il controllore: ridotte a 2400 px al massimo, e i reel senza le bande nere.
+- Cinque foto erano già nella banca.
+- I testi vengono dalle didascalie, senza emoji e senza le promozioni scadute.
+
+**Files:**
+- Modify:
+  - `scripts/foto-prova/elenco.json`: 19 nomi in più, in ordine alfabetico come oggi;
+  - `src/prova/salvia-social/dati.ts`: `ALT` e `post`;
+  - `src/prova/salvia-social/Diario.astro`: testi dell'introduzione.
+- Test: `tests/prova/salvia-social-dati.test.ts`, `tests/dist/dist.test.ts`, e `tests/foto-prova.test.ts` se controlla `elenco.json`
+
+**Interfaces:**
+- Nomi nuovi in `elenco.json` (`<nome>.jpg`) e chiavi nuove in `ALT`, con questi testi alternativi:
+  - `ig-assaggio`: "Camera con testiera capitonné e copriletto rosa con balza di pizzo, una donna legge sul letto"
+  - `ig-conchiglie`: "Vasi in ceramica a forma di conchiglia con piante grasse, su un tavolo di legno"
+  - `ig-spoiler`: "Scaffali del negozio con biancheria piegata, tovaglie a quadretti e diffusori per la casa"
+  - `ig-angolo-bimbi`: "Scaffale del negozio con cuscini a righe, biancheria rosa e prodotti per i più piccoli"
+  - `ig-tavola-1`: "Tavola apparecchiata in negozio con piatti a spirale grigi e bicchieri, davanti agli scaffali"
+  - `ig-tavola-2`: "Piatti con decoro a spirale grigio e una ciotola sul tavolo del negozio"
+  - `ig-tavola-estate`: "Ciotole di legno decorate, vassoi con piastrelle blu e posate di legno"
+  - `ig-erbolinea`: "Flaconi di essenze per il bucato su un vassoio di legno, davanti a una finestra ad arco"
+  - `ig-beach-therapy`: "Telo mare a righe verde menta e borsa Beach Therapy sulla spiaggia"
+  - `ig-autunno`: "Camera con testiera capitonné bianca, copriletto trapuntato rosa cipria e carta da parati a fiori"
+  - `ig-parure-1`: "Letto matrimoniale con parure copripiumino a piccole macchie su fondo beige"
+  - `ig-parure-2`: "Letto matrimoniale con parure copripiumino maculata nei toni del marrone"
+  - `ig-parure-3`: "Letto con parure copripiumino a quadri beige, panna e rosso"
+  - `ig-parure-4`: "Letto con parure copripiumino a motivo geometrico blu e bianco"
+  - `ig-parure-5`: "Letto con copripiumino in jersey di cotone verde"
+  - `ig-cuscini-1`: "Divano con cuscini natalizi rossi, bianchi e verdi con alberelli in rilievo"
+  - `ig-cuscini-2`: "Divano con cuscini natalizi ad alberelli e un plaid rosso con fiocchi di neve"
+  - `ig-cuscini-3`: "Sei cuscini con gattini natalizi stampati"
+  - `ig-cuscini-4`: "Cuscini con baite innevate e boschi di abeti su un divano chiaro"
+- `post`, dal più recente, con `id` da `p1` a `p13`. `posizione` è `'50% 50%'`, salvo che a vista serva altro.
+
+| id | data | rubrica | chiedi | foto |
+|---|---|---|---|---|
+| p1 | 28 ottobre | Arrivi | sui cuscini di Natale | ig-cuscini-1, ig-cuscini-2, ig-cuscini-3, ig-cuscini-4 |
+| p2 | 27 ottobre | Arrivi | sulle nuove parure | ig-parure-1, ig-parure-2, ig-parure-3, ig-parure-4, ig-parure-5 |
+| p3 | 11 ottobre | In vetrina | sui plaid | scaffale, copriletto-rosso, mare, coperta |
+| p4 | 31 agosto | Arrivi | sulle novità d’autunno | ig-autunno |
+| p5 | 15 luglio | Arrivi | sulla linea Beach Therapy | ig-beach-therapy |
+| p6 | 8 luglio | Arrivi | sulle essenze per il bucato | ig-erbolinea |
+| p7 | 8 luglio | Dettagli | sul tris di asciugamani | bagno |
+| p8 | 3 luglio | Dettagli | sulla tavola d’estate | ig-tavola-estate |
+| p9 | 19 giugno | Arrivi | sui piatti per la tavola | ig-tavola-1, ig-tavola-2 |
+| p10 | 15 giugno | Dietro il banco | sui prodotti per i più piccoli | ig-angolo-bimbi |
+| p11 | 10 giugno | Dietro il banco | sugli scaffali del negozio | ig-spoiler |
+| p12 | 28 maggio | Dettagli | sulle conchiglie in ceramica | ig-conchiglie |
+| p13 | 30 aprile | Dietro il banco | su quello che sta arrivando | ig-assaggio |
+
+- Il campo `testo` di ogni post è questo, alla lettera, con gli apostrofi tipografici (’):
+  - p1: "Sono arrivati i cuscini di Natale. Brinì, in jacquard con gli alberelli in punto spugna: copricuscino 45 x 45 in rosso, bianco, beige e verde, oppure cuscino imbottito 30 x 50. Meid, con baite innevate e boschi, negli stessi due formati, in rosso, beige e verde. E per chi ama i gatti, Zigrì: cotone stampato fronte e retro."
+  - p2: "Nuove parure copripiumino matrimoniali in puro cotone: Vara in percallino; Rudy, maculata, in grigio o marrone; i quadri in cotone tinto in filo; il motivo geometrico in grigio, blu e tortora. E Antigua, il copripiumino in jersey che non si stira, in nove colori: bianco, naturale, fumo, salvia, sabbia, grigio, ottanio, bordeaux e blu."
+  - p3: "L’inverno è alle porte e torna la voglia di casa. Soffici, caldi, avvolgenti: abbiamo scelto quattro plaid per le serate sul divano. Vi aspettiamo in negozio per scegliere il vostro."
+  - p4: "È bello cominciare a sognare un po’ in anticipo. A metà settembre arrivano tante novità per vestire la casa con le sfumature calde dell’autunno, e le prime idee per le feste."
+  - p5: "La collezione Beach Therapy si allarga: oltre al verde menta ci sono il grigio chiaro e il beige. Potete prendere il set da tre pezzi o i singoli articoli."
+  - p6: "Sono arrivate le essenze concentrate per il bucato di Erbolinea Prestige Fragrances: profumi intensi che durano giorni e riempiono la casa di fresco. Tante fragranze e diversi formati, per lavatrice, asciugatrice e lavaggio a mano. Passate a provarle."
+  - p7: "Il tris di asciugamani, ospite, viso e telo, con la balza in puro lino. Fatto in Toscana, in tante sfumature: celeste, rosa, verde salvia, grigio."
+  - p8: "Voglia d’estate anche a tavola? Legno caldo e ceramiche decorate, per rinnovare la tavola dei pranzi estivi."
+  - p9: "Un nuovo arrivo in negozio che sa di colazioni lente, domeniche in famiglia e chiacchiere attorno alla tavola."
+  - p10: "Un piccolo angolo dedicato anche ai più piccoli."
+  - p11: "Ogni dettaglio sta prendendo il suo posto. Un piccolo spoiler di quello che vi aspetta da Alma Living. Ci vediamo sabato."
+  - p12: "Ogni pezzo è una storia unica: le conchiglie artigianali di Ceramica Viva racchiudono la bellezza del design fatto a mano. Noi stiamo sistemando gli ultimi dettagli per l’apertura, voi cominciate a scegliere la vostra preferita."
+  - p13: "Un assaggio di ciò che sta arrivando: dettagli che fanno casa, atmosfere da vivere. Quasi pronti ad accogliervi."
+- `Diario.astro`, introduzione:
+  - la frase "Ogni settimana Martina fotografa quello che succede in Via Ricasoli: …" diventa "Martina fotografa quello che succede in Via Ricasoli: …"; il resto della frase non cambia;
+  - la riga "Nuovi post ogni settimana · l’ultimo il 27 ottobre" diventa "Nuovi post dal negozio · l’ultimo il {post[0]!.data}", così la data ha una sola fonte, come in "Aggiornato il …".
+- Le foto della banca che i post non usano più restano in `elenco.json` se le usano storie, collezioni o selezione. Se un test chiede che ogni foto dell'elenco sia usata da qualche parte, si toglie solo quella che non usa più nessuno.
+
+- [ ] **Step 1: scrivere i test che falliscono.**
+  - `salvia-social-dati.test.ts`:
+    - ci sono 13 post, con `id` unici da `p1` a `p13`;
+    - `post[0]` è del 28 ottobre e `post[12]` del 30 aprile;
+    - ogni foto dei post ha la sua voce in `ALT`;
+    - nessun `testo` contiene emoji (`/\p{Extended_Pictographic}/u`).
+  - `dist.test.ts`: la pagina ha "Aggiornato il 28 ottobre" e "l’ultimo il 28 ottobre", e non contiene "ogni settimana".
+  - `foto-prova.test.ts`: `elenco.json` contiene i 19 nomi `ig-*.jpg`.
+- [ ] **Step 2: verificare che falliscano.**
+- [ ] **Step 3: implementare.** Adeguare i test esistenti che contano i post (da 12 a 13) o che citano i vecchi testi d'esempio.
+- [ ] **Step 4: verificare.** `npm test && npm run build && npm run test:dist`. La build trova le foto nuove in `foto/prova/`.
+- [ ] **Step 5: commit.** `feat: the diary shows the real Alma Living posts`

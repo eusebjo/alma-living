@@ -20,6 +20,8 @@
   - in storie e post "Vedi su Instagram" diventa "Chiama il negozio".
 - **Fascia Instagram:** dopo il diario e prima della sezione del negozio, una fascia propria, bianca tra due linee sottili e senza foto. Contiene il simbolo, "Seguici anche su Instagram", "@almaliving.viaricasoli · Le foto di ogni giorno sono anche lì." e il pulsante; sul telefono è centrata. Restano l'icona di Instagram nell'header e la riga nel footer.
 
+- **Post del diario veri:** il 2026-11-01 eusebjo ha scelto di riempire il diario con i post veri del profilo Instagram: 13 su 14, tutti tranne la partita di calcio, che è un post in collaborazione con un altro account. Le didascalie restano quelle originali, senza emoji e senza le promozioni scadute. Le foto restano fuori da git, come le altre foto di prova, e si caricano nel bucket con un comando (`npm run foto:carica`). È un contenuto di prova: i post definitivi si decidono con il pannello (§12).
+
 Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime quattro voci. Le note della tela sono in `research_notes/Design UI/sesta/`, `settima/` e `ottava/`.
 
 ## 1. Intento
