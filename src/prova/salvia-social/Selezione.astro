@@ -338,27 +338,6 @@ const filtri = [
     background: var(--latte-sopra);
   }
 
-  /* Il pannello "Chiedi disponibilità" scende sotto la scheda se il messaggio è
-     più lungo, invece di tagliarlo. */
-  @media (max-width: 1023px) {
-    .voce :global(.pannello) {
-      bottom: auto;
-      min-height: 100%;
-    }
-  }
-
-  /* Sul telefono la scheda è stretta: il pannello copre la riga, verso la
-     scheda accanto, perché il messaggio resti leggibile. */
-  @media (max-width: 767px) {
-    .voce:nth-child(odd of [data-filtrabile]:not([hidden])) :global(.pannello) {
-      right: calc(-100% - 12px);
-    }
-
-    .voce:nth-child(even of [data-filtrabile]:not([hidden])) :global(.pannello) {
-      left: calc(-100% - 12px);
-    }
-  }
-
   @media (767px < width <= 1023px) {
     .binario {
       grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -331,14 +331,42 @@ export const altreCollezioni: AltraCollezione[] = [
 
 // --- Selezione dal negozio ---
 
-export interface Articolo extends Scatto {
-  /** Unico nella pagina: lo usano "Chiedi disponibilità" e il suo pannello. */
+/** Di quanto si ingrandisce un dettaglio, dove manca un secondo scatto vero. */
+export const SCALA_DETTAGLIO = 1.7;
+
+/** Un ingrandimento: la scala e il punto intorno a cui si ingrandisce. */
+export interface Ingrandimento {
+  scala: number;
+  /** `transform-origin` CSS, per esempio `40% 68%`. */
+  origine: string;
+}
+
+/** Uno scatto di una scheda: una foto vera, o la stessa foto ingrandita su un dettaglio. */
+export interface ScattoArticolo extends Scatto {
+  ingrandimento?: Ingrandimento;
+}
+
+export interface Articolo {
+  /** Unico nella pagina: ne derivano gli id dell'articolo (il titolo della scheda). */
   id: string;
   nome: string;
   dettaglio: string;
   /** La prima dà il nome della categoria mostrato sulla scheda. */
   categorie: Categoria[];
   novita: boolean;
+  /** Le due foto della scheda: il secondo scatto si vede con l'interruttore o al passaggio del mouse. */
+  scatti: readonly [ScattoArticolo, ScattoArticolo];
+}
+
+/** Il secondo scatto come dettaglio ingrandito di `base`, che ne tiene la posizione. */
+function ingrandito(base: Scatto, origine: string, alt: string): ScattoArticolo {
+  return { ...base, alt, ingrandimento: { scala: SCALA_DETTAGLIO, origine } };
+}
+
+/** L'occhiello della scheda: «Novità» al posto della categoria, se l'articolo è nuovo. */
+export function occhielloArticolo(articolo: Articolo): string {
+  if (articolo.novita) return 'Novità';
+  return categorie.find((c) => c.id === articolo.categorie[0])?.nome ?? '';
 }
 
 /**
@@ -360,7 +388,14 @@ export const articoli: Articolo[] = [
     dettaglio: 'Cotone con balza bianca · matrimoniale',
     categorie: ['letto'],
     novita: true,
-    ...scatto('lenzuola-beige', '50% 40%'),
+    scatti: [
+      scatto('lenzuola-beige', '50% 40%'),
+      ingrandito(
+        scatto('lenzuola-beige', '50% 40%'),
+        '40% 68%',
+        'Dettaglio della balza bianca sulle lenzuola color sabbia',
+      ),
+    ],
   },
   {
     id: 'abbracciami',
@@ -368,7 +403,7 @@ export const articoli: Articolo[] = [
     dettaglio: 'Pile ricamato con frange, verde o rosso',
     categorie: ['natale', 'letto'],
     novita: true,
-    ...scatto('abbracciami-verde', '50% 58%'),
+    scatti: [scatto('abbracciami-verde', '50% 58%'), scatto('abbracciami-rosso', '50% 40%')],
   },
   {
     id: 'orsetto',
@@ -376,7 +411,7 @@ export const articoli: Articolo[] = [
     dettaglio: 'Con cappuccio · rosa, sabbia o azzurro',
     categorie: ['bimbi', 'bagno'],
     novita: false,
-    ...scatto('neonato', '50% 40%'),
+    scatti: [scatto('neonato', '50% 40%'), scatto('accappatoi-appesi', '50% 30%')],
   },
   {
     id: 'volant',
@@ -384,7 +419,7 @@ export const articoli: Articolo[] = [
     dettaglio: 'Bianco e panna, copriletto a rilievo',
     categorie: ['letto'],
     novita: false,
-    ...scatto('volant'),
+    scatti: [scatto('volant'), scatto('trapunta')],
   },
   {
     id: 'casetta',
@@ -392,7 +427,7 @@ export const articoli: Articolo[] = [
     dettaglio: 'Spugna ricamata · rosso, bianco o verde',
     categorie: ['bagno', 'natale'],
     novita: true,
-    ...scatto('asciugamano-rosso'),
+    scatti: [scatto('asciugamano-rosso'), scatto('asciugamano-verde')],
   },
   {
     id: 'tovaglia',
@@ -400,7 +435,14 @@ export const articoli: Articolo[] = [
     dettaglio: 'Effetto lino con profilo rosso',
     categorie: ['tavola'],
     novita: false,
-    ...scatto('tovaglia-volant'),
+    scatti: [
+      scatto('tovaglia-volant'),
+      ingrandito(
+        scatto('tovaglia-volant'),
+        '63% 48%',
+        'Dettaglio del volant e del profilo rosso della tovaglia',
+      ),
+    ],
   },
   {
     id: 'coperta',
@@ -408,7 +450,14 @@ export const articoli: Articolo[] = [
     dettaglio: 'Grigia, chiusa con fiocco e bottone',
     categorie: ['letto', 'natale'],
     novita: false,
-    ...scatto('coperta'),
+    scatti: [
+      scatto('coperta'),
+      ingrandito(
+        scatto('coperta'),
+        '54% 45%',
+        'Dettaglio del fiocco e del cartellino sulla coperta in maglia',
+      ),
+    ],
   },
   {
     id: 'saponi',
@@ -416,7 +465,14 @@ export const articoli: Articolo[] = [
     dettaglio: 'Saponette e diffusori per la casa',
     categorie: ['profumi', 'bagno'],
     novita: false,
-    ...scatto('bagno-prodotti', '50% 72%'),
+    scatti: [
+      scatto('bagno-prodotti', '50% 72%'),
+      ingrandito(
+        scatto('bagno-prodotti', '50% 72%'),
+        '70% 64%',
+        'Dettaglio del cesto di saponi legato con lo spago e il cartellino',
+      ),
+    ],
   },
 ];
 

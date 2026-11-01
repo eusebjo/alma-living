@@ -11,8 +11,10 @@ import {
   fotoDelNegozio,
   LIMITI_SELEZIONE,
   messaggioPost,
+  occhielloArticolo,
   post,
   POST_VISIBILI,
+  SCALA_DETTAGLIO,
   sezioni,
   storie,
   type Scatto,
@@ -30,7 +32,7 @@ const scatti: Scatto[] = [
   ...apertura,
   ...collezioni,
   ...altreCollezioni,
-  ...articoli,
+  ...articoli.flatMap((a) => a.scatti),
   ...storie.flatMap((storia) => storia.foto),
   ...post.flatMap((voce) => voce.foto),
 ];
@@ -143,6 +145,44 @@ describe('dati di Salvia social', () => {
       { media: '(max-width: 1023px)', limite: 6 },
     ]);
     expect(articoli.length).toBeGreaterThan(6);
+  });
+
+  it('le coppie di scatti sono quelle della tavola', () => {
+    expect(Object.fromEntries(articoli.map((a) => [a.id, a.scatti.map((s) => s.foto)]))).toEqual({
+      sabbia: ['lenzuola-beige', 'lenzuola-beige'],
+      abbracciami: ['abbracciami-verde', 'abbracciami-rosso'],
+      orsetto: ['neonato', 'accappatoi-appesi'],
+      volant: ['volant', 'trapunta'],
+      casetta: ['asciugamano-rosso', 'asciugamano-verde'],
+      tovaglia: ['tovaglia-volant', 'tovaglia-volant'],
+      coperta: ['coperta', 'coperta'],
+      saponi: ['bagno-prodotti', 'bagno-prodotti'],
+    });
+  });
+
+  it('il secondo scatto è un altro: una foto vera, o un dettaglio ingrandito 1,7 volte con il suo alt', () => {
+    expect(SCALA_DETTAGLIO).toBe(1.7);
+    for (const {
+      id,
+      scatti: [primo, secondo],
+    } of articoli) {
+      expect(secondo.alt, id).not.toBe(primo.alt);
+      if (secondo.foto === primo.foto) {
+        // Un dettaglio ingrandito tiene la posizione del primo scatto.
+        expect(secondo.posizione, id).toBe(primo.posizione);
+        expect(secondo.ingrandimento?.scala, id).toBe(SCALA_DETTAGLIO);
+        expect(secondo.ingrandimento?.origine, id).toMatch(/^\d{1,3}% \d{1,3}%$/);
+      } else {
+        expect(secondo.ingrandimento, id).toBeUndefined();
+      }
+    }
+  });
+
+  it("l'occhiello è «Novità» al posto della categoria", () => {
+    const per = (id: string) => occhielloArticolo(articoli.find((a) => a.id === id)!);
+    expect(per('sabbia')).toBe('Novità');
+    expect(per('orsetto')).toBe('Bimbi');
+    expect(per('saponi')).toBe('Profumi per la casa');
   });
 
   it('le sezioni seguono la pagina: il diario dopo la selezione', () => {

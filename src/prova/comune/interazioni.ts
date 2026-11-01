@@ -29,11 +29,11 @@
 //   `a[href="#<sezione>"][data-filtro-scegli="<nome>:<id>"]` preme il pulsante
 //   `[data-filtri="<nome>"] [data-filtro="<id>"]` come un clic e lascia andare il
 //   link alla sezione (senza JavaScript ci porta e basta).
-// - Chiedi: `button[data-chiedi="<id>"]` (`aria-expanded`) mostra o nasconde
-//   `[data-chiedi-pannello="<id>"]`, che può coprirlo: all'apertura il focus va
-//   al primo elemento focalizzabile del pannello. Un pulsante con lo stesso
-//   `<id>` dentro il pannello lo chiude e riporta il focus al pulsante di fuori,
-//   come Esc; i pulsanti di dentro non ricevono `aria-expanded`.
+// - Interruttore: `button[data-interruttore]` con `aria-pressed="true|false"`: un
+//   clic ne inverte il valore. Il resto lo fa il CSS della variante, che legge lo
+//   stato (per esempio con `:has()` sul contenitore): lo script non sposta nulla.
+//   Senza JavaScript il pulsante non fa nulla, e la variante lo nasconde con
+//   `@media (scripting: none)`.
 // - Galleria: `[data-galleria]` con `[data-galleria-foto]` (una alla volta, le
 //   altre `hidden`), `button[data-galleria-prec|succ]` (a giro),
 //   `button[data-galleria-punto]` (`aria-current`) e `[data-galleria-contatore]`
@@ -108,12 +108,9 @@ const DURATA_FOTO_MS = 6000;
 /** Ogni quanto si ricalcola "aperto ora". */
 const RICALCOLO_STATO_MS = 60_000;
 
-const PANNELLI = '[data-menu], [data-chiedi-pannello]';
-const APRITORI = '[data-menu-apri], [data-chiedi]';
+const PANNELLI = '[data-menu]';
+const APRITORI = '[data-menu-apri]';
 const DIALOG = 'dialog[data-post], dialog[data-storie]';
-const FOCALIZZABILI =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
-  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type GruppoStoria = { gruppo: HTMLElement; foto: HTMLElement[]; barre: HTMLElement[] };
 
@@ -165,14 +162,9 @@ function movimentoRidotto(): boolean {
   return matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// --- Menu e "Chiedi": un pulsante che apre e chiude un pannello con `hidden` ---
+// --- Menu: un pulsante che apre e chiude un pannello con `hidden` ---
 
 function pannelloDelBottone(c: Contesto, bottone: HTMLElement): HTMLElement | null {
-  if (bottone.dataset.chiedi !== undefined) {
-    return c.radice.querySelector<HTMLElement>(
-      conValore('data-chiedi-pannello', bottone.dataset.chiedi),
-    );
-  }
   const id = bottone.getAttribute('aria-controls');
   return id ? c.radice.querySelector<HTMLElement>(`#${CSS.escape(id)}`) : null;
 }
@@ -200,12 +192,7 @@ function alternaPannello(c: Contesto, bottone: HTMLElement): void {
   if (!pannello) return;
   const apri = pannello.hidden;
   impostaAperto(c, pannello, apri);
-  if (apri) {
-    // Il pannello "Chiedi" copre il suo pulsante: il focus non può restare lì sotto.
-    if (pannello.matches('[data-chiedi-pannello]')) {
-      pannello.querySelector<HTMLElement>(FOCALIZZABILI)?.focus();
-    }
-  } else if (pannello.contains(bottone)) {
+  if (!apri && pannello.contains(bottone)) {
     // Chiuso da dentro: il pulsante premuto sparisce, il focus torna a quello di fuori.
     apritoriEsterni(c, pannello)[0]?.focus();
   }
@@ -229,6 +216,12 @@ function chiudiPannelliAperti(c: Contesto): void {
     impostaAperto(c, pannello, false);
     if (aveva) apritoriEsterni(c, pannello)[0]?.focus();
   }
+}
+
+// --- Interruttore: un pulsante con `aria-pressed`, che il clic inverte ---
+
+function alternaInterruttore(bottone: HTMLElement): void {
+  bottone.setAttribute('aria-pressed', String(bottone.getAttribute('aria-pressed') !== 'true'));
 }
 
 // --- Stato del negozio ---
@@ -689,6 +682,7 @@ const AZIONI: [
     },
   ],
   [APRITORI, alternaPannello],
+  ['[data-interruttore]', (_c, el) => alternaInterruttore(el)],
   ['[data-filtro]', scegliFiltro],
   // Niente preventDefault: il link porta comunque alla sua sezione.
   ['[data-filtro-scegli]', scegliFiltroDaLink],

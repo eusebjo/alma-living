@@ -1,13 +1,15 @@
 ---
 // Una foto di prova con `<Picture>`: AVIF e WebP alle larghezze indicate (Astro
 // scarta da sé quelle oltre l'originale), taglio centrato su `scatto.posizione`.
-// Le misure e il taglio (`object-fit`) li decide il contenitore.
+// Le misure e il taglio (`object-fit`) li decide il contenitore. Uno scatto con
+// `ingrandimento` (il secondo scatto di una scheda, un dettaglio) porta anche il
+// punto di ingrandimento e la scala (`--scala`): chi lo mostra le usa nel suo CSS.
 import { Picture } from 'astro:assets';
 import { foto } from '../comune/foto';
-import type { Scatto } from './dati';
+import type { Scatto, ScattoArticolo } from './dati';
 
 interface Props {
-  scatto: Scatto;
+  scatto: Scatto | ScattoArticolo;
   /** Larghezze in px da generare, per `srcset`. */
   larghezze: number[];
   /** Attributo `sizes`: quanto è larga la foto nella pagina. */
@@ -31,6 +33,13 @@ const {
   alt = scatto.alt,
   class: classe,
 } = Astro.props;
+
+const ingrandimento = 'ingrandimento' in scatto ? scatto.ingrandimento : undefined;
+const stile =
+  `object-position: ${scatto.posizione}` +
+  (ingrandimento
+    ? `; transform-origin: ${ingrandimento.origine}; --scala: ${ingrandimento.scala}`
+    : '');
 ---
 
 <Picture
@@ -42,5 +51,5 @@ const {
   loading={principale || subito ? 'eager' : 'lazy'}
   fetchpriority={principale ? 'high' : undefined}
   class={classe}
-  style={`object-position: ${scatto.posizione}`}
+  style={stile}
 />

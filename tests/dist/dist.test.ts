@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
+import { messaggioDisponibilita } from '../../src/prova/comune/contatti';
 import { ORARI_PROVA } from '../../src/prova/comune/orari';
 import {
   altreCollezioni,
@@ -11,6 +12,7 @@ import {
   collezioni,
   LIMITI_SELEZIONE,
   messaggioPost,
+  occhielloArticolo,
   post,
   POST_VISIBILI,
   sezioni,
@@ -306,9 +308,15 @@ function incoerenzeProtocolli(html: string): string[] {
   for (const valore of valoriAttributo(html, 'data-storia-apri')) {
     if (!gruppi.has(valore)) manca('data-storia-apri', valore, 'data-storia-gruppo');
   }
-  const pannelli = destinazioni('data-chiedi-pannello');
-  for (const valore of valoriAttributo(html, 'data-chiedi')) {
-    if (!pannelli.has(valore)) manca('data-chiedi', valore, 'data-chiedi-pannello');
+  // Un interruttore è un `button` con `aria-pressed="true|false"`: lo script ne inverte lo stato.
+  for (const [elemento] of html.matchAll(
+    /<[a-z][a-z0-9-]*\b[^>]*\sdata-interruttore(?=[\s=>/])[^>]*>/gi,
+  )) {
+    const unPulsante = /^<button\b/i.test(elemento);
+    const conStato = /\saria-pressed=["']?(?:true|false)["']?(?=[\s>/])/i.test(elemento);
+    if (!unPulsante || !conStato) {
+      problemi.add('data-interruttore non è un button con aria-pressed="true|false"');
+    }
   }
   const contenitori = destinazioni('data-filtri');
   const vuoti = destinazioni('data-filtro-vuoto');
@@ -380,8 +388,9 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<button data-post-apri="x">Apri</button><div data-post="x"></div>',
     '<button data-storia-apri="arrivi">Arrivi</button>',
     '<button data-storia-apri="a"></button><section data-storia-gruppo="b"></section>',
-    '<button data-chiedi="lenzuola">Chiedi</button>',
-    '<button data-chiedi="a"></button><div data-chiedi-pannello="b" hidden></div>',
+    // un interruttore è un button con aria-pressed true o false
+    '<div data-interruttore></div>',
+    '<button data-interruttore>x</button>',
     '<li data-filtrabile="selezione" data-categorie="letto">Lenzuola</li>',
     // un link che sceglie un filtro vuole il contenitore e, dentro, quel filtro
     '<a href="#s" data-filtro-scegli="selezione:letto">Letto</a>',
@@ -425,10 +434,9 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
       '<dialog class="post" open data-post=x></dialog>',
     '<button data-storia-apri="arrivi">Arrivi</button>' +
       '<dialog data-storie><section data-storia-gruppo="arrivi"></section></dialog>',
-    '<button data-chiedi="lenzuola" aria-expanded="false">Chiedi</button>' +
-      '<div data-chiedi-pannello="lenzuola" hidden></div>',
-    // un pulsante dentro il pannello può usare lo stesso data-chiedi per chiuderlo
-    '<button data-chiedi="a"></button><div data-chiedi-pannello="a"><button data-chiedi="a"></button></div>',
+    '<button type="button" data-interruttore aria-pressed="false">x</button>',
+    // attributi in qualunque ordine e senza virgolette
+    '<button class="i" aria-pressed=true data-interruttore>x</button>',
     '<div data-filtri="selezione"><button data-filtro="tutti" aria-pressed="true">Tutti</button></div>' +
       '<ul><li data-filtrabile="selezione" data-categorie="letto bagno">x</li></ul>' +
       '<p data-filtro-vuoto="selezione" hidden>Nessun articolo</p>',
@@ -859,6 +867,30 @@ describe('Salvia social (/prova/salvia-social/)', () => {
         `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}"`,
       );
     }
+  });
+
+  it('ogni scheda: prima il link che chiede la disponibilità, poi due scatti, l’interruttore, occhiello, nome e dettaglio', () => {
+    const schede = contenutiCon(html(), 'data-filtrabile', 'selezione');
+    expect(schede).toHaveLength(articoli.length);
+    articoli.forEach((articolo, i) => {
+      const scheda = decodifica(schede[i]!);
+      const primo = /<(?:a|button)\b[^>]*>/.exec(scheda)?.[0] ?? '';
+      expect(primo, articolo.id).toMatch(/^<a\b/);
+      expect(valore(primo, 'href')).toBe(
+        `https://wa.me/393345205451?text=${encodeURIComponent(messaggioDisponibilita(articolo.nome))}`,
+      );
+      expect(valore(primo, 'aria-label')).toBe(`Chiedi disponibilità: ${articolo.nome}`);
+      expect(scheda.match(/<img\b/g) ?? [], articolo.id).toHaveLength(2);
+      for (const s of articolo.scatti) expect(scheda, articolo.id).toContain(`alt="${s.alt}"`);
+      const interruttore =
+        /<button\b[^>]*\sdata-interruttore(?=[\s=>])[^>]*>/.exec(scheda)?.[0] ?? '';
+      expect(valore(interruttore, 'aria-pressed')).toBe('false');
+      expect(valore(interruttore, 'aria-label')).toBe(`Seconda foto: ${articolo.nome}`);
+      expect(scheda).toContain(`>${occhielloArticolo(articolo)}</p>`);
+      expect(scheda).toMatch(new RegExp(`<h3\\b[^>]*>${articolo.nome}</h3>`));
+      expect(scheda).toContain(articolo.dettaglio);
+    });
+    expect(html()).not.toMatch(/\sdata-chiedi(?:-pannello)?=/);
   });
 
   it('lo stato del negozio porta gli orari della prova, e la tabella ha i sette giorni', () => {

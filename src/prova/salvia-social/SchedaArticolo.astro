@@ -1,15 +1,22 @@
 ---
-// Un articolo della selezione: foto, categoria, nome, dettaglio e "Chiedi
-// disponibilità", che apre sopra la scheda il messaggio WhatsApp già scritto
-// (protocollo "Chiedi" dello script comune). Nella griglia di `Selezione.astro`
-// (fino a 1023 px) il pulsante è largo quanto la scheda; sul telefono (fino a
-// 767 px) il testo è più piccolo e il pulsante dice soltanto "Chiedi":
-// " disponibilità" resta per i lettori di schermo, quindi il nome non cambia.
+// Un articolo della selezione: la foto con i suoi due scatti (`DueScatti.astro`) e
+// il pulsante tondo con la freccia, poi occhiello, nome e dettaglio. Tutta la
+// scheda è coperta da `a.apri`, un link a WhatsApp con il messaggio di
+// disponibilità già scritto: senza JavaScript porta lì. È il primo elemento della
+// scheda, quindi anche da tastiera il focus arriva prima su di lui che
+// sull'interruttore dei due scatti (che sta sopra, con `z-index` più alto).
+//
+// Fino a 767 px la scheda è stretta (due colonne): foto con raggio e pulsante più
+// piccoli, testi più piccoli. Da 768 px le misure del tablet e del computer.
+// Sul computer con il mouse (`(hover: hover) and (width > 1023px)`) il passaggio
+// del mouse sulla scheda mostra il secondo scatto, appena ingrandito, e riempie la
+// freccia; sull'interruttore mostra invece lo scatto scelto, così il clic si vede.
+// Sul tablet e sul telefono non c'è passaggio: valgono i pallini.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp, messaggioDisponibilita } from '../comune/contatti';
-import Foto from './Foto.astro';
+import DueScatti from './DueScatti.astro';
 import Icona from './Icona.astro';
-import { categorie, type Articolo } from './dati';
+import { occhielloArticolo, type Articolo } from './dati';
 
 interface Props {
   articolo: Articolo;
@@ -17,356 +24,193 @@ interface Props {
 }
 
 const { articolo, negozio } = Astro.props;
-const categoria = categorie.find((c) => c.id === articolo.categorie[0])?.nome ?? '';
-const messaggio = messaggioDisponibilita(articolo.nome);
 const titolo = `articolo-${articolo.id}`;
-const pannello = `chiedi-${articolo.id}`;
 ---
 
 <article class="scheda" aria-labelledby={titolo}>
+  <a
+    class="apri"
+    href={linkWhatsApp(negozio.whatsapp, messaggioDisponibilita(articolo.nome))}
+    aria-label={`Chiedi disponibilità: ${articolo.nome}`}></a>
   <div class="foto">
-    <Foto
-      scatto={articolo}
+    <DueScatti
+      scatti={articolo.scatti}
+      nome={articolo.nome}
       larghezze={[300, 450, 600]}
-      sizes="(min-width: 1024px) 280px, (min-width: 768px) 31vw, 46vw"
+      sizes="(min-width: 1440px) 314px, (min-width: 1024px) 22vw, (min-width: 768px) 30vw, 46vw"
     />
-    {articolo.novita && <span class="novita">Novità</span>}
+    <span class="freccia" aria-hidden="true"><Icona nome="freccia" misura={18} /></span>
   </div>
-  <div class="corpo">
-    <p class="categoria">{categoria}</p>
+  <div class="testo">
+    <p class:list={['occhiello', { novita: articolo.novita }]}>
+      {articolo.novita && <span class="punto" aria-hidden="true" />}{occhielloArticolo(articolo)}
+    </p>
     <h3 id={titolo}>{articolo.nome}</h3>
     <p class="dettaglio">{articolo.dettaglio}</p>
-    <div class="piede">
-      <button
-        type="button"
-        class="chiedi"
-        data-chiedi={articolo.id}
-        aria-expanded="false"
-        aria-controls={pannello}
-      >
-        <Icona nome="whatsapp" misura={18} /><span>Chiedi<span class="lungo"> disponibilità</span></span>
-      </button>
-    </div>
-  </div>
-
-  <div
-    id={pannello}
-    class="pannello"
-    data-chiedi-pannello={articolo.id}
-    role="group"
-    aria-label={`Chiedi disponibilità: ${articolo.nome}`}
-    hidden
-  >
-    <div class="pannello-dentro">
-      <div class="pannello-testa">
-        <span class="pannello-titolo">Chiedi disponibilità</span>
-        <button type="button" class="chiudi" data-chiedi={articolo.id} aria-label="Chiudi">
-          <Icona nome="chiudi" misura={18} />
-        </button>
-      </div>
-      <p class="pannello-nome">{articolo.nome}</p>
-      <p class="messaggio">{messaggio}</p>
-      <p class="nota">Il messaggio è già scritto: puoi cambiarlo prima di inviarlo.</p>
-      <div class="pannello-azioni">
-        <a class="pieno" href={linkWhatsApp(negozio.whatsapp, messaggio)}>
-          <Icona nome="whatsapp" misura={18} />Apri WhatsApp
-        </a>
-        <a class="filo" href={negozio.telefonoHref}>
-          <Icona nome="telefono" misura={18} />Chiama
-        </a>
-      </div>
-    </div>
   </div>
 </article>
 
 <style>
+  /* --- Telefono (fino a 767 px) --- */
   .scheda {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 10px 10px 18px;
-    border-radius: var(--raggio-scheda);
-    background: var(--latte);
-    transition:
-      transform 450ms cubic-bezier(0.2, 0.7, 0.2, 1),
-      box-shadow 450ms ease;
+  }
+
+  .apri {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    border-radius: var(--raggio-telefono);
+  }
+
+  .scheda .apri:focus-visible {
+    outline: 2px solid var(--salvia-scura);
+    outline-offset: 4px;
   }
 
   .foto {
+    --interruttore-basso: 4px;
     position: relative;
+    aspect-ratio: 3 / 4;
     overflow: hidden;
-    border-radius: var(--raggio-medio);
+    border-radius: var(--raggio-telefono);
     background: var(--sabbia);
   }
 
-  .foto :global(img) {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
-    transition: transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  }
-
-  .novita {
+  .freccia {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    padding: 6px 11px;
-    border-radius: var(--pillola);
-    background: var(--bianco);
-    color: var(--salvia-scura);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    line-height: 1.2;
-    text-transform: uppercase;
-  }
-
-  .corpo {
+    right: 8px;
+    bottom: 8px;
     display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    padding: 0 8px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow:
+      inset 0 0 0 1px var(--bordo),
+      var(--ombra-etichetta);
+    transition:
+      background-color 250ms ease,
+      color 250ms ease,
+      box-shadow 250ms ease;
   }
 
-  .categoria {
-    margin: 16px 0 0;
-    font-size: 12px;
+  .freccia :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .testo {
+    padding: 12px 2px 0;
+  }
+
+  .occhiello {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.12em;
     line-height: 1.4;
     text-transform: uppercase;
+    color: var(--grigio-testo);
+  }
+
+  .occhiello.novita {
     color: var(--salvia-scura);
+  }
+
+  .punto {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--salvia-scura);
   }
 
   h3 {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     font-family: var(--titoli);
-    font-size: 23px;
+    font-size: 18px;
     font-weight: 400;
     line-height: 1.15;
-    overflow-wrap: anywhere;
+    text-wrap: balance;
   }
 
   .dettaglio {
-    margin: 6px 0 0;
-    font-size: 15px;
+    margin: 4px 0 0;
+    font-size: 13px;
     line-height: 1.45;
     color: var(--grigio-testo);
+    text-wrap: pretty;
   }
 
-  .piede {
-    margin-top: auto;
-    padding-top: 16px;
-  }
-
-  .chiedi {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 0 18px 0 15px;
-    border: 0;
-    border-radius: var(--pillola);
-    background: transparent;
-    color: var(--nero);
-    box-shadow: inset 0 0 0 1px var(--nero);
-    font-size: 15px;
-    font-weight: 500;
-    white-space: nowrap;
-    transition:
-      background-color 200ms ease,
-      color 200ms ease,
-      box-shadow 200ms ease;
-  }
-
-  .chiedi[aria-expanded='true'] {
-    background: var(--salvia-scura);
-    color: var(--bianco);
-    box-shadow: inset 0 0 0 1px var(--salvia-scura);
-  }
-
-  /* --- La griglia della selezione: telefono e tablet (punti di rottura di
-     `LIMITI_SELEZIONE`) ---
-     Il pulsante è largo quanto la scheda: sul tablet, a 768 px, il testo intero
-     ci sta solo così. */
-  @media (max-width: 1023px) {
-    .chiedi {
-      justify-content: center;
-      gap: 7px;
-      width: 100%;
-      padding: 0 10px;
-    }
-  }
-
-  /* --- Telefono: testo più piccolo, e il pulsante dice soltanto "Chiedi" --- */
-  @media (max-width: 767px) {
-    .corpo {
-      padding: 0 4px;
+  /* --- Tablet e computer (da 768 px): i punti di rottura sono i complementi
+     esatti di `LIMITI_SELEZIONE` (vedi `Selezione.astro`) --- */
+  @media (width > 767px) {
+    .apri,
+    .foto {
+      border-radius: var(--raggio);
     }
 
-    .categoria {
-      font-size: 11px;
+    .foto {
+      --interruttore-basso: 16px;
+    }
+
+    .freccia {
+      right: 16px;
+      bottom: 16px;
+      width: 44px;
+      height: 44px;
+    }
+
+    .freccia :global(svg) {
+      width: 18px;
+      height: 18px;
+    }
+
+    .testo {
+      padding: 18px 4px 0;
+    }
+
+    .occhiello {
+      font-size: 12px;
     }
 
     h3 {
-      font-size: 18px;
+      margin-top: 6px;
+      font-size: 24px;
     }
 
     .dettaglio {
-      font-size: 13px;
-    }
-
-    /* " disponibilità": letto ma non visto, come `.solo-lettori`. */
-    .lungo {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      margin: -1px;
-      padding: 0;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-      border: 0;
+      margin-top: 6px;
+      font-size: 15px;
     }
   }
 
-  @media (hover: hover) and (min-width: 960px) {
+  /* --- Computer con il mouse: il secondo scatto al passaggio, ma non quando il
+     mouse è sull'interruttore (lì conta lo scatto scelto, così il clic si vede) --- */
+  @media (hover: hover) and (width > 1023px) {
+    .scheda:hover:not(:has(:global([data-interruttore]:hover))) {
+      --secondo: 1;
+    }
+
     .scheda:hover {
-      transform: translateY(-6px);
-      box-shadow: var(--ombra-scheda);
+      --zoom: 1.04;
     }
 
-    .scheda:hover .foto :global(img) {
-      transform: scale(1.04);
-    }
-
-    .scheda:hover .chiedi {
+    .scheda:hover .freccia,
+    .apri:focus-visible ~ .foto .freccia {
       background: var(--salvia-scura);
       color: var(--bianco);
-      box-shadow: inset 0 0 0 1px var(--salvia-scura);
+      box-shadow:
+        inset 0 0 0 1px var(--salvia-scura),
+        var(--ombra-etichetta);
     }
-  }
-
-  /* --- Il pannello sopra la scheda ---
-     In colonna, perché il riquadro bianco lo riempia anche quando la selezione
-     gli toglie l'altezza fissa (nella griglia scende sotto la scheda). */
-  .pannello {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .pannello-dentro {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 0;
-    padding: 16px 18px 18px;
-    overflow-y: auto;
-    border-radius: var(--raggio-scheda);
-    background: var(--bianco);
-    box-shadow:
-      inset 0 0 0 1px var(--bordo-chiaro),
-      var(--ombra-pannello);
-  }
-
-  .pannello-testa {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .pannello-titolo {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--salvia-scura);
-  }
-
-  .chiudi {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    margin-right: -8px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: var(--latte);
-    color: var(--nero);
-  }
-
-  .chiudi:hover {
-    background: var(--latte-sopra);
-  }
-
-  .pannello-nome {
-    margin: 0;
-    font-family: var(--titoli);
-    font-size: 22px;
-    line-height: 1.15;
-  }
-
-  .messaggio {
-    margin: 0;
-    padding: 12px 14px;
-    border-radius: var(--raggio-medio) var(--raggio-medio) var(--raggio-medio) 4px;
-    background: var(--salvia-chiara);
-    font-size: 15px;
-    line-height: 1.45;
-  }
-
-  .nota {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.4;
-    color: var(--grigio-testo);
-  }
-
-  .pannello-azioni {
-    display: grid;
-    gap: 8px;
-    margin-top: auto;
-  }
-
-  .pannello-azioni a {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 48px;
-    border-radius: var(--pillola);
-    text-decoration: none;
-    font-size: 15px;
-    font-weight: 600;
-    transition: background-color 200ms ease;
-  }
-
-  .pieno {
-    background: var(--salvia-scura);
-    color: var(--bianco);
-  }
-
-  .pieno:hover {
-    background: var(--salvia-scura-sopra);
-  }
-
-  .filo {
-    box-shadow: inset 0 0 0 1px var(--nero);
-    color: var(--nero);
-  }
-
-  .filo:hover {
-    background: var(--latte-sopra);
   }
 </style>
