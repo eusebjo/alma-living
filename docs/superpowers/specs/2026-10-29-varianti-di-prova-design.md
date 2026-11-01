@@ -24,6 +24,35 @@
 
 Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime quattro voci. Le note della tela sono in `research_notes/Design UI/sesta/`, `settima/` e `ottava/`.
 
+**Aggiornamento del 2026-11-01, secondo:** dopo la prova della versione 3 in anteprima, eusebjo ha chiesto due cose. La prima: togliere "Martina" da tutta la pagina, perché il sito parla come Alma Living. La seconda: rifare "Sugli scaffali adesso", perché era incoerente tra telefono e computer e troppo piatto. Sulla tela (nona proposta) ha scelto la variante 9, "Il meglio insieme", tavola `ScaffaliInsieme.dc.html` con `ScaffaliInsiemeTelefono.dc.html`. Per gli scaffali e per i testi qui sotto è il nuovo riferimento; il resto della pagina resta quello della versione 3 già in codice, compresi i 13 post veri. I commenti in `renderVals()` della tavola, dalla riga 1102 circa, sono il dettaglio delle regole. La ricerca che ha portato alla variante è in `research_notes/Design UI/nona/ricerca_schede.md`.
+- **Niente "Martina":**
+  - nell'apertura il biglietto ha solo la frase e il contatore, senza la firma;
+  - accanto alle storie, "Le storie del negozio" con sotto "Arrivi, vetrina e novità, per categoria";
+  - il diario diventa "Il diario del negozio", con il testo al plurale ("Fotografiamo quello che succede in Via Ricasoli: …");
+  - il biglietto del diario resta senza firma;
+  - l'`aria-label` del diario diventa "Dal negozio, il diario";
+  - non nominano più Martina nemmeno i commenti, la `description` della pagina e la descrizione in `varianti.ts`;
+  - il carattere a mano (Beth Ellen) non serve più e si toglie dai caratteri della variante.
+- **Scaffali, una sola griglia:** cambiano solo le colonne, mai il carosello.
+  - Telefono: 2 colonne, con 2 schede, la "finestra", altre 2 schede e "Mostra tutti gli 8".
+  - Tablet (768-1023 px): 3 colonne, con 3 schede, la finestra, altre 3 schede e "Mostra tutti gli 8".
+  - Computer: 4 colonne, con tutte le schede e la finestra dopo la prima riga.
+  - Il limite vale sulla lista filtrata. Se le schede non riempiono la prima riga, la finestra viene subito dopo di loro.
+- **Filtri:** pillole con un cerchietto foto della collezione, il nome e il conteggio.
+- **La scheda:**
+  - **Foto:** 3:4 con due scatti. Sul computer il secondo appare al passaggio del mouse; due pallini bianchi, sempre visibili, scelgono lo scatto. Sul telefono un solo interruttore da 56 x 44 px passa all'altro scatto.
+  - **Testo sotto la foto:** l'occhiello (la categoria, oppure "Novità" al suo posto), il nome in serif e il dettaglio.
+  - **Apertura della scheda rapida:** il pulsante tondo con la freccia delle stanze, in basso a destra sulla foto, è il segno che tutta la scheda apre la scheda rapida.
+  - **Secondo scatto:** dove manca uno scatto vero, è un dettaglio ingrandito della stessa foto.
+- **La "finestra":** una tessera larga quanto la riga, con la foto vera dello scaffale, "Non lo trovi qui?" e un pulsante WhatsApp. Con il filtro Mare diventa "Il mare torna in primavera".
+- **La scheda rapida "Chiedi disponibilità":** sul telefono è un foglio dal basso, sul computer e sul tablet una finestra centrata. Contiene:
+  - le due foto;
+  - categoria, nome e dettaglio;
+  - i pallini colore dove ci sono (Plaid Abbracciami verde e rosso, Asciugamano con casetta rosso, bianco e verde, Accappatoio con orsetto rosa, sabbia e azzurro). Cambiano la foto, se c'è quella del colore, il nome ("Plaid Abbracciami · verde") e il messaggio;
+  - l'anteprima del messaggio WhatsApp e "Invia su WhatsApp".
+
+  Si chiude con la X, con Esc o toccando fuori. Senza JavaScript ogni scheda resta leggibile e porta comunque a WhatsApp.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:
