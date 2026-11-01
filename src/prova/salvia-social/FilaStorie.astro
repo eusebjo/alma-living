@@ -1,6 +1,6 @@
 ---
-// La fila delle storie sotto l'header; sul computer, a destra, l'invito ai post
-// del diario di Martina.
+// La fila delle storie sotto l'header; sui computer larghi, a destra, l'invito ai
+// post del diario di Martina (il link da 1150 px, anche la frase da 1380 px).
 import CerchioStoria from './CerchioStoria.astro';
 import Icona from './Icona.astro';
 import { storie } from './dati';
@@ -72,7 +72,6 @@ import { storie } from './dati';
 
     .invito {
       flex: none;
-      display: flex;
       align-items: center;
       gap: 20px;
       padding-left: 32px;
@@ -117,10 +116,24 @@ import { storie } from './dati';
     }
   }
 
-  /* Tra 960 e 1199 px la fila ha bisogno di tutto lo spazio. */
-  @media (min-width: 960px) and (max-width: 1199px) {
+  /*
+   * Gli otto cerchi misurano 810 px e non devono mai scorrere di lato. L'invito
+   * compare solo dove ci sta accanto, con almeno 13 px di margine anche con la barra
+   * di scorrimento da 15 px: il solo link da 1150 px, anche la frase da 1380 px.
+   */
+  @media (min-width: 1150px) {
+    .invito {
+      display: flex;
+    }
+
     .invito p {
       display: none;
+    }
+  }
+
+  @media (min-width: 1380px) {
+    .invito p {
+      display: block;
     }
   }
 </style>
