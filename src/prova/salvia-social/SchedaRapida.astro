@@ -362,6 +362,16 @@ const pallini = colori.map((colore) => {
     background: none;
   }
 
+  /* Il focus da tastiera sta attorno al tondo, non al riquadro da 44 px. */
+  .pallino:focus-visible {
+    outline: none;
+  }
+
+  .pallino:focus-visible span {
+    outline: 2px solid var(--salvia-scura);
+    outline-offset: 5px;
+  }
+
   .pallino span {
     display: block;
     width: 20px;
