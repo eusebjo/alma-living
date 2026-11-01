@@ -663,6 +663,13 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(diario).toContain(`Aggiornato il ${post[0]!.data}`);
   });
 
+  it('il diario dà la data dell’ultimo post (28 ottobre) e non promette un ritmo settimanale', () => {
+    const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
+    expect(diario).toContain('Aggiornato il 28 ottobre');
+    expect(diario).toContain('l’ultimo il 28 ottobre');
+    expect(diario).not.toMatch(/ogni settimana/i);
+  });
+
   it('un solo lettore di storie', () => {
     expect(dialogCon('data-storie')).toHaveLength(1);
   });

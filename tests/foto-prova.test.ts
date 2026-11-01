@@ -486,14 +486,40 @@ describe('eseguitoComeComando', () => {
 });
 
 describe('elenco.json', () => {
-  it('elenco.json e la banca foto coincidono', () => {
-    const elenco: string[] = JSON.parse(
-      readFileSync('scripts/foto-prova/elenco.json', 'utf8'),
-    );
+  const elenco: string[] = JSON.parse(readFileSync('scripts/foto-prova/elenco.json', 'utf8'));
 
-    expect(elenco).toHaveLength(27);
-    expect(new Set(elenco).size).toBe(27);
+  it('elenco.json e la banca foto coincidono', () => {
+    expect(elenco).toHaveLength(46);
+    expect(new Set(elenco).size).toBe(46);
     for (const nome of elenco) expect(nome).toMatch(/^[a-z0-9-]+\.jpg$/);
+  });
+
+  it('contiene le 19 foto dei post veri di Alma Living, in ordine alfabetico', () => {
+    const postVeri = [
+      'ig-angolo-bimbi',
+      'ig-assaggio',
+      'ig-autunno',
+      'ig-beach-therapy',
+      'ig-conchiglie',
+      'ig-cuscini-1',
+      'ig-cuscini-2',
+      'ig-cuscini-3',
+      'ig-cuscini-4',
+      'ig-erbolinea',
+      'ig-parure-1',
+      'ig-parure-2',
+      'ig-parure-3',
+      'ig-parure-4',
+      'ig-parure-5',
+      'ig-spoiler',
+      'ig-tavola-1',
+      'ig-tavola-2',
+      'ig-tavola-estate',
+    ].map((nome) => `${nome}.jpg`);
+
+    expect(postVeri).toHaveLength(19);
+    expect(elenco.filter((nome) => nome.startsWith('ig-'))).toEqual(postVeri);
+    expect(elenco).toEqual([...elenco].sort());
   });
 });
 

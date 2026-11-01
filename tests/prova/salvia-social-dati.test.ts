@@ -33,6 +33,36 @@ const scatti: Scatto[] = [
   ...post.flatMap((voce) => voce.foto),
 ];
 
+// Le foto dei post veri di Alma Living (`ig-*`) e il loro testo alternativo,
+// alla lettera: un refuso nel testo alternativo lo leggerebbe uno screen reader.
+const ALT_POST_VERI: Record<string, string> = {
+  'ig-assaggio':
+    'Camera con testiera capitonné e copriletto rosa con balza di pizzo, una donna legge sul letto',
+  'ig-conchiglie': 'Vasi in ceramica a forma di conchiglia con piante grasse, su un tavolo di legno',
+  'ig-spoiler':
+    'Scaffali del negozio con biancheria piegata, tovaglie a quadretti e diffusori per la casa',
+  'ig-angolo-bimbi':
+    'Scaffale del negozio con cuscini a righe, biancheria rosa e prodotti per i più piccoli',
+  'ig-tavola-1':
+    'Tavola apparecchiata in negozio con piatti a spirale grigi e bicchieri, davanti agli scaffali',
+  'ig-tavola-2': 'Piatti con decoro a spirale grigio e una ciotola sul tavolo del negozio',
+  'ig-tavola-estate': 'Ciotole di legno decorate, vassoi con piastrelle blu e posate di legno',
+  'ig-erbolinea':
+    'Flaconi di essenze per il bucato su un vassoio di legno, davanti a una finestra ad arco',
+  'ig-beach-therapy': 'Telo mare a righe verde menta e borsa Beach Therapy sulla spiaggia',
+  'ig-autunno':
+    'Camera con testiera capitonné bianca, copriletto trapuntato rosa cipria e carta da parati a fiori',
+  'ig-parure-1': 'Letto matrimoniale con parure copripiumino a piccole macchie su fondo beige',
+  'ig-parure-2': 'Letto matrimoniale con parure copripiumino maculata nei toni del marrone',
+  'ig-parure-3': 'Letto con parure copripiumino a quadri beige, panna e rosso',
+  'ig-parure-4': 'Letto con parure copripiumino a motivo geometrico blu e bianco',
+  'ig-parure-5': 'Letto con copripiumino in jersey di cotone verde',
+  'ig-cuscini-1': 'Divano con cuscini natalizi rossi, bianchi e verdi con alberelli in rilievo',
+  'ig-cuscini-2': 'Divano con cuscini natalizi ad alberelli e un plaid rosso con fiocchi di neve',
+  'ig-cuscini-3': 'Sei cuscini con gattini natalizi stampati',
+  'ig-cuscini-4': 'Cuscini con baite innevate e boschi di abeti su un divano chiaro',
+};
+
 describe('dati di Salvia social', () => {
   it('ogni foto è tra quelle della prova e ha un testo alternativo', () => {
     for (const scatto of scatti) {
@@ -64,6 +94,42 @@ describe('dati di Salvia social', () => {
     expect(ids.filter((id) => !articoli.some((a) => a.categorie.includes(id)))).toEqual(['mare']);
   });
 
+  it('i post sono i 13 post veri di Alma Living, dal più recente, con id da p1 a p13', () => {
+    expect(post).toHaveLength(13);
+    expect(post.map((voce) => voce.id)).toEqual(
+      Array.from({ length: 13 }, (_vuoto, i) => `p${i + 1}`),
+    );
+    expect(post[0]!.data).toBe('28 ottobre');
+    expect(post[12]!.data).toBe('30 aprile');
+  });
+
+  it('ogni foto dei post ha la sua voce tra i testi alternativi', () => {
+    for (const voce of post) {
+      for (const scatto of voce.foto) {
+        expect(typeof scatto.alt, `${voce.id} ${scatto.foto}`).toBe('string');
+        expect(scatto.alt.trim(), `${voce.id} ${scatto.foto}`).not.toBe('');
+      }
+    }
+  });
+
+  it('le 19 foto nuove dei post hanno il testo alternativo previsto, e ognuna è usata da un post', () => {
+    const usate = new Map<string, string>(
+      post.flatMap((voce) => voce.foto).map((scatto) => [scatto.foto, scatto.alt]),
+    );
+    for (const [nome, alt] of Object.entries(ALT_POST_VERI)) {
+      expect(usate.get(nome), nome).toBe(alt);
+      expect(elenco, nome).toContain(nome);
+    }
+    // Nessuna foto `ig-*` dell'elenco resta fuori dai post.
+    expect(elenco.filter((nome) => nome.startsWith('ig-')).sort()).toEqual(
+      Object.keys(ALT_POST_VERI).sort(),
+    );
+  });
+
+  it('nessun testo dei post contiene emoji', () => {
+    for (const voce of post) expect(voce.testo, voce.id).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
   it('la griglia mostra 9 post e ne piega almeno uno in "Mostra altri"', () => {
     expect(POST_VISIBILI).toBe(9);
     expect(post.length).toBeGreaterThan(POST_VISIBILI);
@@ -83,7 +149,7 @@ describe('dati di Salvia social', () => {
 
   it('il messaggio WhatsApp di un post dice di che cosa parla, con la preposizione', () => {
     expect(messaggioPost(post[0]!)).toBe(
-      'Buongiorno, ho visto sul sito il vostro post del 27 ottobre sui plaid delle feste. Mi date qualche informazione in più?',
+      'Buongiorno, ho visto sul sito il vostro post del 28 ottobre sui cuscini di Natale. Mi date qualche informazione in più?',
     );
     for (const voce of post) expect(voce.chiedi, voce.id).toMatch(/^su(?:l|llo|lla|i|gli|lle)? /);
   });

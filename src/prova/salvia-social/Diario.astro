@@ -23,7 +23,7 @@ const { negozio } = Astro.props;
       <p class="occhiello">Il diario di Martina</p>
       <h2 id="diario-titolo">Dal negozio</h2>
       <p class="presentazione">
-        Ogni settimana Martina fotografa quello che succede in Via Ricasoli: gli arrivi, la vetrina
+        Martina fotografa quello che succede in Via Ricasoli: gli arrivi, la vetrina
         che cambia, le confezioni preparate al banco. Tocca una foto per aprirla.
       </p>
       <figure class="biglietto">
@@ -40,7 +40,7 @@ const { negozio } = Astro.props;
         <figcaption><span class="firma">Martina</span><span>dal negozio</span></figcaption>
       </figure>
       <p class="frequenza">
-        <Icona nome="orologio" />Nuovi post ogni settimana · l’ultimo il 27 ottobre
+        <Icona nome="orologio" />Nuovi post dal negozio · l’ultimo il {post[0]!.data}
       </p>
     </div>
 

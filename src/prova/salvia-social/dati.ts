@@ -1,7 +1,9 @@
-// Contenuti di esempio della variante Salvia social, trascritti da
-// `renderVals()` della tavola `SalviaSocial.dc.html` (tela di Claude Design) e
-// aggiornati alla versione 3, la tavola `DiarioFascia.dc.html` (messaggi dei post
-// con la preposizione articolata, diario dopo la selezione).
+// Contenuti della variante Salvia social. Apertura, storie, collezioni e selezione
+// sono esempi trascritti da `renderVals()` della tavola `SalviaSocial.dc.html`
+// (tela di Claude Design) e aggiornati alla versione 3, la tavola
+// `DiarioFascia.dc.html` (messaggi dei post con la preposizione articolata, diario
+// dopo la selezione). I post del diario sono invece i 13 post veri del profilo
+// Instagram di Alma Living (didascalie senza emoji né promozioni scadute).
 // Le foto sono indicate per nome (`src/prova/foto/<nome>.jpg`, vedi
 // `scripts/foto-prova/elenco.json`); i componenti le passano a `foto()`.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
@@ -36,6 +38,32 @@ const ALT = {
   cuori: 'Cuori dorati su basi di legno con stelle rosse di stoffa',
   gnomi: 'Gnomi di stoffa natalizi su un’alzata bianca',
   mare: 'Lenzuola e plaid piegati in riva al mare',
+  // Le foto dei post veri di Alma Living (profilo Instagram del negozio).
+  'ig-assaggio':
+    'Camera con testiera capitonné e copriletto rosa con balza di pizzo, una donna legge sul letto',
+  'ig-conchiglie': 'Vasi in ceramica a forma di conchiglia con piante grasse, su un tavolo di legno',
+  'ig-spoiler':
+    'Scaffali del negozio con biancheria piegata, tovaglie a quadretti e diffusori per la casa',
+  'ig-angolo-bimbi':
+    'Scaffale del negozio con cuscini a righe, biancheria rosa e prodotti per i più piccoli',
+  'ig-tavola-1':
+    'Tavola apparecchiata in negozio con piatti a spirale grigi e bicchieri, davanti agli scaffali',
+  'ig-tavola-2': 'Piatti con decoro a spirale grigio e una ciotola sul tavolo del negozio',
+  'ig-tavola-estate': 'Ciotole di legno decorate, vassoi con piastrelle blu e posate di legno',
+  'ig-erbolinea':
+    'Flaconi di essenze per il bucato su un vassoio di legno, davanti a una finestra ad arco',
+  'ig-beach-therapy': 'Telo mare a righe verde menta e borsa Beach Therapy sulla spiaggia',
+  'ig-autunno':
+    'Camera con testiera capitonné bianca, copriletto trapuntato rosa cipria e carta da parati a fiori',
+  'ig-parure-1': 'Letto matrimoniale con parure copripiumino a piccole macchie su fondo beige',
+  'ig-parure-2': 'Letto matrimoniale con parure copripiumino maculata nei toni del marrone',
+  'ig-parure-3': 'Letto con parure copripiumino a quadri beige, panna e rosso',
+  'ig-parure-4': 'Letto con parure copripiumino a motivo geometrico blu e bianco',
+  'ig-parure-5': 'Letto con copripiumino in jersey di cotone verde',
+  'ig-cuscini-1': 'Divano con cuscini natalizi rossi, bianchi e verdi con alberelli in rilievo',
+  'ig-cuscini-2': 'Divano con cuscini natalizi ad alberelli e un plaid rosso con fiocchi di neve',
+  'ig-cuscini-3': 'Sei cuscini con gattini natalizi stampati',
+  'ig-cuscini-4': 'Cuscini con baite innevate e boschi di abeti su un divano chiaro',
 } as const;
 
 export type NomeFoto = keyof typeof ALT;
@@ -392,7 +420,7 @@ export const articoli: Articolo[] = [
   },
 ];
 
-// --- Post del diario di Martina ---
+// --- Post del diario: i post veri di Alma Living, dal più recente ---
 
 export interface Post {
   /** Unico nella pagina: lo usano il pulsante della griglia e il suo dialog. */
@@ -401,8 +429,8 @@ export interface Post {
   rubrica: string;
   /**
    * Di che cosa parla il post, nel messaggio WhatsApp: comincia con la
-   * preposizione articolata ("sui plaid delle feste"), che si legge dopo la data
-   * ("…il vostro post del 27 ottobre sui plaid delle feste").
+   * preposizione articolata ("sui cuscini di Natale"), che si legge dopo la data
+   * ("…il vostro post del 28 ottobre sui cuscini di Natale").
    */
   chiedi: string;
   testo: string;
@@ -415,119 +443,130 @@ export const POST_VISIBILI = 9;
 export const post: Post[] = [
   {
     id: 'p1',
-    data: '27 ottobre',
+    data: '28 ottobre',
     rubrica: 'Arrivi',
-    chiedi: 'sui plaid delle feste',
+    chiedi: 'sui cuscini di Natale',
     testo:
-      'Sono arrivati i plaid delle feste: rossi, verdi e gli Abbracciami con la scritta ricamata. Sono morbidissimi, passate a toccarli.',
+      'Sono arrivati i cuscini di Natale. Brinì, in jacquard con gli alberelli in punto spugna: copricuscino 45 x 45 in rosso, bianco, beige e verde, oppure cuscino imbottito 30 x 50. Meid, con baite innevate e boschi, negli stessi due formati, in rosso, beige e verde. E per chi ama i gatti, Zigrì: cotone stampato fronte e retro.',
     foto: [
-      scatto('plaid-rosso', '50% 45%'),
-      scatto('plaid-verde', '50% 50%'),
-      scatto('abbracciami-rosso', '50% 40%'),
+      scatto('ig-cuscini-1'),
+      scatto('ig-cuscini-2'),
+      scatto('ig-cuscini-3'),
+      scatto('ig-cuscini-4'),
     ],
   },
   {
     id: 'p2',
-    data: '25 ottobre',
-    rubrica: 'In vetrina',
-    chiedi: 'sugli gnomi di stoffa',
+    data: '27 ottobre',
+    rubrica: 'Arrivi',
+    chiedi: 'sulle nuove parure',
     testo:
-      'La vetrina di Natale è cominciata con gli gnomi di stoffa sull’alzata bianca. Ognuno ha la sua faccia e il suo cappello.',
-    foto: [scatto('gnomi', '50% 50%')],
-  },
-  {
-    id: 'p3',
-    data: '24 ottobre',
-    rubrica: 'Confezioni',
-    chiedi: 'sugli asciugamani con la casetta',
-    testo:
-      'Asciugamani con la casetta ricamata, in bianco, verde e rosso. Ve li confezioniamo con lo spago e il cartellino, pronti da regalare.',
+      'Nuove parure copripiumino matrimoniali in puro cotone: Vara in percallino; Rudy, maculata, in grigio o marrone; i quadri in cotone tinto in filo; il motivo geometrico in grigio, blu e tortora. E Antigua, il copripiumino in jersey che non si stira, in nove colori: bianco, naturale, fumo, salvia, sabbia, grigio, ottanio, bordeaux e blu.',
     foto: [
-      scatto('asciugamano-bianco', '50% 50%'),
-      scatto('asciugamano-verde', '50% 50%'),
-      scatto('asciugamano-rosso', '50% 50%'),
+      scatto('ig-parure-1'),
+      scatto('ig-parure-2'),
+      scatto('ig-parure-3'),
+      scatto('ig-parure-4'),
+      scatto('ig-parure-5'),
     ],
   },
   {
-    id: 'p4',
-    data: '22 ottobre',
-    rubrica: 'Dettagli',
-    chiedi: 'sui cuori dorati',
+    id: 'p3',
+    data: '11 ottobre',
+    rubrica: 'In vetrina',
+    chiedi: 'sui plaid',
     testo:
-      'Cuori dorati su basi di legno e stelle rosse di stoffa: piccoli pensieri per chi ha già tutto.',
-    foto: [scatto('cuori', '50% 45%')],
+      'L’inverno è alle porte e torna la voglia di casa. Soffici, caldi, avvolgenti: abbiamo scelto quattro plaid per le serate sul divano. Vi aspettiamo in negozio per scegliere il vostro.',
+    foto: [scatto('scaffale'), scatto('copriletto-rosso'), scatto('mare'), scatto('coperta')],
+  },
+  {
+    id: 'p4',
+    data: '31 agosto',
+    rubrica: 'Arrivi',
+    chiedi: 'sulle novità d’autunno',
+    testo:
+      'È bello cominciare a sognare un po’ in anticipo. A metà settembre arrivano tante novità per vestire la casa con le sfumature calde dell’autunno, e le prime idee per le feste.',
+    foto: [scatto('ig-autunno')],
   },
   {
     id: 'p5',
-    data: '20 ottobre',
-    rubrica: 'Dietro il banco',
-    chiedi: 'sulla parete dei plaid',
+    data: '15 luglio',
+    rubrica: 'Arrivi',
+    chiedi: 'sulla linea Beach Therapy',
     testo:
-      'Abbiamo rifatto la parete dei plaid: bianchi, rosa e grigi, con i cuscini in pelo. Dal vivo viene voglia di toccarli tutti.',
-    foto: [scatto('scaffale', '50% 45%')],
+      'La collezione Beach Therapy si allarga: oltre al verde menta ci sono il grigio chiaro e il beige. Potete prendere il set da tre pezzi o i singoli articoli.',
+    foto: [scatto('ig-beach-therapy')],
   },
   {
     id: 'p6',
-    data: '18 ottobre',
+    data: '8 luglio',
     rubrica: 'Arrivi',
-    chiedi: 'sui copriletti',
+    chiedi: 'sulle essenze per il bucato',
     testo:
-      'Rosso per le feste, bianco per tutto l’anno: copriletti con il volant e trapuntati morbidi, appena arrivati.',
-    foto: [scatto('copriletto-rosso', '50% 50%'), scatto('trapunta', '50% 50%')],
+      'Sono arrivate le essenze concentrate per il bucato di Erbolinea Prestige Fragrances: profumi intensi che durano giorni e riempiono la casa di fresco. Tante fragranze e diversi formati, per lavatrice, asciugatrice e lavaggio a mano. Passate a provarle.',
+    foto: [scatto('ig-erbolinea')],
   },
   {
     id: 'p7',
-    data: '15 ottobre',
+    data: '8 luglio',
     rubrica: 'Dettagli',
-    chiedi: 'sulle candele alla vaniglia',
+    chiedi: 'sul tris di asciugamani',
     testo:
-      'Candele alla vaniglia nelle ciotole di legno, legate con lo spago e con il cartellino. Un regalo piccolo e già pronto.',
-    foto: [scatto('candele', '50% 60%')],
+      'Il tris di asciugamani, ospite, viso e telo, con la balza in puro lino. Fatto in Toscana, in tante sfumature: celeste, rosa, verde salvia, grigio.',
+    foto: [scatto('bagno')],
   },
   {
     id: 'p8',
-    data: '13 ottobre',
-    rubrica: 'Arrivi',
-    chiedi: 'sugli accappatoi per i più piccoli',
+    data: '3 luglio',
+    rubrica: 'Dettagli',
+    chiedi: 'sulla tavola d’estate',
     testo:
-      'Nuovi accappatoi e asciugamani per i più piccoli, con l’orsetto ricamato. In rosa, azzurro e bianco.',
-    foto: [scatto('asciugamani-bimbo', '50% 45%'), scatto('neonato', '50% 40%')],
+      'Voglia d’estate anche a tavola? Legno caldo e ceramiche decorate, per rinnovare la tavola dei pranzi estivi.',
+    foto: [scatto('ig-tavola-estate')],
   },
   {
     id: 'p9',
-    data: '10 ottobre',
-    rubrica: 'In vetrina',
-    chiedi: 'sulla tavola della domenica',
+    data: '19 giugno',
+    rubrica: 'Arrivi',
+    chiedi: 'sui piatti per la tavola',
     testo:
-      'In vetrina abbiamo apparecchiato la tavola della domenica: tovaglia color lino con il volant e il profilo rosso, sedie bianche.',
-    foto: [scatto('tovaglia-volant', '50% 50%'), scatto('tavola', '40% 50%')],
+      'Un nuovo arrivo in negozio che sa di colazioni lente, domeniche in famiglia e chiacchiere attorno alla tavola.',
+    foto: [scatto('ig-tavola-1'), scatto('ig-tavola-2')],
   },
   {
     id: 'p10',
-    data: '6 ottobre',
+    data: '15 giugno',
     rubrica: 'Dietro il banco',
-    chiedi: 'sui saponi e i profumi',
-    testo:
-      'Il mobile di legno dei saponi e dei profumi per la casa. Quando lo apriamo, profuma tutto il negozio.',
-    foto: [scatto('bagno-prodotti', '50% 72%')],
+    chiedi: 'sui prodotti per i più piccoli',
+    testo: 'Un piccolo angolo dedicato anche ai più piccoli.',
+    foto: [scatto('ig-angolo-bimbi')],
   },
   {
     id: 'p11',
-    data: '2 ottobre',
-    rubrica: 'Arrivi',
-    chiedi: 'sulle lenzuola color sabbia',
+    data: '10 giugno',
+    rubrica: 'Dietro il banco',
+    chiedi: 'sugli scaffali del negozio',
     testo:
-      'Lenzuola color sabbia e parure bianche con il volant: stanno bene insieme, e anche con il rosa cipria.',
-    foto: [scatto('lenzuola-beige', '50% 45%'), scatto('volant', '50% 50%')],
+      'Ogni dettaglio sta prendendo il suo posto. Un piccolo spoiler di quello che vi aspetta da Alma Living. Ci vediamo sabato.',
+    foto: [scatto('ig-spoiler')],
   },
   {
     id: 'p12',
-    data: '28 settembre',
+    data: '28 maggio',
     rubrica: 'Dettagli',
-    chiedi: 'sulla biancheria per il mare',
+    chiedi: 'sulle conchiglie in ceramica',
     testo:
-      'Ultimi giorni di settembre: lenzuola e plaid piegati in riva al mare, prima di metterli via fino alla prossima estate.',
-    foto: [scatto('mare', '50% 60%')],
+      'Ogni pezzo è una storia unica: le conchiglie artigianali di Ceramica Viva racchiudono la bellezza del design fatto a mano. Noi stiamo sistemando gli ultimi dettagli per l’apertura, voi cominciate a scegliere la vostra preferita.',
+    foto: [scatto('ig-conchiglie')],
+  },
+  {
+    id: 'p13',
+    data: '30 aprile',
+    rubrica: 'Dietro il banco',
+    chiedi: 'su quello che sta arrivando',
+    testo:
+      'Un assaggio di ciò che sta arrivando: dettagli che fanno casa, atmosfere da vivere. Quasi pronti ad accogliervi.',
+    foto: [scatto('ig-assaggio')],
   },
 ];
 
