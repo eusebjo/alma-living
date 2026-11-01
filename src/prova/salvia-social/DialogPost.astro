@@ -8,7 +8,7 @@ import { linkWhatsApp } from '../comune/contatti';
 import logo from '../comune/logo/alma-nero.png';
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
-import { messaggioPost, type Post } from './dati';
+import { delData, messaggioPost, type Post } from './dati';
 
 interface Props {
   post: Post;
@@ -20,7 +20,7 @@ const totale = post.foto.length;
 const galleria = totale > 1;
 ---
 
-<dialog class="post" data-post={post.id} aria-label={`Post del ${post.data}, ${post.rubrica}`}>
+<dialog class="post" data-post={post.id} aria-label={`Post ${delData(post.data)}, ${post.rubrica}`}>
   <article class="scheda">
     <header class="testa">
       <span class="avatar" aria-hidden="true">

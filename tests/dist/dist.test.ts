@@ -663,11 +663,20 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(diario).toContain(`Aggiornato il ${post[0]!.data}`);
   });
 
-  it('il diario dà la data dell’ultimo post (28 ottobre) e non promette un ritmo settimanale', () => {
+  it('il diario dà la data dell’ultimo post (28 ottobre) e la pagina non promette un ritmo settimanale', () => {
     const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
     expect(diario).toContain('Aggiornato il 28 ottobre');
     expect(diario).toContain('l’ultimo il 28 ottobre');
-    expect(diario).not.toMatch(/ogni settimana/i);
+    expect(decodifica(html())).not.toMatch(/ogni settimana/i);
+  });
+
+  it('"del" davanti alle date dell’8 e dell’11 è elisio in tutta la pagina', () => {
+    const pagina = decodifica(html());
+    expect(pagina).not.toContain('del 8 ');
+    expect(pagina).not.toContain('del 11 ');
+    // Il pulsante del post e il suo dialog dicono "dell’8 luglio" (p6, p7) e "dell’11 ottobre" (p3).
+    expect(pagina).toContain('Apri il post dell’8 luglio, Arrivi');
+    expect(pagina).toContain('Post dell’11 ottobre, In vetrina');
   });
 
   it('un solo lettore di storie', () => {

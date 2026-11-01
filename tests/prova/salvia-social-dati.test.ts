@@ -6,6 +6,7 @@ import {
   articoli,
   categorie,
   collezioni,
+  delData,
   fotoDelNegozio,
   LIMITI_SELEZIONE,
   messaggioPost,
@@ -152,6 +153,24 @@ describe('dati di Salvia social', () => {
       'Buongiorno, ho visto sul sito il vostro post del 28 ottobre sui cuscini di Natale. Mi date qualche informazione in più?',
     );
     for (const voce of post) expect(voce.chiedi, voce.id).toMatch(/^su(?:l|llo|lla|i|gli|lle)? /);
+  });
+
+  it('"del" davanti a una data si elide con 8 e 11: dell’8 luglio, dell’11 ottobre', () => {
+    expect(delData('8 luglio')).toBe('dell’8 luglio');
+    expect(delData('11 ottobre')).toBe('dell’11 ottobre');
+    expect(delData('28 ottobre')).toBe('del 28 ottobre');
+    expect(delData('1 giugno')).toBe('del 1 giugno');
+    // Gli altri giorni che cominciano per 1 si leggono con la consonante: non si elidono.
+    expect(delData('18 giugno')).toBe('del 18 giugno');
+    expect(delData('10 giugno')).toBe('del 10 giugno');
+  });
+
+  it('il messaggio WhatsApp elide "del" con le date dell’8 e dell’11', () => {
+    const p6 = post.find((voce) => voce.id === 'p6')!;
+    expect(messaggioPost(p6)).toContain('post dell’8 luglio sulle essenze per il bucato');
+    const p3 = post.find((voce) => voce.id === 'p3')!;
+    expect(messaggioPost(p3)).toContain('post dell’11 ottobre sui plaid');
+    for (const voce of post) expect(messaggioPost(voce), voce.id).not.toMatch(/post del (?:8|11) /);
   });
 
   it("l'apertura ha tre foto, ognuna con la frase di Martina", () => {

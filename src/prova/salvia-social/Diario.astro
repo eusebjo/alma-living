@@ -8,7 +8,7 @@ import logo from '../comune/logo/alma-nero.png';
 import DialogPost from './DialogPost.astro';
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
-import { post, POST_VISIBILI } from './dati';
+import { delData, post, POST_VISIBILI } from './dati';
 
 interface Props {
   negozio: DatiNegozio;
@@ -63,7 +63,7 @@ const { negozio } = Astro.props;
                 data-post-apri={voce.id}
                 data-altro={piegato ? 'post' : undefined}
                 hidden={piegato}
-                aria-label={`Apri il post del ${voce.data}, ${voce.rubrica}${quante > 1 ? `, ${quante} foto` : ''}`}
+                aria-label={`Apri il post ${delData(voce.data)}, ${voce.rubrica}${quante > 1 ? `, ${quante} foto` : ''}`}
               >
                 <Foto
                   scatto={prima}

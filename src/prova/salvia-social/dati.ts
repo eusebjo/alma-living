@@ -585,6 +585,16 @@ export function messaggioStoria(storia: Storia): string {
   return `Buongiorno, ho visto la storia «${storia.nome}» sul sito. `;
 }
 
+/**
+ * La data preceduta da "del": "del 28 ottobre", ma "dell’8 luglio" e "dell’11
+ * ottobre", perché otto e undici cominciano con una vocale. `data` comincia con il
+ * giorno ("8 luglio"); gli altri giorni (1, 18, 28…) si leggono con la consonante.
+ */
+export function delData(data: string): string {
+  const giorno = data.split(' ')[0];
+  return giorno === '8' || giorno === '11' ? `dell’${data}` : `del ${data}`;
+}
+
 export function messaggioPost(voce: Post): string {
-  return `Buongiorno, ho visto sul sito il vostro post del ${voce.data} ${voce.chiedi}. Mi date qualche informazione in più?`;
+  return `Buongiorno, ho visto sul sito il vostro post ${delData(voce.data)} ${voce.chiedi}. Mi date qualche informazione in più?`;
 }
