@@ -56,10 +56,23 @@
 //   `[data-storia-barra]` (avanzamento in `--avanzamento`, da 0 a 1). Pulsanti
 //   `[data-storia-prec|succ|chiudi]`, frecce della tastiera; alla fine
 //   dell'ultima foto si chiude. Il pulsante di un gruppo mostrato riceve
-//   `data-vista`. L'avanzamento automatico si può fermare: tenendo premuto su una
-//   foto; con `button[data-storia-pausa]` (`aria-pressed`, da mettere in ogni
-//   storia: ferma e riprende); e da tastiera, perché portare il focus su un
-//   controllo della storia la mette in pausa (si riprende con quel pulsante).
+//   `data-vista`. L'avanzamento automatico si può fermare: tenendo premuto sulla
+//   storia (sulla foto o sulla zona dei tocchi, qui sotto); con
+//   `button[data-storia-pausa]` (`aria-pressed`, da mettere in ogni storia: ferma
+//   e riprende); e da tastiera, perché portare il focus su un controllo della
+//   storia la mette in pausa (si riprende con quel pulsante).
+//   Un elemento `[data-storia-tocchi]` per dialog, sopra le foto e sotto i
+//   controlli, con `aria-hidden="true"` e non focalizzabile (da tastiera e con i
+//   lettori di schermo restano i pulsanti e le frecce), raccoglie i tocchi: un
+//   clic o un tocco su di lui fa quello che dice `azioneDelTocco` (in `gesti.ts`)
+//   per il punto toccato, misurato dal bordo sinistro della zona, e per la durata
+//   dalla pressione al rilascio. Nel terzo di sinistra fa come
+//   `[data-storia-prec]`, a destra come `[data-storia-succ]`, al centro come
+//   `[data-storia-pausa]`, che resta e ne riflette lo stato con `aria-pressed`.
+//   Una pressione oltre 300 ms non è un tocco: tenendo premuto la storia si
+//   ferma, e al rilascio riprende senza fare altro. La variante dà alla zona
+//   `touch-action: manipulation` e lascia passare i tocchi attraverso ciò che le
+//   sta sopra e non si usa (`pointer-events: none`).
 // - Post: `button[data-post-apri="<id>"]` apre `dialog[data-post="<id>"]`; dentro
 //   può esserci una galleria; `button[data-post-chiudi]` lo chiude.
 // - Mostra altri: `button[data-mostra-altri="<nome>"]` toglie `hidden` a
@@ -69,7 +82,7 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante da cui si sono aperti.
 import { filtra } from './filtra';
-import { versoTrascinamento } from './gesti';
+import { azioneDelTocco, versoTrascinamento } from './gesti';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
 import { avanti, indietro, type Posizione } from './sequenza';
 
@@ -112,6 +125,10 @@ type Contesto = {
   inizioPressione: EventTarget | null;
   /** Il trascinamento di una galleria in corso: il puntatore (`id`) e da dove è partito. */
   trascinamento: { galleria: HTMLElement; id: number; x: number; y: number } | null;
+  /** Quando è cominciata la pressione sulla zona dei tocchi della storia (`NaN`: nessuna). */
+  inizioTocco: number;
+  /** Quanto è durata l'ultima pressione sulla zona dei tocchi, finché il clic non la usa (`NaN`: nessuna). */
+  durataTocco: number;
 };
 
 const avviate = new WeakSet<object>();
@@ -557,9 +574,40 @@ function fermaStoria(c: Contesto): void {
   c.storia = null;
 }
 
+/** Pressione del puntatore primario: sulla zona dei tocchi parte il cronometro del tocco. */
+function iniziaTocco(c: Contesto, evento: PointerEvent): void {
+  if (!evento.isPrimary) return;
+  const bersaglio = evento.target;
+  c.inizioTocco =
+    bersaglio instanceof Element && bersaglio.closest('[data-storia-tocchi]')
+      ? evento.timeStamp
+      : Number.NaN;
+}
+
+/** Rilascio del puntatore primario: si misura quanto è durata la pressione (`NaN` se non era sulla zona). */
+function finisciTocco(c: Contesto, evento: PointerEvent): void {
+  if (!evento.isPrimary) return;
+  c.durataTocco = evento.timeStamp - c.inizioTocco;
+  c.inizioTocco = Number.NaN;
+}
+
+/** Il clic che segue il rilascio sulla zona dei tocchi: indietro, pausa o avanti, secondo il punto toccato. */
+function toccoSullaStoria(c: Contesto, zona: HTMLElement, evento: MouseEvent): void {
+  const durata = c.durataTocco;
+  c.durataTocco = Number.NaN; // un tocco vale una volta sola
+  const { left, width } = zona.getBoundingClientRect();
+  const azione = azioneDelTocco(evento.clientX - left, width, durata);
+  if (azione === 'prec') indietroStoria(c);
+  else if (azione === 'pausa') alternaPausa(c);
+  else if (azione === 'succ') avantiStoria(c);
+}
+
 // --- Avvio ---
 
-const AZIONI: [selettore: string, azione: (c: Contesto, el: HTMLElement) => void][] = [
+const AZIONI: [
+  selettore: string,
+  azione: (c: Contesto, el: HTMLElement, evento: MouseEvent) => void,
+][] = [
   // Un link del menu porta altrove nella pagina: il menu si richiude.
   [
     '[data-menu] a[href]',
@@ -579,6 +627,7 @@ const AZIONI: [selettore: string, azione: (c: Contesto, el: HTMLElement) => void
   ['[data-carosello-prec]', (_c, el) => scorriCarosello(el, -1)],
   ['[data-carosello-succ]', (_c, el) => scorriCarosello(el, 1)],
   ['[data-storia-apri]', apriStoria],
+  ['[data-storia-tocchi]', toccoSullaStoria],
   ['[data-storia-prec]', (c) => indietroStoria(c)],
   ['[data-storia-succ]', (c) => avantiStoria(c)],
   ['[data-storia-pausa]', (c) => alternaPausa(c)],
@@ -600,6 +649,8 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     storia: null,
     inizioPressione: null,
     trascinamento: null,
+    inizioTocco: Number.NaN,
+    durataTocco: Number.NaN,
   };
 
   // Stato iniziale: la pagina può arrivare con più o meno già scritto.
@@ -631,7 +682,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     for (const [selettore, azione] of AZIONI) {
       const el = bersaglio.closest<HTMLElement>(selettore);
       if (el) {
-        azione(c, el);
+        azione(c, el, evento as MouseEvent);
         return;
       }
     }
@@ -656,12 +707,12 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   });
 
   // Il puntatore (dito, penna, mouse): pressione, rilascio, annullamento. Ognuno
-  // dei tre fa le cose delle storie (tenere premuto) e quelle della galleria
-  // (trascinare), una dopo l'altra.
+  // dei tre fa le cose delle storie (tenere premuto, misurare un tocco) e quelle
+  // della galleria (trascinare), una dopo l'altra.
   radice.addEventListener('pointerdown', (evento) => {
     c.inizioPressione = evento.target;
     const bersaglio = evento.target;
-    // Tenendo premuto su una foto della storia l'avanzamento si ferma.
+    // Tenendo premuto sulla storia (la foto o la zona dei tocchi, che le sta sopra) l'avanzamento si ferma.
     if (
       c.storia &&
       bersaglio instanceof Element &&
@@ -670,6 +721,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     ) {
       c.storia.premuto = true;
     }
+    iniziaTocco(c, evento as PointerEvent);
     iniziaTrascinamento(c, evento as PointerEvent);
   });
   const rilascia = () => {
@@ -677,6 +729,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   };
   radice.addEventListener('pointerup', (evento) => {
     rilascia();
+    finisciTocco(c, evento as PointerEvent);
     finisciTrascinamento(c, evento as PointerEvent);
   });
   radice.addEventListener('pointercancel', (evento) => {

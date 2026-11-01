@@ -608,6 +608,16 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
+  it('il lettore delle storie ha una zona di tocco, nascosta ai lettori di schermo e fuori dal tab', () => {
+    for (const { contenuto } of dialogCon('data-storie')) {
+      const zone = [...contenuto.matchAll(/<([a-z]+)\b[^>]*\sdata-storia-tocchi(?=[\s=>])[^>]*>/g)];
+      expect(zone).toHaveLength(1);
+      expect(zone[0]![1]).toBe('div');
+      expect(zone[0]![0]).toMatch(/\saria-hidden="true"/);
+      expect(zone[0]![0]).not.toMatch(/\s(?:tabindex|role)=/);
+    }
+  });
+
   it('le sezioni si susseguono: collezioni, selezione, diario, negozio', () => {
     const posizioni = ['collezioni', 'selezione', 'diario', 'negozio'].map((id) =>
       html().indexOf(`id="${id}"`),

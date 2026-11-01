@@ -3,7 +3,9 @@
 // con un gruppo per storia, in ognuno le foto con la loro frase e una barra
 // d'avanzamento per foto. Sul computer una scheda verticale con le frecce ai
 // lati e, sull'ultima foto, l'anteprima della storia dopo; sul telefono la
-// scheda occupa lo schermo e le frecce stanno sopra la foto.
+// scheda occupa lo schermo e le frecce stanno sopra la foto. Sopra le foto sta
+// la zona dei tocchi (indietro, pausa, avanti), un `div` trasparente fuori dal
+// tab e dai lettori di schermo: per loro restano i pulsanti.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
 import Foto from './Foto.astro';
@@ -91,6 +93,8 @@ const { storie, etichetta, negozio } = Astro.props;
           );
         })
       }
+
+      <div class="tocchi" data-storia-tocchi aria-hidden="true"></div>
 
       <div class="comandi">
         <button
@@ -252,6 +256,22 @@ const { storie, etichetta, negozio } = Astro.props;
     pointer-events: none;
   }
 
+  /* --- Zona dei tocchi: un livello trasparente sopra le foto e sotto barre,
+     testata, azioni (2), comandi (3) e frecce (4). Lo script la divide in tre
+     terzi: indietro, pausa, avanti. I tocchi passano attraverso ciò che le sta
+     sopra e non si usa (barre, testata e il contenitore delle azioni); i link
+     delle azioni restano cliccabili. --- */
+  .tocchi {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    cursor: pointer;
+  }
+
   /* --- Barre d'avanzamento: lo script scrive --avanzamento (da 0 a 1) --- */
   .barre {
     position: absolute;
@@ -261,6 +281,7 @@ const { storie, etichetta, negozio } = Astro.props;
     right: 12px;
     display: flex;
     gap: 4px;
+    pointer-events: none;
   }
 
   .barra {
@@ -292,6 +313,7 @@ const { storie, etichetta, negozio } = Astro.props;
     align-items: center;
     gap: 10px;
     min-height: 44px;
+    pointer-events: none;
   }
 
   .testa :global(img) {
@@ -366,9 +388,11 @@ const { storie, etichetta, negozio } = Astro.props;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    pointer-events: none;
   }
 
   .azioni a {
+    pointer-events: auto;
     flex: 1 1 0;
     display: flex;
     align-items: center;
