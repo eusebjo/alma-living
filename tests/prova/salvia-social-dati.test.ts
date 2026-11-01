@@ -7,6 +7,7 @@ import {
   categorie,
   collezioni,
   fotoDelNegozio,
+  messaggioPost,
   post,
   POST_VISIBILI,
   sezioni,
@@ -69,6 +70,13 @@ describe('dati di Salvia social', () => {
 
   it('le sezioni seguono la pagina: il diario dopo la selezione', () => {
     expect(sezioni.map((s) => s.href)).toEqual(['#collezioni', '#selezione', '#diario', '#negozio']);
+  });
+
+  it('il messaggio WhatsApp di un post dice di che cosa parla, con la preposizione', () => {
+    expect(messaggioPost(post[0]!)).toBe(
+      'Buongiorno, ho visto sul sito il vostro post del 27 ottobre sui plaid delle feste. Mi date qualche informazione in più?',
+    );
+    for (const voce of post) expect(voce.chiedi, voce.id).toMatch(/^su(?:l|llo|lla|i|gli|lle)? /);
   });
 
   it("l'apertura ha tre foto, ognuna con la frase di Martina", () => {

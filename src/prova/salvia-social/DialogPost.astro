@@ -18,7 +18,6 @@ interface Props {
 const { post, negozio } = Astro.props;
 const totale = post.foto.length;
 const galleria = totale > 1;
-const handle = negozio.instagram.handle.replace(/^@/, '');
 ---
 
 <dialog class="post" data-post={post.id} aria-label={`Post del ${post.data}, ${post.rubrica}`}>
@@ -28,7 +27,7 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
         <Image src={logo} alt="" widths={[60, 90]} sizes="30px" />
       </span>
       <div class="chi">
-        <p class="handle">{handle}</p>
+        <p class="autore">{negozio.nome}</p>
         <p class="dove">{negozio.indirizzoBreve}</p>
       </div>
       <button type="button" class="chiudi" data-post-chiudi aria-label="Chiudi il post" autofocus>
@@ -87,8 +86,8 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
         <a class="pieno" href={linkWhatsApp(negozio.whatsapp, messaggioPost(post))}>
           <Icona nome="whatsapp" misura={18} />Chiedi su WhatsApp
         </a>
-        <a class="filo" href={negozio.instagram.url}>
-          <Icona nome="instagram" misura={18} />Vedi su Instagram
+        <a class="filo" href={negozio.telefonoHref}>
+          <Icona nome="telefono" misura={18} />Chiama il negozio
         </a>
       </div>
     </div>
@@ -170,7 +169,7 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
     line-height: 1.3;
   }
 
-  .handle {
+  .autore {
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -435,7 +434,7 @@ const handle = negozio.instagram.handle.replace(/^@/, '');
       width: 30px;
     }
 
-    .handle {
+    .autore {
       font-size: 15px;
     }
 

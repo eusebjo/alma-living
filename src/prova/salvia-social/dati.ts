@@ -1,5 +1,7 @@
 // Contenuti di esempio della variante Salvia social, trascritti da
-// `renderVals()` della tavola `SalviaSocial.dc.html` (tela di Claude Design).
+// `renderVals()` della tavola `SalviaSocial.dc.html` (tela di Claude Design) e
+// aggiornati alla versione 3, la tavola `DiarioFascia.dc.html` (messaggi dei post
+// con la preposizione articolata, diario dopo la selezione).
 // Le foto sono indicate per nome (`src/prova/foto/<nome>.jpg`, vedi
 // `scripts/foto-prova/elenco.json`); i componenti le passano a `foto()`.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
@@ -384,7 +386,11 @@ export interface Post {
   id: string;
   data: string;
   rubrica: string;
-  /** Di che cosa parla il post, nel messaggio WhatsApp ("…il vostro post del 27 ottobre su <chiedi>"). */
+  /**
+   * Di che cosa parla il post, nel messaggio WhatsApp: comincia con la
+   * preposizione articolata ("sui plaid delle feste"), che si legge dopo la data
+   * ("…il vostro post del 27 ottobre sui plaid delle feste").
+   */
   chiedi: string;
   testo: string;
   foto: Scatto[];
@@ -398,7 +404,7 @@ export const post: Post[] = [
     id: 'p1',
     data: '27 ottobre',
     rubrica: 'Arrivi',
-    chiedi: 'i plaid delle feste',
+    chiedi: 'sui plaid delle feste',
     testo:
       'Sono arrivati i plaid delle feste: rossi, verdi e gli Abbracciami con la scritta ricamata. Sono morbidissimi, passate a toccarli.',
     foto: [
@@ -411,7 +417,7 @@ export const post: Post[] = [
     id: 'p2',
     data: '25 ottobre',
     rubrica: 'In vetrina',
-    chiedi: 'gli gnomi di stoffa',
+    chiedi: 'sugli gnomi di stoffa',
     testo:
       'La vetrina di Natale è cominciata con gli gnomi di stoffa sull’alzata bianca. Ognuno ha la sua faccia e il suo cappello.',
     foto: [scatto('gnomi', '50% 50%')],
@@ -420,7 +426,7 @@ export const post: Post[] = [
     id: 'p3',
     data: '24 ottobre',
     rubrica: 'Confezioni',
-    chiedi: 'gli asciugamani con la casetta',
+    chiedi: 'sugli asciugamani con la casetta',
     testo:
       'Asciugamani con la casetta ricamata, in bianco, verde e rosso. Ve li confezioniamo con lo spago e il cartellino, pronti da regalare.',
     foto: [
@@ -433,7 +439,7 @@ export const post: Post[] = [
     id: 'p4',
     data: '22 ottobre',
     rubrica: 'Dettagli',
-    chiedi: 'i cuori dorati',
+    chiedi: 'sui cuori dorati',
     testo:
       'Cuori dorati su basi di legno e stelle rosse di stoffa: piccoli pensieri per chi ha già tutto.',
     foto: [scatto('cuori', '50% 45%')],
@@ -442,7 +448,7 @@ export const post: Post[] = [
     id: 'p5',
     data: '20 ottobre',
     rubrica: 'Dietro il banco',
-    chiedi: 'la parete dei plaid',
+    chiedi: 'sulla parete dei plaid',
     testo:
       'Abbiamo rifatto la parete dei plaid: bianchi, rosa e grigi, con i cuscini in pelo. Dal vivo viene voglia di toccarli tutti.',
     foto: [scatto('scaffale', '50% 45%')],
@@ -451,7 +457,7 @@ export const post: Post[] = [
     id: 'p6',
     data: '18 ottobre',
     rubrica: 'Arrivi',
-    chiedi: 'i copriletti',
+    chiedi: 'sui copriletti',
     testo:
       'Rosso per le feste, bianco per tutto l’anno: copriletti con il volant e trapuntati morbidi, appena arrivati.',
     foto: [scatto('copriletto-rosso', '50% 50%'), scatto('trapunta', '50% 50%')],
@@ -460,7 +466,7 @@ export const post: Post[] = [
     id: 'p7',
     data: '15 ottobre',
     rubrica: 'Dettagli',
-    chiedi: 'le candele alla vaniglia',
+    chiedi: 'sulle candele alla vaniglia',
     testo:
       'Candele alla vaniglia nelle ciotole di legno, legate con lo spago e con il cartellino. Un regalo piccolo e già pronto.',
     foto: [scatto('candele', '50% 60%')],
@@ -469,7 +475,7 @@ export const post: Post[] = [
     id: 'p8',
     data: '13 ottobre',
     rubrica: 'Arrivi',
-    chiedi: 'gli accappatoi per i più piccoli',
+    chiedi: 'sugli accappatoi per i più piccoli',
     testo:
       'Nuovi accappatoi e asciugamani per i più piccoli, con l’orsetto ricamato. In rosa, azzurro e bianco.',
     foto: [scatto('asciugamani-bimbo', '50% 45%'), scatto('neonato', '50% 40%')],
@@ -478,7 +484,7 @@ export const post: Post[] = [
     id: 'p9',
     data: '10 ottobre',
     rubrica: 'In vetrina',
-    chiedi: 'la tavola della domenica',
+    chiedi: 'sulla tavola della domenica',
     testo:
       'In vetrina abbiamo apparecchiato la tavola della domenica: tovaglia color lino con il volant e il profilo rosso, sedie bianche.',
     foto: [scatto('tovaglia-volant', '50% 50%'), scatto('tavola', '40% 50%')],
@@ -487,7 +493,7 @@ export const post: Post[] = [
     id: 'p10',
     data: '6 ottobre',
     rubrica: 'Dietro il banco',
-    chiedi: 'i saponi e i profumi',
+    chiedi: 'sui saponi e i profumi',
     testo:
       'Il mobile di legno dei saponi e dei profumi per la casa. Quando lo apriamo, profuma tutto il negozio.',
     foto: [scatto('bagno-prodotti', '50% 72%')],
@@ -496,7 +502,7 @@ export const post: Post[] = [
     id: 'p11',
     data: '2 ottobre',
     rubrica: 'Arrivi',
-    chiedi: 'le lenzuola color sabbia',
+    chiedi: 'sulle lenzuola color sabbia',
     testo:
       'Lenzuola color sabbia e parure bianche con il volant: stanno bene insieme, e anche con il rosa cipria.',
     foto: [scatto('lenzuola-beige', '50% 45%'), scatto('volant', '50% 50%')],
@@ -505,7 +511,7 @@ export const post: Post[] = [
     id: 'p12',
     data: '28 settembre',
     rubrica: 'Dettagli',
-    chiedi: 'la biancheria per il mare',
+    chiedi: 'sulla biancheria per il mare',
     testo:
       'Ultimi giorni di settembre: lenzuola e plaid piegati in riva al mare, prima di metterli via fino alla prossima estate.',
     foto: [scatto('mare', '50% 60%')],
@@ -528,5 +534,5 @@ export function messaggioStoria(storia: Storia): string {
 }
 
 export function messaggioPost(voce: Post): string {
-  return `Buongiorno, ho visto sul sito il vostro post del ${voce.data} su ${voce.chiedi}. Mi date qualche informazione in più?`;
+  return `Buongiorno, ho visto sul sito il vostro post del ${voce.data} ${voce.chiedi}. Mi date qualche informazione in più?`;
 }

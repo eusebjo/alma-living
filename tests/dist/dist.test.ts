@@ -9,6 +9,7 @@ import {
   articoli,
   categorie,
   collezioni,
+  messaggioPost,
   post,
   POST_VISIBILI,
   sezioni,
@@ -634,6 +635,60 @@ describe('Salvia social (/prova/salvia-social/)', () => {
 
   it('un solo lettore di storie', () => {
     expect(dialogCon('data-storie')).toHaveLength(1);
+  });
+
+  const INSTAGRAM = 'href="https://www.instagram.com/almaliving.viaricasoli/"';
+
+  it("Instagram in tre punti soltanto: icona dell'header, fascia, piè di pagina", () => {
+    const pagina = html();
+    expect(pagina.split(INSTAGRAM)).toHaveLength(4);
+    expect(/<header\b[\s\S]*?<\/header>/.exec(pagina)?.[0]).toContain(INSTAGRAM);
+    expect(contenutiCon(pagina, 'id', 'instagram')[0]).toContain(INSTAGRAM);
+    expect(/<footer\b[\s\S]*?<\/footer>/.exec(pagina)?.[0]).toContain(INSTAGRAM);
+  });
+
+  it('la fascia Instagram sta tra il diario e il negozio, ed è senza foto', () => {
+    const pagina = html();
+    const [diario, fascia, negozio] = ['id="diario"', 'id="instagram"', 'id="negozio"'].map((s) =>
+      pagina.indexOf(s),
+    );
+    expect(diario).toBeGreaterThanOrEqual(0);
+    expect(fascia).toBeGreaterThan(diario!);
+    expect(negozio).toBeGreaterThan(fascia!);
+    const contenuto = decodifica(contenutiCon(pagina, 'id', 'instagram')[0] ?? '');
+    expect(contenuto).toMatch(/<h2\b[^>]*\sid="instagram-titolo"[^>]*>Seguici anche su Instagram<\/h2>/);
+    expect(contenuto).toContain('@almaliving.viaricasoli');
+    expect(contenuto).toContain('Le foto di ogni giorno sono anche lì.');
+    expect(contenuto).toContain('aria-label="Apri Instagram: @almaliving.viaricasoli"');
+    expect(contenuto).not.toMatch(/<(?:img|picture)\b/);
+  });
+
+  it('accanto alla fila delle storie "Vedi i post" porta al diario', () => {
+    expect(html()).toMatch(/<a\b[^>]*\shref="#diario"[^>]*>Vedi i post/);
+    expect(html()).not.toContain('Vedi il profilo');
+  });
+
+  it('storie e post propongono di chiamare il negozio, non Instagram', () => {
+    const testo = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    expect(decodifica(html())).not.toContain('Vedi su Instagram');
+    const chiama = [...html().matchAll(/<a\b[^>]*\shref="tel:\+393345205451"[^>]*>([\s\S]*?)<\/a>/g)]
+      .map((m) => testo(m[1]!))
+      .filter((t) => t === 'Chiama il negozio');
+    expect(chiama).toHaveLength(storie.length + post.length);
+    for (const { contenuto } of [...dialogCon('data-storie'), ...dialogCon('data-post')]) {
+      expect(contenuto).not.toContain('almaliving.viaricasoli');
+    }
+  });
+
+  it("il post aperto è firmato Alma Living e il suo WhatsApp ha il messaggio del post", () => {
+    const dialog = new Map(dialogCon('data-post').map(({ apertura, contenuto }) => [valore(apertura, 'data-post'), contenuto]));
+    for (const voce of post) {
+      const contenuto = dialog.get(voce.id) ?? '';
+      expect(contenuto, voce.id).toMatch(/>Alma Living</);
+      expect(contenuto, voce.id).toContain(
+        `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggioPost(voce))}"`,
+      );
+    }
   });
 
   it(`griglia dei post: ${POST_VISIBILI} post visibili, gli altri piegati, ognuno con il suo dialog`, () => {

@@ -1,7 +1,8 @@
 ---
-// Variante di prova "Salvia social" (tavola SalviaSocial.dc.html): bianco e
-// verde salvia, storie sotto l'header, apertura come Diario, sezione di Martina
-// come profilo con griglia di post. Componenti e dati in src/prova/salvia-social/.
+// Variante di prova "Salvia social" (versione 3, tavola DiarioFascia.dc.html):
+// bianco e verde salvia, storie sotto l'header, apertura come Diario, selezione,
+// diario di Martina con griglia di post e fascia Instagram. Componenti e dati in
+// src/prova/salvia-social/.
 import { getImage } from 'astro:assets';
 import { getEntry } from 'astro:content';
 import Interazioni from '../../../prova/comune/Interazioni.astro';
@@ -14,6 +15,7 @@ import BarraTelefono from '../../../prova/salvia-social/BarraTelefono.astro';
 import Collezioni from '../../../prova/salvia-social/Collezioni.astro';
 import DialogStorie from '../../../prova/salvia-social/DialogStorie.astro';
 import Diario from '../../../prova/salvia-social/Diario.astro';
+import FasciaInstagram from '../../../prova/salvia-social/FasciaInstagram.astro';
 import FilaStorie from '../../../prova/salvia-social/FilaStorie.astro';
 import Negozio from '../../../prova/salvia-social/Negozio.astro';
 import Piede from '../../../prova/salvia-social/Piede.astro';
@@ -32,7 +34,7 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
 
 <LayoutProva
   title="Salvia social | Alma Living, prova di design"
-  description="Variante di prova del sito di Alma Living: bianco e verde salvia, storie dal negozio e il profilo di Martina."
+  description="Variante di prova del sito di Alma Living: bianco e verde salvia, storie dal negozio, la selezione e il diario di Martina."
   caratteri={CARATTERI_PER_VARIANTE['salvia-social']}
   variante="salvia-social"
 >
@@ -44,6 +46,7 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
       <Collezioni />
       <Selezione negozio={negozio} />
       <Diario negozio={negozio} />
+      <FasciaInstagram negozio={negozio} />
       <Negozio negozio={negozio} />
     </main>
     <Piede negozio={negozio} />

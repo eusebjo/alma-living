@@ -68,9 +68,9 @@ const { storie, etichetta, negozio } = Astro.props;
                   <Icona nome="whatsapp" misura={18} />
                   <span><span class="lungo">Chiedi su </span>WhatsApp</span>
                 </a>
-                <a class="instagram" href={negozio.instagram.url}>
-                  <Icona nome="instagram" misura={18} />
-                  <span><span class="lungo">Vedi su </span>Instagram</span>
+                <a class="chiama" href={negozio.telefonoHref}>
+                  <Icona nome="telefono" misura={18} />
+                  <span>Chiama<span class="lungo"> il negozio</span></span>
                 </a>
               </div>
               {prossima && (
@@ -388,7 +388,7 @@ const { storie, etichetta, negozio } = Astro.props;
     color: var(--nero);
   }
 
-  .instagram {
+  .chiama {
     box-shadow: inset 0 0 0 1.5px var(--bordo-storia);
     color: var(--bianco);
   }
