@@ -34,10 +34,10 @@ Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime 
   - non nominano più Martina nemmeno i commenti, la `description` della pagina e la descrizione in `varianti.ts`;
   - il carattere a mano (Beth Ellen) non serve più e si toglie dai caratteri della variante.
 - **Scaffali, una sola griglia:** cambiano solo le colonne, mai il carosello.
-  - Telefono: 2 colonne, con 2 schede, la "finestra", altre 2 schede e "Mostra tutti gli 8".
-  - Tablet (768-1023 px): 3 colonne, con 3 schede, la finestra, altre 3 schede e "Mostra tutti gli 8".
-  - Computer: 4 colonne, con tutte le schede e la finestra dopo la prima riga.
-  - Il limite vale sulla lista filtrata. Se le schede non riempiono la prima riga, la finestra viene subito dopo di loro.
+  - Telefono: 2 colonne, con 4 schede, "Mostra tutti gli 8" e in fondo la "finestra".
+  - Tablet (768-1023 px): 3 colonne, con 6 schede, "Mostra tutti gli 8" e la finestra.
+  - Computer: 4 colonne, con tutte le schede e poi la finestra.
+  - Il limite vale sulla lista filtrata.
 - **Filtri:** pillole con un cerchietto foto della collezione, il nome e il conteggio.
 - **La scheda:**
   - **Foto:** 3:4 con due scatti. Sul computer il secondo appare al passaggio del mouse; due pallini bianchi, sempre visibili, scelgono lo scatto. Sul telefono un solo interruttore da 56 x 44 px passa all'altro scatto.
@@ -52,6 +52,13 @@ Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime 
   - l'anteprima del messaggio WhatsApp e "Invia su WhatsApp".
 
   Si chiude con la X, con Esc o toccando fuori. Senza JavaScript ogni scheda resta leggibile e porta comunque a WhatsApp.
+
+**Aggiornamento del 2026-11-02:** dopo la prova in anteprima, eusebjo ha spostato la finestra "Non lo trovi qui?" in fondo agli scaffali, su ogni misura. Sulla tela e nella prima versione in codice stava dopo la prima riga di schede. Le ragioni:
+- "Non lo trovi qui?" è una domanda che ha senso dopo aver visto tutto;
+- con 8 articoli lo stacco divideva la griglia in due gruppi;
+- sul telefono il suo "Scrivici" compariva insieme a quello della barra dei contatti.
+
+Così l'ordine sullo schermo è anche quello di lettori di schermo e tastiera.
 
 ## 1. Intento
 

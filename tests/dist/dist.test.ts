@@ -965,36 +965,12 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     return [...collegati, ...inPagina].join('\n');
   };
 
-  /** Il contenuto tra le graffe del blocco che comincia (con la sua graffa) dopo `da`. */
-  const bloccoDopo = (css: string, da: number) => {
-    const inizio = css.indexOf('{', da) + 1;
-    let profondita = 1;
-    for (let i = inizio; i < css.length; i += 1) {
-      if (css[i] === '{') profondita += 1;
-      if (css[i] === '}') profondita -= 1;
-      if (profondita === 0) return css.slice(inizio, i);
-    }
-    return css.slice(inizio);
-  };
-
-  it("l'ordine a vista della griglia sta tutto in @supports selector(:nth-child(… of …)): senza, vale quello del DOM", () => {
+  it("la griglia non riordina nulla a vista: la finestra resta in fondo, come nel DOM", () => {
     const css = cssDellaPagina();
-    const SUPPORTS = '@supports selector(:nth-child(1 of';
-    expect(css).toContain(SUPPORTS);
-    const blocco = bloccoDopo(css, css.indexOf(SUPPORTS));
-    // Dentro: l'ordine di base di schede, finestre e "Mostra tutti", e le schede della prima riga.
-    expect(blocco).toMatch(/\.voce\[[^\]]*\]\{order:3\}/);
-    expect(blocco).toMatch(/\.voce-finestra\[[^\]]*\]\{order:2\}/);
-    expect(blocco).toMatch(/\.voce-mostra\[[^\]]*\]\{order:4\}/);
-    expect(
-      blocco.match(/:nth-child\(-n\+\d of \[data-filtrabile\]:not\(\[hidden\]\)\)/g),
-    ).toHaveLength(3);
-    // Fuori: nessuna di queste regole, altrimenti il DOM non resterebbe l'ordine dei vecchi browser.
-    const fuori = css.replace(blocco, '');
-    expect(fuori).not.toMatch(
-      /\.voce(?:-finestra|-mostra)?\[[^\]]*\](?::nth-child\([^)]*\))?[^{}]*\{order:/,
+    expect(css).not.toMatch(
+      /\.voce(?:-finestra|-mostra)?\[[^\]]*\](?::nth-child\([^)]*\))?[^{}]*\{[^}]*\border:/,
     );
-    expect(fuori).not.toContain(' of [data-filtrabile]');
+    expect(css).not.toContain(' of [data-filtrabile]');
   });
 
   it('i riquadri delle collezioni e le pillole scelgono il loro filtro e portano alla selezione', () => {

@@ -8,15 +8,13 @@
 // filtrata: 4 schede sul telefono e 6 sul tablet, poi "Mostra tutti gli 8"; sul
 // computer nessuno. Senza JavaScript la griglia mostra tutti gli articoli.
 //
-// La finestra sullo scaffale ("Non lo trovi qui?", `Finestra.astro`) sta a vista
-// dopo la prima riga di schede (scelta 1 del piano). Nel DOM invece sta in fondo,
-// dopo le schede e dopo "Mostra tutti", così lettori di schermo e tabulazione
-// leggono prima gli articoli e poi l'invito. A vista la mette `order`: le prime
-// schede della riga, che il filtro e il limite non hanno nascosto, vengono per
-// prime, poi la finestra, poi le altre schede e "Mostra tutti". Se le schede non
-// riempiono la prima riga, la finestra viene subito dopo. Un filtro senza articoli
-// (Mare) mostra al posto di tutto la sua finestra, "Il mare torna in primavera",
-// mai una lista vuota.
+// La finestra sullo scaffale ("Non lo trovi qui?", `Finestra.astro`) chiude la
+// griglia su ogni misura: viene dopo le schede e dopo "Mostra tutti", a vista come
+// nel DOM, così lettori di schermo e tabulazione seguono l'ordine dello schermo.
+// Fino al 2026-11-02 stava a vista dopo la prima riga; eusebjo l'ha spostata in
+// fondo (spec, aggiornamento del 2026-11-02). Un filtro senza articoli (Mare)
+// mostra al posto di tutto la sua finestra, "Il mare torna in primavera", mai una
+// lista vuota.
 //
 // Misure del tablet (scelta 7): la tavola non le ha, sono quelle del computer con
 // tre colonne e i margini di 40 px.
@@ -333,46 +331,6 @@ const filtri: { id: 'tutti' | Categoria; nome: string; quanti: number }[] = [
   /* Quando il filtro non ha articoli resta solo la sua finestra. */
   .griglia:has(> [data-filtro-vuoto]:not([hidden])) > .voce-finestra:not([data-filtro-vuoto]) {
     display: none;
-  }
-
-  /* --- Ordine a vista (scelta 1 del piano) ---
-     La finestra viene dopo la prima riga di schede visibili (filtro e limite
-     nascondono con `hidden`): stesse media query di `LIMITI_SELEZIONE`.
-     Tutte le regole di `order` stanno dentro `@supports selector(…)` perché la
-     prima riga si sceglie con `:nth-child(… of …)` (Chrome 111, Firefox 113): in
-     un browser che non lo capisce la regola cade, e con l'ordine di base ogni
-     scheda prenderebbe `order: 3` e la finestra (2) salterebbe sopra tutte.
-     Senza il blocco resta l'ordine del DOM: schede, "Mostra tutti", finestre. */
-  @supports selector(:nth-child(1 of .x)) {
-    .voce {
-      order: 3;
-    }
-
-    .voce-finestra {
-      order: 2;
-    }
-
-    .voce-mostra {
-      order: 4;
-    }
-
-    @media (max-width: 767px) {
-      .voce:nth-child(-n + 2 of [data-filtrabile]:not([hidden])) {
-        order: 1;
-      }
-    }
-
-    @media (767px < width <= 1023px) {
-      .voce:nth-child(-n + 3 of [data-filtrabile]:not([hidden])) {
-        order: 1;
-      }
-    }
-
-    @media (width > 1023px) {
-      .voce:nth-child(-n + 4 of [data-filtrabile]:not([hidden])) {
-        order: 1;
-      }
-    }
   }
 
   /* --- Tablet (da 768 px): tre colonne --- */

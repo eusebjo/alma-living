@@ -717,7 +717,7 @@ export const post: Post[] = [
 export const messaggi = {
   /** I pulsanti "Scrivici" generici. */
   generico: 'Buongiorno, vi scrivo dal sito di Alma Living.',
-  /** La finestra "Non lo trovi qui?" sullo scaffale, dopo la prima riga della selezione. */
+  /** La finestra "Non lo trovi qui?" sullo scaffale, in fondo alla selezione. */
   cerco: 'Buongiorno, vi scrivo dal sito: sto cercando ',
   /** La finestra che sostituisce quella dello scaffale quando un filtro non ha articoli (Mare). */
   mare: 'Buongiorno, avete ancora qualcosa della collezione mare?',
