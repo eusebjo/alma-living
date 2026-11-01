@@ -37,7 +37,16 @@
 // - Galleria: `[data-galleria]` con `[data-galleria-foto]` (una alla volta, le
 //   altre `hidden`), `button[data-galleria-prec|succ]` (a giro),
 //   `button[data-galleria-punto]` (`aria-current`) e `[data-galleria-contatore]`
-//   ("1 di 3").
+//   ("1 di 3"). Dentro la galleria, un'area `[data-galleria-trascina]` fa
+//   cambiare foto, a giro come le frecce, con un trascinamento del dito o del
+//   mouse (pulsante principale): verso sinistra la foto dopo, verso destra quella
+//   prima (`versoTrascinamento`, in `gesti.ts`). Non conta un trascinamento che
+//   comincia su un `button` o un `a`. Allo `pointerdown` lo script cattura il
+//   puntatore (così anche un rilascio fuori dall'area conta) e decide allo
+//   `pointerup`; un `pointercancel` (il browser ha preso lo scorrimento della
+//   pagina) annulla. Il trascinamento nativo delle immagini dell'area è bloccato.
+//   La variante dà all'area `touch-action: pan-y`, perché la pagina scorra in
+//   verticale.
 // - Carosello: `[data-carosello]` con `[data-carosello-binario]` (scroll-snap) e
 //   `button[data-carosello-prec|succ]`: scorrono di una larghezza visibile e
 //   hanno `aria-disabled="true"` agli estremi.
@@ -60,6 +69,7 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante da cui si sono aperti.
 import { filtra } from './filtra';
+import { versoTrascinamento } from './gesti';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
 import { avanti, indietro, type Posizione } from './sequenza';
 
@@ -100,6 +110,8 @@ type Contesto = {
   storia: StatoStoria | null;
   /** Dove è cominciata l'ultima pressione del puntatore (per il clic sullo sfondo). */
   inizioPressione: EventTarget | null;
+  /** Il trascinamento di una galleria in corso: il puntatore (`id`) e da dove è partito. */
+  trascinamento: { galleria: HTMLElement; id: number; x: number; y: number } | null;
 };
 
 const avviate = new WeakSet<object>();
@@ -332,6 +344,41 @@ function vaiAlPunto(bottone: HTMLElement): void {
   mostraFoto(galleria, elementi(galleria, '[data-galleria-punto]').indexOf(bottone));
 }
 
+/** Pressione su un'area `data-galleria-trascina`, non su un pulsante o un link: parte il trascinamento. */
+function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
+  // Un puntatore solo (il primo dito) e, col mouse, il pulsante principale.
+  if (!evento.isPrimary) return;
+  c.trascinamento = null;
+  const bersaglio = evento.target;
+  if (!(bersaglio instanceof Element) || evento.button !== 0 || bersaglio.closest('button, a')) {
+    return;
+  }
+  const area = bersaglio.closest<HTMLElement>('[data-galleria-trascina]');
+  const galleria = area?.closest<HTMLElement>('[data-galleria]');
+  if (!area || !galleria) return;
+  try {
+    // Così il rilascio arriva a noi anche fuori dall'area.
+    area.setPointerCapture(evento.pointerId);
+  } catch {
+    // Puntatore non più attivo: il gesto si decide comunque al rilascio.
+  }
+  c.trascinamento = { galleria, id: evento.pointerId, x: evento.clientX, y: evento.clientY };
+}
+
+/** Rilascio del puntatore che trascinava: cambia foto se lo spostamento conta. */
+function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
+  const t = c.trascinamento;
+  if (!t || t.id !== evento.pointerId) return;
+  c.trascinamento = null;
+  const verso = versoTrascinamento(evento.clientX - t.x, evento.clientY - t.y);
+  if (verso !== 0) mostraFoto(t.galleria, fotoCorrente(t.galleria) + verso);
+}
+
+/** Il browser ha preso il gesto (scorrimento della pagina, trascinamento nativo): niente cambio. */
+function annullaTrascinamento(c: Contesto, evento: PointerEvent): void {
+  if (c.trascinamento?.id === evento.pointerId) c.trascinamento = null;
+}
+
 // --- Carosello ---
 
 function aggiornaCarosello(binario: HTMLElement): void {
@@ -552,6 +599,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     apertoDa: new WeakMap(),
     storia: null,
     inizioPressione: null,
+    trascinamento: null,
   };
 
   // Stato iniziale: la pagina può arrivare con più o meno già scritto.
@@ -607,10 +655,13 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     }
   });
 
-  // Tenendo premuto su una foto della storia l'avanzamento si ferma.
+  // Il puntatore (dito, penna, mouse): pressione, rilascio, annullamento. Ognuno
+  // dei tre fa le cose delle storie (tenere premuto) e quelle della galleria
+  // (trascinare), una dopo l'altra.
   radice.addEventListener('pointerdown', (evento) => {
     c.inizioPressione = evento.target;
     const bersaglio = evento.target;
+    // Tenendo premuto su una foto della storia l'avanzamento si ferma.
     if (
       c.storia &&
       bersaglio instanceof Element &&
@@ -619,12 +670,26 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     ) {
       c.storia.premuto = true;
     }
+    iniziaTrascinamento(c, evento as PointerEvent);
   });
   const rilascia = () => {
     if (c.storia) c.storia.premuto = false;
   };
-  radice.addEventListener('pointerup', rilascia);
-  radice.addEventListener('pointercancel', rilascia);
+  radice.addEventListener('pointerup', (evento) => {
+    rilascia();
+    finisciTrascinamento(c, evento as PointerEvent);
+  });
+  radice.addEventListener('pointercancel', (evento) => {
+    rilascia();
+    annullaTrascinamento(c, evento as PointerEvent);
+  });
+  // Un'immagine dell'area si trascinerebbe come file: qui trascinare vuol dire cambiare foto.
+  radice.addEventListener('dragstart', (evento) => {
+    const bersaglio = evento.target;
+    if (bersaglio instanceof Element && bersaglio.closest('[data-galleria-trascina]')) {
+      evento.preventDefault();
+    }
+  });
 
   // Un focus arrivato con la tastiera (`:focus-visible`: non un clic) su un
   // controllo della storia la ferma, perché si possa leggere e usare senza

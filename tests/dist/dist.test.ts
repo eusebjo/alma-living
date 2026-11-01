@@ -798,6 +798,15 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       ),
     ].map((m) => /<img\b[^>]*>/i.exec(m[1]!)?.[0] ?? '');
 
+  it("l'apertura è una galleria che si trascina: un'area sola, che contiene le foto", () => {
+    const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
+    expect(sezione).toMatch(/\sdata-galleria(?=[\s=>])/);
+    const dentro = contenutiCon(html(), 'id', 'apertura')[0] ?? '';
+    expect(dentro.match(/\sdata-galleria-trascina(?=[\s=>])/g) ?? []).toHaveLength(1);
+    const area = dentro.search(/\sdata-galleria-trascina(?=[\s=>])/);
+    expect(area).toBeLessThan(dentro.search(/\sdata-galleria-foto(?=[\s=>])/));
+  });
+
   it("solo la prima foto d'apertura si carica subito e con priorità alta", () => {
     const immagini = [...html().matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
     const prioritarie = immagini.filter((t) => /\sfetchpriority="high"/.test(t));

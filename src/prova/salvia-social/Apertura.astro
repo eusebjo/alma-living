@@ -30,7 +30,7 @@ const totale = apertura.length;
 ---
 
 <section id="apertura" class="apertura" aria-label="Oggi in negozio" data-galleria>
-  <div class="foto">
+  <div class="foto" data-galleria-trascina>
     <ul class="pila" role="list">
       {
         apertura.map((diapositiva, i) => (
@@ -131,6 +131,12 @@ const totale = apertura.length;
     border-radius: var(--raggio);
     overflow: hidden;
     background: var(--sabbia);
+    /* Le foto si trascinano (protocollo "Galleria"): la pagina scorre solo in
+       verticale e il trascinamento non seleziona né sposta le immagini. */
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
   }
 
   .foto::after {
