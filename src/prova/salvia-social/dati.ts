@@ -375,6 +375,21 @@ export interface ScattoArticolo extends Scatto {
   ingrandimento?: Ingrandimento;
 }
 
+/** Un colore in cui si trova un articolo, scelto con un pallino nella scheda rapida. */
+export interface Colore {
+  nome: string;
+  /**
+   * La tinta del pallino: un dato dell'articolo (il colore vero del prodotto), non
+   * un gettone del tema, quindi sta qui e non in `tema.css`.
+   */
+  tinta: string;
+  /**
+   * La foto di questo colore. Un articolo ha la foto per tutti i suoi colori o per
+   * nessuno: con le foto il pallino cambia anche la foto, senza no.
+   */
+  foto?: Scatto;
+}
+
 export interface Articolo {
   /** Unico nella pagina: ne derivano gli id dell'articolo (il titolo della scheda). */
   id: string;
@@ -385,6 +400,8 @@ export interface Articolo {
   novita: boolean;
   /** Le due foto della scheda: il secondo scatto si vede con l'interruttore o al passaggio del mouse. */
   scatti: readonly [ScattoArticolo, ScattoArticolo];
+  /** I colori si scelgono solo nella scheda rapida: sulla scheda sono scritti nel dettaglio. */
+  colori?: readonly Colore[];
 }
 
 /** Il secondo scatto come dettaglio ingrandito di `base`, che ne tiene la posizione. */
@@ -396,6 +413,22 @@ function ingrandito(base: Scatto, origine: string, alt: string): ScattoArticolo 
 export function occhielloArticolo(articolo: Articolo): string {
   if (articolo.novita) return 'Novità';
   return categorie.find((c) => c.id === articolo.categorie[0])?.nome ?? '';
+}
+
+/** Il nome dell'articolo con il colore scelto, come lo scrive la scheda rapida: «Plaid Abbracciami · verde». */
+export function nomeConColore(nome: string, colore: Colore): string {
+  return `${nome} · ${colore.nome}`;
+}
+
+/**
+ * Il testo accanto a «Colore:» quando nessun colore è scelto: «scegli tra verde e
+ * rosso», «scegli tra rosso, bianco e verde»; con un colore solo il suo nome, senza
+ * colori niente.
+ */
+export function testoColori(colori: readonly Colore[]): string {
+  const nomi = colori.map((c) => c.nome);
+  if (nomi.length < 2) return nomi[0] ?? '';
+  return `scegli tra ${nomi.slice(0, -1).join(', ')} e ${nomi[nomi.length - 1]}`;
 }
 
 /**
@@ -442,6 +475,10 @@ export const articoli: Articolo[] = [
     categorie: ['natale', 'letto'],
     novita: true,
     scatti: [scatto('abbracciami-verde', '50% 58%'), scatto('abbracciami-rosso', '50% 40%')],
+    colori: [
+      { nome: 'verde', tinta: '#5e654f', foto: scatto('abbracciami-verde', '50% 58%') },
+      { nome: 'rosso', tinta: '#b8263a', foto: scatto('abbracciami-rosso', '50% 40%') },
+    ],
   },
   {
     id: 'orsetto',
@@ -450,6 +487,12 @@ export const articoli: Articolo[] = [
     categorie: ['bimbi', 'bagno'],
     novita: false,
     scatti: [scatto('neonato', '50% 40%'), scatto('accappatoi-appesi', '50% 30%')],
+    // Senza una foto per colore: la scheda rapida tiene i due scatti.
+    colori: [
+      { nome: 'rosa', tinta: '#ddb3b8' },
+      { nome: 'sabbia', tinta: '#cdb896' },
+      { nome: 'azzurro', tinta: '#a9c7e0' },
+    ],
   },
   {
     id: 'volant',
@@ -466,6 +509,11 @@ export const articoli: Articolo[] = [
     categorie: ['bagno', 'natale'],
     novita: true,
     scatti: [scatto('asciugamano-rosso'), scatto('asciugamano-verde')],
+    colori: [
+      { nome: 'rosso', tinta: '#a62630', foto: scatto('asciugamano-rosso') },
+      { nome: 'bianco', tinta: '#f4f1ea', foto: scatto('asciugamano-bianco') },
+      { nome: 'verde', tinta: '#2f5734', foto: scatto('asciugamano-verde') },
+    ],
   },
   {
     id: 'tovaglia',

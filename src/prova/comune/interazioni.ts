@@ -48,6 +48,16 @@
 //   La variante dà all'area `touch-action: pan-y pinch-zoom`, perché la pagina
 //   scorra in verticale e resti ingrandibile con due dita (il pizzico fa partire
 //   un `pointercancel`, che annulla il trascinamento).
+// - Colori: un contenitore `[data-colori="<nome>"]` con i pulsanti
+//   `button[data-colore="<colore>"]` (`aria-pressed`): premerne uno lo sceglie, ed
+//   è l'unico premuto; ripremerlo non fa nulla. Ogni pulsante porta i testi del suo
+//   colore, già scritti nella pagina: `data-colore-nome`, `data-colore-testo`,
+//   `data-colore-messaggio` e `data-colore-href`. Scelto un colore, gli elementi
+//   del contenitore con `[data-colore-dove="nome"]`, `"testo"` o `"messaggio"`
+//   ricevono come testo il valore corrispondente, e ogni `a[data-colore-dove="link"]`
+//   riceve `data-colore-href` come `href`. Con `data-colore-foto="<n>"` la galleria
+//   del contenitore (`[data-galleria]`) mostra la foto n, contando da 0. Lo script
+//   non compone testi: li copia da questi attributi, e li scrive la variante.
 // - Storie: `button[data-storia-apri="<g>"]` apre `dialog[data-storie]`, che ha i
 //   gruppi `[data-storia-gruppo="<g>"]` (uno visibile alla volta), in ognuno le
 //   foto `[data-storia-foto]` e, nello stesso ordine, le barre
@@ -454,6 +464,37 @@ function annullaTrascinamento(c: Contesto, evento: PointerEvent): void {
   if (c.trascinamento?.id === evento.pointerId) c.trascinamento = null;
 }
 
+// --- Colori: un pulsante sceglie il colore, e i testi già scritti sul suo conto vanno al loro posto ---
+
+function scegliColore(_c: Contesto, pulsante: HTMLElement): void {
+  const contenitore = pulsante.closest<HTMLElement>('[data-colori]');
+  // Un colore già scelto non fa nulla.
+  if (!contenitore || pulsante.getAttribute('aria-pressed') === 'true') return;
+  for (const altro of elementi(contenitore, 'button[data-colore]')) {
+    altro.setAttribute('aria-pressed', String(altro === pulsante));
+  }
+  // Lo script copia, non compone: un testo che il pulsante non porta lascia l'elemento com'è.
+  const testi = new Map([
+    ['nome', pulsante.dataset.coloreNome],
+    ['testo', pulsante.dataset.coloreTesto],
+    ['messaggio', pulsante.dataset.coloreMessaggio],
+  ]);
+  for (const dove of elementi(contenitore, '[data-colore-dove]')) {
+    const cosa = dove.dataset.coloreDove ?? '';
+    if (cosa === 'link') {
+      if (dove instanceof HTMLAnchorElement && pulsante.dataset.coloreHref !== undefined) {
+        dove.setAttribute('href', pulsante.dataset.coloreHref);
+      }
+      continue;
+    }
+    const testo = testi.get(cosa);
+    if (testo !== undefined && dove.textContent !== testo) dove.textContent = testo;
+  }
+  const galleria = contenitore.querySelector<HTMLElement>('[data-galleria]');
+  const foto = Number.parseInt(pulsante.dataset.coloreFoto ?? '', 10);
+  if (galleria && Number.isFinite(foto)) mostraFoto(galleria, foto);
+}
+
 // --- Dialog (storie e post) ---
 
 function apriDialog(c: Contesto, dialog: HTMLDialogElement, da: HTMLElement): void {
@@ -669,6 +710,7 @@ const AZIONI: [
   ['[data-galleria-prec]', (_c, el) => spostaGalleria(el, -1)],
   ['[data-galleria-succ]', (_c, el) => spostaGalleria(el, 1)],
   ['[data-galleria-punto]', (_c, el) => vaiAlPunto(el)],
+  ['button[data-colore]', scegliColore],
   ['[data-storia-apri]', apriStoria],
   ['[data-storia-tocchi]', toccoSullaStoria],
   ['[data-storia-prec]', (c) => indietroStoria(c)],

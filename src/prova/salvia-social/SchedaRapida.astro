@@ -18,13 +18,23 @@
 // `LIMITI_SELEZIONE` (`dati.ts`) e di `Selezione.astro`. Sugli schermi bassi (il
 // telefono ruotato) la finestra si stringe e il foglio scorre dentro.
 //
-// Il corpo è una colonna di righe distanziate: una riga in più (per esempio la
-// scelta del colore) si aggiunge in testa al corpo, prima del messaggio.
+// I colori (scelta 6 del piano), solo per gli articoli che ne hanno: una riga in
+// testa al corpo, prima del messaggio, con un pallino per colore (protocollo
+// "Colori" dello script comune). Il pallino scelto riscrive il nome, il messaggio
+// e il link a WhatsApp, già scritti qui nella pagina per ogni colore: lo script li
+// copia, non compone frasi. Il colore scelto resta finché la pagina non si ricarica.
+// Se ogni colore ha la sua foto (`conFoto`), al posto dei due scatti c'è una galleria
+// di quelle foto, senza frecce né pallini bianchi: i pallini colore la comandano.
+// Altrimenti restano i due scatti con il loro interruttore.
+//
+// Il corpo è una colonna di righe distanziate: una riga in più si aggiunge in testa
+// al corpo, prima del messaggio.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp, messaggioDisponibilita } from '../comune/contatti';
 import DueScatti from './DueScatti.astro';
+import Foto from './Foto.astro';
 import Icona from './Icona.astro';
-import { idSchedaRapida, occhielloArticolo, type Articolo } from './dati';
+import { idSchedaRapida, nomeConColore, occhielloArticolo, testoColori, type Articolo } from './dati';
 
 interface Props {
   articolo: Articolo;
@@ -36,10 +46,28 @@ const id = idSchedaRapida(articolo);
 const idTitolo = `${id}-titolo`;
 const idNome = `${id}-nome`;
 const messaggio = messaggioDisponibilita(articolo.nome);
+
+const larghezze = [400, 600, 800];
+const sizes = '(min-width: 1024px) 380px, (min-width: 768px) 330px, 156px';
+
+const colori = articolo.colori ?? [];
+const haColori = colori.length > 0;
+const fotoColori = colori.flatMap((colore) => (colore.foto ? [colore.foto] : []));
+const conFoto = haColori && fotoColori.length === colori.length;
+// Per ogni colore i testi che il pallino porta: il nome con il colore, il messaggio e il link.
+const pallini = colori.map((colore) => {
+  const messaggioColore = messaggioDisponibilita(articolo.nome, colore.nome);
+  return {
+    colore,
+    nome: nomeConColore(articolo.nome, colore),
+    messaggio: messaggioColore,
+    href: linkWhatsApp(negozio.whatsapp, messaggioColore),
+  };
+});
 ---
 
 <dialog class="scheda-rapida" data-post={id} aria-labelledby={`${idTitolo} ${idNome}`}>
-  <article class="foglio">
+  <article class="foglio" data-colori={haColori ? articolo.id : undefined}>
     <div class="testa">
       <span class="maniglia" aria-hidden="true"></span>
       <div class="riga">
@@ -51,29 +79,64 @@ const messaggio = messaggioDisponibilita(articolo.nome);
     </div>
 
     <div class="foto">
-      <DueScatti
-        scatti={articolo.scatti}
-        nome={articolo.nome}
-        larghezze={[400, 600, 800]}
-        sizes="(min-width: 1024px) 380px, (min-width: 768px) 330px, 156px"
-      />
+      {
+        conFoto ? (
+          <div class="galleria" data-galleria>
+            {fotoColori.map((scatto, i) => (
+              <div class="diapositiva" data-galleria-foto hidden={i > 0}>
+                <Foto scatto={scatto} larghezze={larghezze} sizes={sizes} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <DueScatti scatti={articolo.scatti} nome={articolo.nome} larghezze={larghezze} sizes={sizes} />
+        )
+      }
     </div>
 
     <div class="capo">
       <p class:list={['occhiello', { novita: articolo.novita }]}>
         {articolo.novita && <span class="punto" aria-hidden="true" />}{occhielloArticolo(articolo)}
       </p>
-      <h2 class="nome" id={idNome}>{articolo.nome}</h2>
+      <h2 class="nome" id={idNome} data-colore-dove={haColori ? 'nome' : undefined}>{articolo.nome}</h2>
       <p class="dettaglio">{articolo.dettaglio}</p>
     </div>
 
     <div class="corpo">
+      {
+        haColori && (
+          <div>
+            <p class="colore">
+              <span class="etichetta">Colore:</span> <span data-colore-dove="testo">{testoColori(colori)}</span>
+            </p>
+            <div class="pallini" role="group" aria-label="Scegli il colore">
+              {pallini.map((p, i) => (
+                <button
+                  type="button"
+                  class="pallino"
+                  style={`--tinta: ${p.colore.tinta}`}
+                  data-colore={p.colore.nome}
+                  aria-pressed="false"
+                  aria-label={`Colore ${p.colore.nome}`}
+                  data-colore-nome={p.nome}
+                  data-colore-testo={p.colore.nome}
+                  data-colore-messaggio={p.messaggio}
+                  data-colore-href={p.href}
+                  data-colore-foto={conFoto ? i : undefined}
+                >
+                  <span />
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }
       <div>
-        <p class="messaggio">{messaggio}</p>
+        <p class="messaggio" data-colore-dove={haColori ? 'messaggio' : undefined}>{messaggio}</p>
         <p class="nota">Il messaggio è già scritto: puoi cambiarlo prima di inviarlo.</p>
       </div>
       <div class="azioni">
-        <a class="invia" href={linkWhatsApp(negozio.whatsapp, messaggio)}>
+        <a class="invia" href={linkWhatsApp(negozio.whatsapp, messaggio)} data-colore-dove={haColori ? 'link' : undefined}>
           <Icona nome="whatsapp" misura={18} />Invia su WhatsApp
         </a>
         <a class="chiama" href={negozio.telefonoHref}>Preferisci chiamare? {negozio.telefono}</a>
@@ -220,6 +283,25 @@ const messaggio = messaggioDisponibilita(articolo.nome);
     background: var(--salvia-scura);
   }
 
+  /* --- La galleria dei colori (se ogni colore ha la sua foto): una foto alla volta,
+     che i pallini scelgono. Le foto coprono il riquadro. --- */
+  .galleria,
+  .diapositiva {
+    position: absolute;
+    inset: 0;
+  }
+
+  .diapositiva :global(picture),
+  .diapositiva :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .diapositiva :global(img) {
+    object-fit: cover;
+  }
+
   .nome {
     margin: 6px 0 0;
     font-family: var(--titoli);
@@ -246,6 +328,55 @@ const messaggio = messaggioDisponibilita(articolo.nome);
     gap: 14px;
     min-width: 0;
     padding-top: 16px;
+  }
+
+  /* --- I colori: «Colore: …» e un pallino da 44 px per colore (il tondo è di 20 px).
+     La tinta è un dato dell'articolo (`--tinta`, scritta dalla pagina). Il colore
+     scelto ha un doppio anello, bianco e nero, visibile su ogni tinta. --- */
+  .colore {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--grigio-testo);
+  }
+
+  .etichetta {
+    font-weight: 600;
+    color: var(--nero);
+  }
+
+  .pallini {
+    display: flex;
+    margin: 2px 0 0 -12px;
+  }
+
+  .pallino {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .pallino span {
+    display: block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--tinta);
+    box-shadow: inset 0 0 0 1px var(--anello-pallino);
+    transition: box-shadow 200ms ease;
+  }
+
+  .pallino[aria-pressed='true'] span {
+    box-shadow:
+      0 0 0 2px var(--bianco),
+      0 0 0 3.5px var(--nero),
+      inset 0 0 0 1px var(--anello-pallino);
   }
 
   .messaggio {

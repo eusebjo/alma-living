@@ -11,6 +11,12 @@ describe('messaggioDisponibilita', () => {
       'Buongiorno, ho visto sul sito «Plaid «Abbracciami»». È disponibile? Misura o colore: …',
     );
   });
+
+  it('con il colore, il nome lo cita e la domanda su misura e colore sparisce', () => {
+    expect(messaggioDisponibilita('Plaid Abbracciami', 'verde')).toBe(
+      'Buongiorno, ho visto sul sito «Plaid Abbracciami · verde». È disponibile?',
+    );
+  });
 });
 
 describe('linkWhatsApp', () => {

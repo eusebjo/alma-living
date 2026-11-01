@@ -13,12 +13,14 @@ import {
   fotoFinestra,
   LIMITI_SELEZIONE,
   messaggioPost,
+  nomeConColore,
   occhielloArticolo,
   post,
   POST_VISIBILI,
   SCALA_DETTAGLIO,
   sezioni,
   storie,
+  testoColori,
   type Scatto,
 } from '../../src/prova/salvia-social/dati';
 
@@ -37,6 +39,7 @@ const scatti: Scatto[] = [
   ...Object.values(fotoDeiFiltri),
   ...Object.values(fotoFinestra),
   ...articoli.flatMap((a) => a.scatti),
+  ...articoli.flatMap((a) => (a.colori ?? []).flatMap((c) => (c.foto ? [c.foto] : []))),
   ...storie.flatMap((storia) => storia.foto),
   ...post.flatMap((voce) => voce.foto),
 ];
@@ -188,6 +191,46 @@ describe('dati di Salvia social', () => {
         expect(secondo.ingrandimento, id).toBeUndefined();
       }
     }
+  });
+
+  it('i colori sono quelli della tavola, con le foto dove ci sono', () => {
+    const colori = Object.fromEntries(
+      articoli
+        .filter((a) => a.colori)
+        .map((a) => [a.id, a.colori!.map((c) => [c.nome, c.tinta, c.foto?.foto])]),
+    );
+    expect(colori).toEqual({
+      abbracciami: [
+        ['verde', '#5e654f', 'abbracciami-verde'],
+        ['rosso', '#b8263a', 'abbracciami-rosso'],
+      ],
+      orsetto: [
+        ['rosa', '#ddb3b8', undefined],
+        ['sabbia', '#cdb896', undefined],
+        ['azzurro', '#a9c7e0', undefined],
+      ],
+      casetta: [
+        ['rosso', '#a62630', 'asciugamano-rosso'],
+        ['bianco', '#f4f1ea', 'asciugamano-bianco'],
+        ['verde', '#2f5734', 'asciugamano-verde'],
+      ],
+    });
+    // Un articolo ha la foto per tutti i suoi colori o per nessuno: altrimenti un pallino cambierebbe foto e un altro no.
+    for (const a of articoli) {
+      const conFoto = (a.colori ?? []).filter((c) => c.foto).length;
+      expect([0, a.colori?.length ?? 0], a.id).toContain(conFoto);
+    }
+  });
+
+  it('i testi dei colori', () => {
+    const verde = { nome: 'verde', tinta: '#000' };
+    const rosso = { nome: 'rosso', tinta: '#000' };
+    const bianco = { nome: 'bianco', tinta: '#000' };
+    expect(testoColori([verde, rosso])).toBe('scegli tra verde e rosso');
+    expect(testoColori([rosso, bianco, verde])).toBe('scegli tra rosso, bianco e verde');
+    expect(testoColori([verde])).toBe('verde');
+    expect(testoColori([])).toBe('');
+    expect(nomeConColore('Plaid Abbracciami', verde)).toBe('Plaid Abbracciami · verde');
   });
 
   it("l'occhiello è «Novità» al posto della categoria", () => {

@@ -54,6 +54,9 @@
   --barra-storia: rgb(255 255 255 / 0.38);
   --bordo-storia: rgb(255 255 255 / 0.85);
   --punto-spento: rgb(255 255 255 / 0.6);
+  /* Il bordo dei pallini colore della scheda rapida: più scuro della tavola (0,2),
+     perché il pallino bianco sul fondo bianco arrivi a 3:1 (WCAG 1.4.11). */
+  --anello-pallino: rgb(28 28 26 / 0.5);
 
   /* Ombre della tavola */
   --ombra-pillola: 0 10px 28px -12px rgb(28 28 26 / 0.45);

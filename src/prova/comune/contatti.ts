@@ -1,7 +1,11 @@
 // Link di contatto: WhatsApp con il messaggio già scritto e telefono.
 
-/** Il messaggio di disponibilità che si apre già scritto in WhatsApp. */
-export function messaggioDisponibilita(articolo: string): string {
+/**
+ * Il messaggio di disponibilità che si apre già scritto in WhatsApp. Con il
+ * colore scelto lo cita accanto al nome e non chiede più misura o colore.
+ */
+export function messaggioDisponibilita(articolo: string, colore?: string): string {
+  if (colore) return `Buongiorno, ho visto sul sito «${articolo} · ${colore}». È disponibile?`;
   return `Buongiorno, ho visto sul sito «${articolo}». È disponibile? Misura o colore: …`;
 }
 

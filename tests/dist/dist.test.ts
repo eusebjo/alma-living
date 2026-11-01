@@ -15,11 +15,13 @@ import {
   LIMITI_SELEZIONE,
   messaggi,
   messaggioPost,
+  nomeConColore,
   occhielloArticolo,
   post,
   POST_VISIBILI,
   sezioni,
   storie,
+  testoColori,
 } from '../../src/prova/salvia-social/dati';
 import { VARIANTI } from '../../src/prova/varianti';
 
@@ -364,6 +366,26 @@ function incoerenzeProtocolli(html: string): string[] {
       );
     }
   }
+  // Un pulsante colore sta dentro un contenitore `data-colori`; e la foto che
+  // sceglie (`data-colore-foto="n"`) esiste nella galleria di quel contenitore.
+  const PULSANTE_COLORE = /<button\b[^>]*\sdata-colore(?=[\s=>/])[^>]*>/gi;
+  const pulsantiColore = (testo: string) => [...testo.matchAll(PULSANTE_COLORE)];
+  const dentroContenitori = [...new Set(valoriAttributo(html, 'data-colori'))].flatMap((nome) =>
+    contenutiCon(html, 'data-colori', nome).flatMap((contenuto) => {
+      const foto = (contenuto.match(/\sdata-galleria-foto(?=[\s=>/])/g) ?? []).length;
+      for (const valore of valoriAttributo(contenuto, 'data-colore-foto', 'button')) {
+        if (!(Number(valore) < foto)) {
+          problemi.add(
+            `data-colore-foto="${valore}" senza una foto data-galleria-foto in [data-colori="${nome}"]`,
+          );
+        }
+      }
+      return pulsantiColore(contenuto);
+    }),
+  );
+  if (pulsantiColore(html).length !== dentroContenitori.length) {
+    problemi.add('data-colore fuori da un contenitore data-colori');
+  }
   return [...problemi];
 }
 
@@ -424,6 +446,10 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<ul data-limite="s" data-limite-regole="[]"></ul><button data-limite-mostra="s" hidden></button>',
     '<ul data-limite="s" data-limite-regole="[]"><li data-filtrabile="s" data-categorie="a">x</li></ul>' +
       '<div data-filtri="s"><button data-filtro="a">A</button></div><p data-filtro-vuoto="s" hidden></p>',
+    // un pulsante colore vuole il suo contenitore; la foto che sceglie, la sua galleria
+    '<button data-colore="verde" aria-pressed="false"></button>',
+    '<div data-colori="a"><div data-galleria><div data-galleria-foto></div></div>' +
+      '<button data-colore="verde" data-colore-foto="1" aria-pressed="false"></button></div>',
   ])('segnala %s', (frammento) => {
     expect(incoerenzeProtocolli(`<p>testo</p>${frammento}`).length).toBeGreaterThan(0);
   });
@@ -468,6 +494,10 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<ul data-limite="s" data-limite-regole="[]"><li data-filtrabile="s" data-categorie="a">x</li></ul>' +
       '<div data-filtri="s"><button data-filtro="a">A</button></div><p data-filtro-vuoto="s" hidden></p>' +
       '<button data-limite-mostra="s" hidden><span data-limite-testo></span></button>',
+    // un colore con la sua foto, e uno senza: i pulsanti stanno dentro il contenitore
+    '<div data-colori="a"><div data-galleria><div data-galleria-foto></div><div data-galleria-foto></div></div>' +
+      '<button data-colore="verde" data-colore-foto="1" aria-pressed="false"></button></div>',
+    '<article data-colori=b><button type="button" data-colore="rosa" data-colore-nome="x" aria-pressed="false"></button></article>',
   ])('non segnala %s', (frammento) => {
     expect(incoerenzeProtocolli(frammento)).toEqual([]);
   });
@@ -997,6 +1027,45 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       expect(chiudi).toHaveLength(1);
       expect(valore(chiudi[0]!, 'aria-label')).toBe('Chiudi');
       expect(chiudi[0]).toMatch(/\sautofocus(?=[\s=>])/);
+    }
+  });
+
+  it('nella scheda rapida, un pulsante per colore con nome, messaggio e link già scritti', () => {
+    const rapide = new Map(dialogCon('data-post').map((d) => [valore(d.apertura, 'data-post'), d.contenuto]));
+    for (const articolo of articoli) {
+      const contenuto = rapide.get(idSchedaRapida(articolo)) ?? '';
+      const colori = articolo.colori ?? [];
+      const pulsanti = tagIn(contenuto, 'button', 'data-colore');
+      expect(pulsanti.map((t) => valore(t, 'data-colore')), articolo.id).toEqual(colori.map((c) => c.nome));
+      colori.forEach((colore, i) => {
+        const t = pulsanti[i]!;
+        const messaggio = messaggioDisponibilita(articolo.nome, colore.nome);
+        expect(valore(t, 'aria-pressed')).toBe('false');
+        expect(valore(t, 'aria-label')).toBe(`Colore ${colore.nome}`);
+        expect(valore(t, 'data-colore-nome')).toBe(nomeConColore(articolo.nome, colore));
+        expect(valore(t, 'data-colore-testo')).toBe(colore.nome);
+        expect(valore(t, 'data-colore-messaggio')).toBe(messaggio);
+        expect(valore(t, 'data-colore-href')).toBe(`https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}`);
+        expect(valore(t, 'data-colore-foto')).toBe(colore.foto ? String(i) : undefined);
+      });
+      if (colori.length === 0) continue;
+      const testo = decodifica(contenuto);
+      expect(testo).toMatch(/\sdata-colori="[^"]+"/);
+      expect(testo).toContain(testoColori(colori));
+      for (const dove of ['nome', 'testo', 'messaggio', 'link']) {
+        expect(tagIn(testo, '[a-z0-9]+', 'data-colore-dove').map((t) => valore(t, 'data-colore-dove'))).toContain(dove);
+      }
+      // E stanno sugli elementi giusti: il nome sull'h2, il messaggio sul fumetto, il link su «Invia su WhatsApp».
+      for (const [dove, tag] of [['nome', 'h2'], ['testo', 'span'], ['messaggio', 'p'], ['link', 'a']] as const) {
+        const elementi = tagIn(testo, tag, 'data-colore-dove').filter((t) => valore(t, 'data-colore-dove') === dove);
+        expect(elementi, `${articolo.id} ${dove}`).toHaveLength(1);
+      }
+      expect(tagIn(testo, 'a', 'data-colore-dove')[0]).toMatch(/\sclass="invia\b/);
+      expect(tagIn(testo, 'p', 'data-colore-dove')[0]).toMatch(/\sclass="messaggio\b/);
+      const conFoto = colori.every((c) => c.foto);
+      // Con le foto dei colori: una galleria di quelle foto e niente interruttore; senza, i due scatti.
+      expect((testo.match(/\sdata-galleria-foto(?=[\s=>])/g) ?? []).length, articolo.id).toBe(conFoto ? colori.length : 0);
+      expect(/\sdata-interruttore(?=[\s=>])/.test(testo), articolo.id).toBe(!conFoto);
     }
   });
 
