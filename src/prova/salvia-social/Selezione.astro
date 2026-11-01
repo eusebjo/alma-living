@@ -337,34 +337,41 @@ const filtri: { id: 'tutti' | Categoria; nome: string; quanti: number }[] = [
 
   /* --- Ordine a vista (scelta 1 del piano) ---
      La finestra viene dopo la prima riga di schede visibili (filtro e limite
-     nascondono con `hidden`): stesse media query di `LIMITI_SELEZIONE`. */
-  .voce {
-    order: 3;
-  }
-
-  .voce-finestra {
-    order: 2;
-  }
-
-  .voce-mostra {
-    order: 4;
-  }
-
-  @media (max-width: 767px) {
-    .voce:nth-child(-n + 2 of [data-filtrabile]:not([hidden])) {
-      order: 1;
+     nascondono con `hidden`): stesse media query di `LIMITI_SELEZIONE`.
+     Tutte le regole di `order` stanno dentro `@supports selector(…)` perché la
+     prima riga si sceglie con `:nth-child(… of …)` (Chrome 111, Firefox 113): in
+     un browser che non lo capisce la regola cade, e con l'ordine di base ogni
+     scheda prenderebbe `order: 3` e la finestra (2) salterebbe sopra tutte.
+     Senza il blocco resta l'ordine del DOM: schede, "Mostra tutti", finestre. */
+  @supports selector(:nth-child(1 of .x)) {
+    .voce {
+      order: 3;
     }
-  }
 
-  @media (767px < width <= 1023px) {
-    .voce:nth-child(-n + 3 of [data-filtrabile]:not([hidden])) {
-      order: 1;
+    .voce-finestra {
+      order: 2;
     }
-  }
 
-  @media (width > 1023px) {
-    .voce:nth-child(-n + 4 of [data-filtrabile]:not([hidden])) {
-      order: 1;
+    .voce-mostra {
+      order: 4;
+    }
+
+    @media (max-width: 767px) {
+      .voce:nth-child(-n + 2 of [data-filtrabile]:not([hidden])) {
+        order: 1;
+      }
+    }
+
+    @media (767px < width <= 1023px) {
+      .voce:nth-child(-n + 3 of [data-filtrabile]:not([hidden])) {
+        order: 1;
+      }
+    }
+
+    @media (width > 1023px) {
+      .voce:nth-child(-n + 4 of [data-filtrabile]:not([hidden])) {
+        order: 1;
+      }
     }
   }
 

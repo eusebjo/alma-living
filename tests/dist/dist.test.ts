@@ -953,6 +953,50 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
   });
 
+  /** Il CSS della pagina: i fogli collegati (in /_astro/) e i `<style>` scritti nella pagina. */
+  const cssDellaPagina = () => {
+    const pagina = html();
+    const collegati = [...pagina.matchAll(/<link\b[^>]*>/gi)]
+      .map((m) => m[0])
+      .filter((tag) => /\srel=["']?stylesheet\b/i.test(tag))
+      .map((tag) => valore(tag, 'href') ?? '')
+      .map((href) => readFileSync(join('dist', ...href.split('/').filter(Boolean)), 'utf8'));
+    const inPagina = [...pagina.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]!);
+    return [...collegati, ...inPagina].join('\n');
+  };
+
+  /** Il contenuto tra le graffe del blocco che comincia (con la sua graffa) dopo `da`. */
+  const bloccoDopo = (css: string, da: number) => {
+    const inizio = css.indexOf('{', da) + 1;
+    let profondita = 1;
+    for (let i = inizio; i < css.length; i += 1) {
+      if (css[i] === '{') profondita += 1;
+      if (css[i] === '}') profondita -= 1;
+      if (profondita === 0) return css.slice(inizio, i);
+    }
+    return css.slice(inizio);
+  };
+
+  it("l'ordine a vista della griglia sta tutto in @supports selector(:nth-child(… of …)): senza, vale quello del DOM", () => {
+    const css = cssDellaPagina();
+    const SUPPORTS = '@supports selector(:nth-child(1 of';
+    expect(css).toContain(SUPPORTS);
+    const blocco = bloccoDopo(css, css.indexOf(SUPPORTS));
+    // Dentro: l'ordine di base di schede, finestre e "Mostra tutti", e le schede della prima riga.
+    expect(blocco).toMatch(/\.voce\[[^\]]*\]\{order:3\}/);
+    expect(blocco).toMatch(/\.voce-finestra\[[^\]]*\]\{order:2\}/);
+    expect(blocco).toMatch(/\.voce-mostra\[[^\]]*\]\{order:4\}/);
+    expect(
+      blocco.match(/:nth-child\(-n\+\d of \[data-filtrabile\]:not\(\[hidden\]\)\)/g),
+    ).toHaveLength(3);
+    // Fuori: nessuna di queste regole, altrimenti il DOM non resterebbe l'ordine dei vecchi browser.
+    const fuori = css.replace(blocco, '');
+    expect(fuori).not.toMatch(
+      /\.voce(?:-finestra|-mostra)?\[[^\]]*\](?::nth-child\([^)]*\))?[^{}]*\{order:/,
+    );
+    expect(fuori).not.toContain(' of [data-filtrabile]');
+  });
+
   it('i riquadri delle collezioni e le pillole scelgono il loro filtro e portano alla selezione', () => {
     const link = tagCon('a', 'data-filtro-scegli');
     expect(link.map((t) => valore(t, 'data-filtro-scegli'))).toEqual(

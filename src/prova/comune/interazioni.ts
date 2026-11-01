@@ -86,7 +86,8 @@
 //   `button`, oppure un link `a[href]` (per esempio a WhatsApp). Con lo script, un
 //   clic sul link senza Ctrl, Cmd, Maiusc o Alt apre il dialog e annulla la
 //   navigazione (`preventDefault`); con un tasto modificatore, o se il dialog
-//   manca, il link fa il suo. Senza JavaScript porta al suo `href`. All'avvio lo
+//   manca o il browser non ha `showModal()` (Safari prima del 15.4), il link fa il
+//   suo. Senza JavaScript porta al suo `href`. All'avvio lo
 //   script dà `aria-haspopup="dialog"` ai link `a[data-post-apri]` che hanno il
 //   loro dialog: nell'HTML sono link semplici.
 // - Mostra altri: `button[data-mostra-altri="<nome>"]` toglie `hidden` a
@@ -524,12 +525,15 @@ function dialogDelPost(c: Contesto, apri: HTMLElement): HTMLDialogElement | null
 
 /**
  * Apre il post. Da un link, apre il dialog e annulla la navigazione solo se il
- * dialog c'è e il clic è senza tasti modificatori: con Ctrl, Cmd, Maiusc o Alt
- * (nuova scheda, nuova finestra, scarica) il link fa il suo.
+ * dialog c'è, il browser sa aprirlo (`showModal`) e il clic è senza tasti
+ * modificatori: con Ctrl, Cmd, Maiusc o Alt (nuova scheda, nuova finestra,
+ * scarica) il link fa il suo.
  */
 function apriPost(c: Contesto, apri: HTMLElement, evento: MouseEvent): void {
   const dialog = dialogDelPost(c, apri);
-  if (!dialog) return;
+  // Prima di annullare il link: senza `showModal` la scheda non si aprirebbe e il
+  // clic non farebbe niente. Così il link va comunque a WhatsApp.
+  if (!dialog || typeof dialog.showModal !== 'function') return;
   if (apri instanceof HTMLAnchorElement) {
     if (evento.ctrlKey || evento.metaKey || evento.shiftKey || evento.altKey) return;
     evento.preventDefault();
