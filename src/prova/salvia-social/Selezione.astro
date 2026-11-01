@@ -1,20 +1,40 @@
 ---
-// La selezione dal negozio: filtri per collezione (protocollo "Filtri") e gli
-// articoli, in fondo la tessera "Non lo trovi qui?". Un filtro senza articoli
-// (Mare) mostra al loro posto la tessera "Il mare torna in primavera", mai una
-// lista vuota.
+// La selezione dal negozio: i filtri per collezione, ognuno con il suo cerchietto
+// foto (protocollo "Filtri"), e una griglia sola con gli articoli. Le colonne
+// cambiano con la misura e basta: 2 sul telefono (fino a 767 px), 3 sul tablet
+// (da 768 a 1023 px), 4 sul computer (da 1024 px).
 //
-// Sul telefono (fino a 767 px) gli articoli sono in griglia su due colonne e se
-// ne vedono i primi 4, sul tablet (da 768 a 1023 px) su tre colonne e i primi 6;
-// "Mostra tutti gli 8" apre gli altri (protocollo "Limite", regole in
-// `LIMITI_SELEZIONE`). Il limite vale sulla lista filtrata. Da 1024 px è il
-// carosello con le frecce (protocollo "Carosello"), senza limite. Senza
-// JavaScript la griglia mostra tutti gli articoli.
+// Il limite (protocollo "Limite", regole in `LIMITI_SELEZIONE`) vale sulla lista
+// filtrata: 4 schede sul telefono e 6 sul tablet, poi "Mostra tutti gli 8"; sul
+// computer nessuno. Senza JavaScript la griglia mostra tutti gli articoli.
+//
+// La finestra sullo scaffale ("Non lo trovi qui?", `Finestra.astro`) sta a vista
+// dopo la prima riga di schede (scelta 1 del piano). Nel DOM invece sta in fondo,
+// dopo le schede e dopo "Mostra tutti", così lettori di schermo e tabulazione
+// leggono prima gli articoli e poi l'invito. A vista la mette `order`: le prime
+// schede della riga, che il filtro e il limite non hanno nascosto, vengono per
+// prime, poi la finestra, poi le altre schede e "Mostra tutti". Se le schede non
+// riempiono la prima riga, la finestra viene subito dopo. Un filtro senza articoli
+// (Mare) mostra al posto di tutto la sua finestra, "Il mare torna in primavera",
+// mai una lista vuota.
+//
+// Misure del tablet (scelta 7): la tavola non le ha, sono quelle del computer con
+// tre colonne e i margini di 40 px.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
+import Finestra from './Finestra.astro';
+import Foto from './Foto.astro';
 import Icona from './Icona.astro';
 import SchedaArticolo from './SchedaArticolo.astro';
-import { articoli, categorie, LIMITI_SELEZIONE, messaggi } from './dati';
+import {
+  articoli,
+  categorie,
+  fotoDeiFiltri,
+  fotoFinestra,
+  LIMITI_SELEZIONE,
+  messaggi,
+  type Categoria,
+} from './dati';
 
 interface Props {
   negozio: DatiNegozio;
@@ -22,7 +42,7 @@ interface Props {
 
 const { negozio } = Astro.props;
 
-const filtri = [
+const filtri: { id: 'tutti' | Categoria; nome: string; quanti: number }[] = [
   { id: 'tutti', nome: 'Tutto', quanti: articoli.length },
   ...categorie.map(({ id, nome }) => ({
     id,
@@ -43,96 +63,94 @@ const filtri = [
     </p>
   </div>
 
-  <div class="carosello" data-carosello>
-    <div class="comandi">
-      <div class="filtri" role="group" aria-label="Filtra per collezione" data-filtri="selezione">
-        {
-          filtri.map(({ id, nome, quanti }) => (
-            <button
-              type="button"
-              class="filtro"
-              data-filtro={id}
-              aria-pressed={id === 'tutti' ? 'true' : 'false'}
-            >
-              {nome}
-              {quanti > 0 && (
-                <span class="quanti">
-                  {quanti}
-                  <span class="solo-lettori">{quanti === 1 ? ' articolo' : ' articoli'}</span>
-                </span>
-              )}
-            </button>
-          ))
-        }
-      </div>
-      <div class="frecce">
-        <button type="button" class="freccia" data-carosello-prec aria-label="Articoli precedenti">
-          <Icona nome="prec" />
+  <div class="filtri" role="group" aria-label="Filtra per collezione" data-filtri="selezione">
+    {
+      filtri.map(({ id, nome, quanti }) => (
+        <button
+          type="button"
+          class="filtro"
+          data-filtro={id}
+          aria-pressed={id === 'tutti' ? 'true' : 'false'}
+        >
+          <Foto
+            scatto={fotoDeiFiltri[id]}
+            alt=""
+            larghezze={[56, 84]}
+            sizes="28px"
+            class="cerchietto"
+          />
+          {nome}
+          {quanti > 0 ? (
+            <span class="quanti">
+              {quanti}
+              <span class="solo-lettori">{quanti === 1 ? ' articolo' : ' articoli'}</span>
+            </span>
+          ) : (
+            <span class="solo-lettori">, nessun articolo adesso</span>
+          )}
         </button>
-        <button type="button" class="freccia" data-carosello-succ aria-label="Articoli successivi">
-          <Icona nome="succ" />
-        </button>
-      </div>
-    </div>
-
-    <ul
-      class="binario"
-      data-carosello-binario
-      data-limite="selezione"
-      data-limite-regole={JSON.stringify(LIMITI_SELEZIONE)}
-      role="list"
-    >
-      {
-        articoli.map((articolo) => (
-          <li class="voce" data-filtrabile="selezione" data-categorie={articolo.categorie.join(' ')}>
-            <SchedaArticolo articolo={articolo} negozio={negozio} />
-          </li>
-        ))
-      }
-      <li class="voce" data-filtro-vuoto="selezione" hidden>
-        <div class="tessera">
-          <div class="tessera-testo">
-            <p class="tessera-occhiello">Collezione mare</p>
-            <h3>Il mare torna in primavera</h3>
-            <p>
-              Teli e plaid leggeri arrivano con la bella stagione. Se ti serve qualcosa adesso, chiedici
-              cosa è rimasto in negozio.
-            </p>
-          </div>
-          <a class="tessera-azione" href={linkWhatsApp(negozio.whatsapp, messaggi.mare)}>
-            <Icona nome="whatsapp" misura={18} />Chiedi su WhatsApp
-          </a>
-        </div>
-      </li>
-      <li class="voce-mostra">
-        <button type="button" class="mostra-tutti" data-limite-mostra="selezione" hidden>
-          <span data-limite-testo>Mostra tutti</span><Icona nome="giu" misura={18} />
-        </button>
-      </li>
-      <li class="voce voce-altro">
-        <div class="tessera">
-          <div class="tessera-testo">
-            <p class="tessera-occhiello">Non lo trovi qui?</p>
-            <h3>In negozio c’è molto di più</h3>
-            <p>
-              Dicci cosa cerchi, per quale stanza e in che colore: ti rispondiamo con le foto su
-              WhatsApp.
-            </p>
-          </div>
-          <a class="tessera-azione" href={linkWhatsApp(negozio.whatsapp, messaggi.cerco)}>
-            <Icona nome="whatsapp" misura={18} />Scrivici su WhatsApp
-          </a>
-        </div>
-      </li>
-    </ul>
+      ))
+    }
   </div>
+
+  <ul
+    class="griglia"
+    data-limite="selezione"
+    data-limite-regole={JSON.stringify(LIMITI_SELEZIONE)}
+    role="list"
+  >
+    {
+      articoli.map((articolo) => (
+        <li class="voce" data-filtrabile="selezione" data-categorie={articolo.categorie.join(' ')}>
+          <SchedaArticolo articolo={articolo} negozio={negozio} />
+        </li>
+      ))
+    }
+    <li class="voce-mostra">
+      <button type="button" class="mostra-tutti" data-limite-mostra="selezione" hidden>
+        <span data-limite-testo>Mostra tutti</span><Icona nome="giu" misura={18} />
+      </button>
+    </li>
+    <li class="voce-finestra" data-filtro-vuoto="selezione" hidden>
+      <Finestra
+        scatto={fotoFinestra.mare}
+        occhiello="Collezione mare"
+        titolo="Il mare torna in primavera"
+        testo="Teli e plaid leggeri arrivano con la bella stagione. Se ti serve qualcosa adesso, chiedici cosa è rimasto in negozio."
+        href={linkWhatsApp(negozio.whatsapp, messaggi.mare)}
+        azione="Chiedi"
+        resto=" su WhatsApp"
+      />
+    </li>
+    <li class="voce-finestra">
+      <Finestra
+        scatto={fotoFinestra.scaffale}
+        occhiello="Non lo trovi qui?"
+        titolo="In negozio c’è molto di più di quello che vedi qui."
+        testo="Dicci cosa cerchi, per quale stanza e in che colore: ti rispondiamo con le foto su WhatsApp."
+        href={linkWhatsApp(negozio.whatsapp, messaggi.cerco)}
+        azione="Scrivici"
+        resto=" su WhatsApp"
+      />
+    </li>
+  </ul>
 </section>
 
 <style>
+  /* I punti di rottura sono le media query di `LIMITI_SELEZIONE` (`dati.ts`),
+     `(max-width: 767px)` e `(max-width: 1023px)`: vanno cambiati insieme.
+     Tablet e computer usano i loro complementi esatti (`width > 767px`,
+     `width > 1023px`), non `min-width: 768px` o `1024px`: con lo zoom o la
+     scala dello schermo al 125% la larghezza può essere 1023,2 px, e il
+     disegno deve seguire lo script, che lì non pone limiti. */
+
+  /* --- Telefono (fino a 767 px) --- */
   .selezione {
+    /* Il riempimento laterale della sezione: i filtri lo usano per scorrere a tutta pagina. */
+    --lato: 16px;
     max-width: var(--larghezza);
     margin: 0 auto;
-    padding: var(--sezione) 0 44px;
+    padding: var(--sezione) var(--lato) 44px;
   }
 
   .intestazione {
@@ -141,7 +159,6 @@ const filtri = [
     align-items: flex-end;
     justify-content: space-between;
     gap: 14px 48px;
-    padding: 0 var(--margine);
   }
 
   .titoli {
@@ -181,24 +198,17 @@ const filtri = [
     flex: none;
   }
 
-  /* --- Filtri e frecce --- */
-  .comandi {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    margin-top: 20px;
-    padding: 0 var(--margine);
-  }
-
+  /* --- Filtri ---
+     Fino a 1023 px scorrono di lato a tutta pagina (margine negativo e riempimento
+     pari al riempimento della sezione). Il riempimento di 6 px sopra e sotto lascia
+     posto al contorno del focus, che altrimenti lo scorrimento taglierebbe; i
+     margini lo compensano, così le distanze dalla tavola (20 px sopra, 4 sotto)
+     restano le stesse. */
   .filtri {
-    flex: 1 1 auto;
-    min-width: 0;
     display: flex;
     gap: 8px;
-    margin: 0 calc(-1 * var(--margine));
-    /* Spazio per il focus, che altrimenti lo scorrimento taglierebbe. */
-    padding: 4px var(--margine) 6px;
+    margin: calc(20px - 6px) calc(-1 * var(--lato)) -2px;
+    padding: 6px var(--lato);
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -208,12 +218,13 @@ const filtri = [
   }
 
   .filtro {
+    position: relative;
     flex: none;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     min-height: 44px;
-    padding: 0 18px;
+    padding: 0 16px 0 8px;
     border: 0;
     border-radius: var(--pillola);
     background: var(--bianco);
@@ -226,6 +237,17 @@ const filtri = [
       background-color 200ms ease,
       box-shadow 200ms ease,
       color 200ms ease;
+  }
+
+  /* Il cerchietto foto: decorativo, con un anello sottile come sulla tavola. */
+  .filtro :global(.cerchietto) {
+    display: block;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 1.5px var(--grigio-chiaro);
   }
 
   .quanti {
@@ -243,56 +265,21 @@ const filtri = [
     box-shadow: inset 0 0 0 1px var(--salvia-scura);
   }
 
+  .filtro[aria-pressed='true'] :global(.cerchietto) {
+    box-shadow: 0 0 0 1.5px var(--vetro-chiaro);
+  }
+
   .filtro[aria-pressed='true'] .quanti {
     color: var(--salvia-chiara);
   }
 
-  .frecce {
-    display: none;
-  }
-
-  .freccia {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: var(--bianco);
-    color: var(--nero);
-    box-shadow: inset 0 0 0 1px var(--nero);
-    transition:
-      background-color 200ms ease,
-      color 200ms ease,
-      opacity 200ms ease;
-  }
-
-  .freccia:not([aria-disabled='true']):hover {
-    background: var(--nero);
-    color: var(--bianco);
-  }
-
-  .freccia[aria-disabled='true'] {
-    opacity: 0.35;
-    cursor: default;
-  }
-
-  /* --- Griglia (telefono e tablet) ---
-     I punti di rottura sono le media query di `LIMITI_SELEZIONE` (`dati.ts`),
-     `(max-width: 767px)` e `(max-width: 1023px)`: vanno cambiati insieme.
-     Tablet e computer usano i loro complementi esatti (`width > 767px`,
-     `width > 1023px`), non `min-width: 768px` o `1024px`: con lo zoom o la
-     scala dello schermo al 125% la larghezza può essere 1023,2 px, e il
-     disegno deve seguire lo script, che lì non pone limiti. */
-  .binario {
+  /* --- Griglia: due colonne --- */
+  .griglia {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
-    gap: 16px 12px;
-    margin: 18px 0 0;
-    padding: 6px var(--margine) 28px;
+    gap: 30px 10px;
+    margin: 20px 0 0;
+    padding: 0;
     list-style: none;
   }
 
@@ -300,17 +287,15 @@ const filtri = [
     min-width: 0;
   }
 
-  /* Tessere e "Mostra tutti" occupano la riga intera. */
+  /* "Mostra tutti" e le finestre occupano la riga intera. */
   .voce-mostra,
-  .binario > [data-filtro-vuoto],
-  .voce-altro {
+  .voce-finestra {
     grid-column: 1 / -1;
   }
 
   .voce-mostra {
     display: flex;
     justify-content: center;
-    padding: 4px 0;
   }
 
   /* Senza schede piegate dal limite (o senza JavaScript) non resta una riga vuota. */
@@ -338,148 +323,78 @@ const filtri = [
     background: var(--latte-sopra);
   }
 
-  @media (767px < width <= 1023px) {
-    .binario {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px 16px;
-    }
-  }
-
-  /* Quando il filtro non ha articoli resta solo la sua tessera. */
-  .binario:has(> [data-filtro-vuoto]:not([hidden])) > .voce-altro {
+  /* Quando il filtro non ha articoli resta solo la sua finestra. */
+  .griglia:has(> [data-filtro-vuoto]:not([hidden])) > .voce-finestra:not([data-filtro-vuoto]) {
     display: none;
   }
 
-  .tessera {
-    position: relative;
-    isolation: isolate;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 24px;
-    height: 100%;
-    overflow: hidden;
-    padding: 30px 26px 26px;
-    border-radius: var(--raggio-scheda);
-    background: var(--salvia);
+  /* --- Ordine a vista (scelta 1 del piano) ---
+     La finestra viene dopo la prima riga di schede visibili (filtro e limite
+     nascondono con `hidden`): stesse media query di `LIMITI_SELEZIONE`. */
+  .voce {
+    order: 3;
   }
 
-  /* La grana della tavola sopra il salvia. */
-  .tessera::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background-image: var(--grana);
-    background-size: 320px 320px;
-    opacity: 0.5;
-    mix-blend-mode: multiply;
-    pointer-events: none;
+  .voce-finestra {
+    order: 2;
   }
 
-  .tessera-occhiello {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--verde-notte);
+  .voce-mostra {
+    order: 4;
   }
 
-  .tessera h3 {
-    margin: 12px 0 0;
-    font-family: var(--titoli);
-    font-size: 25px;
-    font-weight: 400;
-    line-height: 1.1;
-    text-wrap: balance;
+  @media (max-width: 767px) {
+    .voce:nth-child(-n + 2 of [data-filtrabile]:not([hidden])) {
+      order: 1;
+    }
   }
 
-  .tessera-testo > p:last-child {
-    margin: 14px 0 0;
-    font-size: 16px;
-    line-height: 1.5;
-    text-wrap: pretty;
+  @media (767px < width <= 1023px) {
+    .voce:nth-child(-n + 3 of [data-filtrabile]:not([hidden])) {
+      order: 1;
+    }
   }
 
-  .tessera-azione {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 48px;
-    border-radius: var(--pillola);
-    background: var(--salvia-scura);
-    color: var(--bianco);
-    text-decoration: none;
-    font-size: 15px;
-    font-weight: 600;
-    transition: background-color 200ms ease;
-  }
-
-  .tessera-azione:hover {
-    background: var(--salvia-scura-sopra);
-  }
-
-  /* --- Computer (da 1024 px): il carosello con le frecce, senza limite --- */
   @media (width > 1023px) {
+    .voce:nth-child(-n + 4 of [data-filtrabile]:not([hidden])) {
+      order: 1;
+    }
+  }
+
+  /* --- Tablet (da 768 px): tre colonne --- */
+  @media (width > 767px) {
     .selezione {
-      padding-bottom: 88px;
+      --lato: 40px;
     }
 
-    .comandi {
-      margin-top: 32px;
+    .filtri {
+      margin-top: calc(32px - 6px);
+    }
+
+    .griglia {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 48px 20px;
+      margin-top: 36px;
+    }
+  }
+
+  /* --- Computer (da 1024 px): quattro colonne, senza limite; i filtri vanno a capo --- */
+  @media (width > 1023px) {
+    .selezione {
+      --lato: var(--margine);
+      padding-bottom: 88px;
     }
 
     .filtri {
       flex-wrap: wrap;
-      margin: 0;
-      padding: 4px 0;
+      margin: 32px 0 0;
+      padding: 0;
       overflow: visible;
     }
 
-    .frecce {
-      flex: none;
-      display: flex;
-      gap: 10px;
-    }
-
-    .binario {
-      display: flex;
-      gap: 20px;
-      margin-top: 20px;
-      padding: 12px var(--margine) 32px;
-      overflow-x: auto;
-      overscroll-behavior-x: contain;
-      scroll-snap-type: x mandatory;
-      scroll-padding-inline: var(--margine);
-      scrollbar-width: none;
-    }
-
-    .binario::-webkit-scrollbar {
-      display: none;
-    }
-
-    .voce {
-      flex: 0 0 300px;
-      scroll-snap-align: start;
-    }
-
-    .tessera {
-      min-height: 420px;
-    }
-
-    .tessera h3 {
-      font-size: 28px;
-    }
-  }
-
-  /* Oltre i 1440 px della tavola il carosello arriva al bordo destro dello
-     schermo invece di fermarsi a metà (la pagina taglia con `overflow-x: clip`
-     i pochi pixel sotto la barra di scorrimento). */
-  @media (min-width: 1441px) {
-    .binario {
-      margin-right: calc((var(--larghezza) - 100vw) / 2);
+    .griglia {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 60px 24px;
     }
   }
 </style>

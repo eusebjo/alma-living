@@ -48,9 +48,6 @@
 //   La variante dà all'area `touch-action: pan-y pinch-zoom`, perché la pagina
 //   scorra in verticale e resti ingrandibile con due dita (il pizzico fa partire
 //   un `pointercancel`, che annulla il trascinamento).
-// - Carosello: `[data-carosello]` con `[data-carosello-binario]` (scroll-snap) e
-//   `button[data-carosello-prec|succ]`: scorrono di una larghezza visibile e
-//   hanno `aria-disabled="true"` agli estremi.
 // - Storie: `button[data-storia-apri="<g>"]` apre `dialog[data-storie]`, che ha i
 //   gruppi `[data-storia-gruppo="<g>"]` (uno visibile alla volta), in ognuno le
 //   foto `[data-storia-foto]` e, nello stesso ordine, le barre
@@ -347,15 +344,6 @@ function scegliFiltro(c: Contesto, bottone: HTMLElement): void {
     altro.setAttribute('aria-pressed', String(altro === bottone));
   }
   applicaFiltri(c);
-  // Un carosello filtrato riparte dalla prima voce che resta.
-  const nome = contenitore.dataset.filtri ?? '';
-  const binari = new Set(
-    elementi(c.radice, conValore('data-filtrabile', nome)).map((voce) =>
-      voce.closest<HTMLElement>('[data-carosello-binario]'),
-    ),
-  );
-  for (const binario of binari) binario?.scrollTo({ left: 0 });
-  aggiornaCaroselli(c);
 }
 
 /** Un link `data-filtro-scegli="<nome>:<id>"`: preme quel filtro; il link poi fa il suo. */
@@ -388,7 +376,6 @@ function mostraTutti(c: Contesto, bottone: HTMLElement): void {
   const giaVisibili = new Set(voci.filter((voce) => !voce.hidden));
   c.limiteAperto.add(nome);
   applicaFiltri(c);
-  aggiornaCaroselli(c);
   // Il pulsante sparisce: il focus passa alla prima voce comparsa.
   primoComando(voci.find((voce) => !voce.hidden && !giaVisibili.has(voce)))?.focus();
 }
@@ -459,36 +446,6 @@ function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
 /** Il browser ha preso il gesto (scorrimento della pagina, trascinamento nativo): niente cambio. */
 function annullaTrascinamento(c: Contesto, evento: PointerEvent): void {
   if (c.trascinamento?.id === evento.pointerId) c.trascinamento = null;
-}
-
-// --- Carosello ---
-
-function aggiornaCarosello(binario: HTMLElement): void {
-  const carosello = binario.closest<HTMLElement>('[data-carosello]');
-  if (!carosello) return;
-  const alInizio = binario.scrollLeft <= 1;
-  const allaFine = binario.scrollLeft + binario.clientWidth >= binario.scrollWidth - 1;
-  for (const b of elementi(carosello, '[data-carosello-prec]')) {
-    b.setAttribute('aria-disabled', String(alInizio));
-  }
-  for (const b of elementi(carosello, '[data-carosello-succ]')) {
-    b.setAttribute('aria-disabled', String(allaFine));
-  }
-}
-
-function aggiornaCaroselli(c: Contesto): void {
-  for (const binario of elementi(c.radice, '[data-carosello-binario]')) aggiornaCarosello(binario);
-}
-
-function scorriCarosello(bottone: HTMLElement, verso: 1 | -1): void {
-  if (bottone.getAttribute('aria-disabled') === 'true') return;
-  const binario = bottone
-    .closest<HTMLElement>('[data-carosello]')
-    ?.querySelector<HTMLElement>('[data-carosello-binario]');
-  binario?.scrollBy({
-    left: verso * binario.clientWidth,
-    behavior: movimentoRidotto() ? 'auto' : 'smooth',
-  });
 }
 
 // --- Dialog (storie e post) ---
@@ -691,8 +648,6 @@ const AZIONI: [
   ['[data-galleria-prec]', (_c, el) => spostaGalleria(el, -1)],
   ['[data-galleria-succ]', (_c, el) => spostaGalleria(el, 1)],
   ['[data-galleria-punto]', (_c, el) => vaiAlPunto(el)],
-  ['[data-carosello-prec]', (_c, el) => scorriCarosello(el, -1)],
-  ['[data-carosello-succ]', (_c, el) => scorriCarosello(el, 1)],
   ['[data-storia-apri]', apriStoria],
   ['[data-storia-tocchi]', toccoSullaStoria],
   ['[data-storia-prec]', (c) => indietroStoria(c)],
@@ -739,7 +694,6 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   for (const galleria of elementi(radice, '[data-galleria]')) {
     mostraFoto(galleria, fotoCorrente(galleria));
   }
-  aggiornaCaroselli(c);
 
   radice.addEventListener('click', (evento) => {
     const bersaglio = evento.target;
@@ -837,7 +791,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     if (c.storia) c.storia.ultimoFrame = performance.now();
   });
 
-  // `close` e `scroll` non risalgono: si ascoltano in cattura.
+  // `close` non risale: si ascolta in cattura.
   radice.addEventListener(
     'close',
     (evento) => {
@@ -846,17 +800,6 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     },
     true,
   );
-  radice.addEventListener(
-    'scroll',
-    (evento) => {
-      const binario = evento.target;
-      if (binario instanceof HTMLElement && binario.matches('[data-carosello-binario]')) {
-        aggiornaCarosello(binario);
-      }
-    },
-    true,
-  );
-  addEventListener('resize', () => aggiornaCaroselli(c));
   // Il limite dipende dalla misura dello schermo: si ricalcola quando cambia una
   // delle sue media query (il telefono ruotato, la finestra allargata), non a
   // ogni `resize`. Un ascoltatore per media query distinta.
@@ -864,9 +807,6 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     elementi(radice, '[data-limite]').flatMap((el) => regoleDi(el).map((r) => r.media)),
   );
   for (const media of medie) {
-    matchMedia(media).addEventListener('change', () => {
-      applicaFiltri(c);
-      aggiornaCaroselli(c);
-    });
+    matchMedia(media).addEventListener('change', () => applicaFiltri(c));
   }
 }

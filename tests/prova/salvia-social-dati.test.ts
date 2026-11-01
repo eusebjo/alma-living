@@ -8,7 +8,9 @@ import {
   categorie,
   collezioni,
   delData,
+  fotoDeiFiltri,
   fotoDelNegozio,
+  fotoFinestra,
   LIMITI_SELEZIONE,
   messaggioPost,
   occhielloArticolo,
@@ -32,6 +34,8 @@ const scatti: Scatto[] = [
   ...apertura,
   ...collezioni,
   ...altreCollezioni,
+  ...Object.values(fotoDeiFiltri),
+  ...Object.values(fotoFinestra),
   ...articoli.flatMap((a) => a.scatti),
   ...storie.flatMap((storia) => storia.foto),
   ...post.flatMap((voce) => voce.foto),
@@ -145,6 +149,14 @@ describe('dati di Salvia social', () => {
       { media: '(max-width: 1023px)', limite: 6 },
     ]);
     expect(articoli.length).toBeGreaterThan(6);
+  });
+
+  it('ogni filtro ha il cerchietto foto della sua collezione, e "Tutto" lo scaffale', () => {
+    expect(Object.keys(fotoDeiFiltri).sort()).toEqual(['tutti', ...categorie.map((c) => c.id)].sort());
+    expect(fotoDeiFiltri.tutti).toMatchObject({ foto: 'scaffale', posizione: '50% 45%' });
+    for (const c of [...collezioni, ...altreCollezioni]) {
+      expect(fotoDeiFiltri[c.id], c.id).toMatchObject({ foto: c.foto, posizione: c.posizione });
+    }
   });
 
   it('le coppie di scatti sono quelle della tavola', () => {

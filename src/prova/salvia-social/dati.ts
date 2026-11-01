@@ -331,6 +331,35 @@ export const altreCollezioni: AltraCollezione[] = [
 
 // --- Selezione dal negozio ---
 
+/** Lo scatto di una voce di `collezioni` o `altreCollezioni`, senza il resto della voce. */
+function scattoDellaCollezione(id: Categoria): Scatto {
+  const voce = [...collezioni, ...altreCollezioni].find((c) => c.id === id);
+  if (!voce) throw new Error(`Nessuna collezione per la categoria "${id}".`);
+  return { foto: voce.foto, alt: voce.alt, posizione: voce.posizione };
+}
+
+/**
+ * Il cerchietto foto di ogni filtro della selezione: "Tutto" ha lo scaffale, ogni
+ * categoria lo scatto della sua collezione (di `collezioni` o `altreCollezioni`,
+ * non riscritto qui). Nei filtri è decorativo (`alt` vuoto): il nome è il testo.
+ */
+export const fotoDeiFiltri: Readonly<Record<'tutti' | Categoria, Scatto>> = {
+  tutti: scatto('scaffale', '50% 45%'),
+  letto: scattoDellaCollezione('letto'),
+  bagno: scattoDellaCollezione('bagno'),
+  bimbi: scattoDellaCollezione('bimbi'),
+  tavola: scattoDellaCollezione('tavola'),
+  profumi: scattoDellaCollezione('profumi'),
+  natale: scattoDellaCollezione('natale'),
+  mare: scattoDellaCollezione('mare'),
+};
+
+/** Le foto delle due finestre della selezione: quella dello scaffale e quella del filtro Mare. */
+export const fotoFinestra: { scaffale: Scatto; mare: Scatto } = {
+  scaffale: scatto('scaffale', '50% 45%'),
+  mare: scatto('mare', '50% 35%'),
+};
+
 /** Di quanto si ingrandisce un dettaglio, dove manca un secondo scatto vero. */
 export const SCALA_DETTAGLIO = 1.7;
 
@@ -372,9 +401,9 @@ export function occhielloArticolo(articolo: Articolo): string {
 /**
  * Quante schede della selezione si vedono prima di "Mostra tutti", per misura
  * (protocollo "Limite"): 4 sul telefono (due colonne), 6 sul tablet (tre
- * colonne), nessun limite da 1024 px (il carosello). Le media query di
- * `Selezione.astro` (e di `SchedaArticolo.astro`) sono le stesse: vanno
- * cambiate insieme.
+ * colonne), nessun limite da 1024 px (quattro colonne). Le stesse media query
+ * sono in `Selezione.astro`, `SchedaArticolo.astro` e `SchedaRapida.astro`:
+ * vanno cambiate insieme.
  */
 export const LIMITI_SELEZIONE: readonly RegolaLimite[] = [
   { media: '(max-width: 767px)', limite: 4 },
@@ -631,9 +660,9 @@ export const post: Post[] = [
 export const messaggi = {
   /** I pulsanti "Scrivici" generici. */
   generico: 'Buongiorno, vi scrivo dal sito di Alma Living.',
-  /** La tessera "In negozio c’è molto di più" in fondo alla selezione. */
+  /** La finestra "Non lo trovi qui?" sullo scaffale, dopo la prima riga della selezione. */
   cerco: 'Buongiorno, vi scrivo dal sito: sto cercando ',
-  /** La tessera che sostituisce la selezione quando un filtro non ha articoli. */
+  /** La finestra che sostituisce quella dello scaffale quando un filtro non ha articoli (Mare). */
   mare: 'Buongiorno, avete ancora qualcosa della collezione mare?',
 };
 

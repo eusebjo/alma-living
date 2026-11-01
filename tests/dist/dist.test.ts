@@ -10,7 +10,9 @@ import {
   articoli,
   categorie,
   collezioni,
+  fotoFinestra,
   LIMITI_SELEZIONE,
+  messaggi,
   messaggioPost,
   occhielloArticolo,
   post,
@@ -850,6 +852,52 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     for (const voce of tagCon('[a-z]+', 'data-filtrabile')) {
       expect(voce).not.toMatch(/\shidden(?=[\s=>])/);
     }
+  });
+
+  it('niente carosello: una griglia sola', () => {
+    expect(html()).not.toMatch(/\sdata-carosello/);
+  });
+
+  it('ogni filtro ha il cerchietto foto, decorativo; Mare dice che non ha articoli', () => {
+    const filtri = [
+      ...html().matchAll(/<button\b[^>]*\sdata-filtro="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g),
+    ];
+    expect(filtri.map((m) => m[1])).toEqual(['tutti', ...categorie.map((c) => c.id)]);
+    for (const [, id, dentro] of filtri) {
+      const img = dentro!.match(/<img\b[^>]*>/g) ?? [];
+      expect(img, id).toHaveLength(1);
+      expect(img[0], id).toMatch(/\salt(?:="")?(?=[\s/>])/);
+    }
+    expect(decodifica(filtri.find((m) => m[1] === 'mare')![2]!)).toContain(
+      ', nessun articolo adesso',
+    );
+  });
+
+  it('nella griglia: le schede, "Mostra tutti", poi le due finestre, ognuna con la foto vera e il suo WhatsApp', () => {
+    const griglia = decodifica(contenutiCon(html(), 'data-limite', 'selezione')[0] ?? '');
+    const ultimaScheda = griglia.lastIndexOf(' data-filtrabile=');
+    const mostra = griglia.indexOf(' data-limite-mostra=');
+    const mare = griglia.indexOf(' data-filtro-vuoto=');
+    const finestra = griglia.indexOf('Non lo trovi qui?');
+    expect(ultimaScheda).toBeGreaterThan(0);
+    expect(mostra).toBeGreaterThan(ultimaScheda);
+    expect(mare).toBeGreaterThan(mostra);
+    expect(finestra).toBeGreaterThan(mare);
+
+    const vuota = decodifica(contenutiCon(html(), 'data-filtro-vuoto', 'selezione')[0] ?? '');
+    expect(vuota).toContain('Il mare torna in primavera');
+    expect(vuota).toContain(`alt="${fotoFinestra.mare.alt}"`);
+    expect(vuota).toContain(
+      `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggi.mare)}"`,
+    );
+
+    // La foto sta prima del testo: la finestra comincia dal suo `<li>`.
+    const scaffale = griglia.slice(griglia.lastIndexOf('<li', finestra));
+    expect(scaffale).toContain('In negozio c’è molto di più di quello che vedi qui.');
+    expect(scaffale).toContain(`alt="${fotoFinestra.scaffale.alt}"`);
+    expect(scaffale).toContain(
+      `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggi.cerco)}"`,
+    );
   });
 
   it('i riquadri delle collezioni e le pillole scelgono il loro filtro e portano alla selezione', () => {
