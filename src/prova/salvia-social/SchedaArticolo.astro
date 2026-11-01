@@ -2,9 +2,11 @@
 // Un articolo della selezione: la foto con i suoi due scatti (`DueScatti.astro`) e
 // il pulsante tondo con la freccia, poi occhiello, nome e dettaglio. Tutta la
 // scheda è coperta da `a.apri`, un link a WhatsApp con il messaggio di
-// disponibilità già scritto: senza JavaScript porta lì. È il primo elemento della
-// scheda, quindi anche da tastiera il focus arriva prima su di lui che
-// sull'interruttore dei due scatti (che sta sopra, con `z-index` più alto).
+// disponibilità già scritto: senza JavaScript porta lì. Con lo script apre la
+// scheda rapida dell'articolo (`SchedaRapida.astro`, protocollo "Post"; con Ctrl,
+// Cmd, Maiusc o Alt resta un link). È il primo elemento della scheda, quindi anche
+// da tastiera il focus arriva prima su di lui che sull'interruttore dei due scatti
+// (che sta sopra, con `z-index` più alto).
 //
 // Fino a 767 px la scheda è stretta (due colonne): foto con raggio e pulsante più
 // piccoli, testi più piccoli. Da 768 px le misure del tablet e del computer.
@@ -16,7 +18,7 @@ import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp, messaggioDisponibilita } from '../comune/contatti';
 import DueScatti from './DueScatti.astro';
 import Icona from './Icona.astro';
-import { occhielloArticolo, type Articolo } from './dati';
+import { idSchedaRapida, occhielloArticolo, type Articolo } from './dati';
 
 interface Props {
   articolo: Articolo;
@@ -31,6 +33,7 @@ const titolo = `articolo-${articolo.id}`;
   <a
     class="apri"
     href={linkWhatsApp(negozio.whatsapp, messaggioDisponibilita(articolo.nome))}
+    data-post-apri={idSchedaRapida(articolo)}
     aria-label={`Chiedi disponibilità: ${articolo.nome}`}></a>
   <div class="foto">
     <DueScatti

@@ -36,6 +36,8 @@
   --bordo-poi: rgb(255 255 255 / 0.3);
   --sfondo-storie: rgb(24 28 22 / 0.88);
   --sfondo-post: rgb(24 28 22 / 0.8);
+  /* Il velo dietro la scheda rapida "Chiedi disponibilità": 0,6 da 768 px. */
+  --velo-scheda: rgb(24 28 22 / 0.55);
   --velo-foto: rgb(28 33 26 / 0.5);
   --velo-post: rgb(28 33 26 / 0.62);
   --velo-post-alto: rgb(28 33 26 / 0.12);
@@ -66,6 +68,7 @@
   --ombra-oggi: 0 10px 24px -16px rgb(28 40 24 / 0.5);
   --ombra-barra: 0 0 0 1px var(--bordo-chiaro), 0 20px 40px -18px rgb(28 33 26 / 0.5);
   --ombra-dialog: 0 40px 120px -30px rgb(0 0 0 / 0.7);
+  --ombra-rapida: 0 40px 120px -30px rgb(0 0 0 / 0.6);
   --linea-orari: rgb(28 28 26 / 0.14);
   --ombra-punto: 0 1px 3px rgb(0 0 0 / 0.3);
   --ombra-icona: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -77,6 +80,8 @@
   --raggio-scheda: 24px;
   --raggio-medio: 16px;
   --raggio-piccolo: 12px;
+  /* La foto della scheda rapida sul telefono. */
+  --raggio-foto-rapida: 14px;
   /* Sul telefono la tavola arrotonda un po' meno. */
   --raggio-telefono: 18px;
   --raggio-riquadro-telefono: 22px;
@@ -112,6 +117,14 @@
   }
 }
 
+/* Da 768 px la scheda rapida è una finestra centrata: il velo è un po' più scuro.
+   Stessa media query della scheda rapida (`SchedaRapida.astro`). */
+@media (width > 767px) {
+  [data-variante='salvia-social'] {
+    --velo-scheda: rgb(24 28 22 / 0.6);
+  }
+}
+
 /* Barre fisse: l'header in alto (64 px sul telefono, 88 sul computer) e, sul
    telefono, la barra dei contatti in basso (72 px). Lo scorrimento della pagina,
    sia verso un'ancora sia verso un elemento che riceve il focus da tastiera,
@@ -128,18 +141,30 @@ html:has(> body[data-variante='salvia-social']) {
   }
 }
 
-/* Con una storia o un post aperti la pagina non scorre, ma dove la barra di
-   scorrimento occupa spazio (Windows) la sua striscia resta riservata e mostra
-   lo sfondo della radice: senza queste regole sarebbe una striscia bianca
-   accanto al velo scuro. Le tinte sono i veli del dialog (`--sfondo-storie`,
-   `--sfondo-post`) sopra il bianco della pagina; il `body` continua a dipingere
-   il suo bianco, quindi la pagina non cambia. */
+/* Con una storia, un post o una scheda rapida aperti la pagina non scorre, ma
+   dove la barra di scorrimento occupa spazio (Windows) la sua striscia resta
+   riservata e mostra lo sfondo della radice: senza queste regole sarebbe una
+   striscia bianca accanto al velo scuro. Le tinte sono i veli del dialog
+   (`--sfondo-storie`, `--sfondo-post`, `--velo-scheda`) sopra il bianco della
+   pagina; il `body` continua a dipingere il suo bianco, quindi la pagina non
+   cambia. La scheda rapida è anche un `dialog[data-post]`: la sua regola viene
+   dopo, con la stessa specificità, e vince. */
 html:has(> body[data-variante='salvia-social']):has(dialog[data-storie][open]) {
   background-color: color-mix(in srgb, rgb(24 28 22) 88%, #ffffff);
 }
 
 html:has(> body[data-variante='salvia-social']):has(dialog[data-post][open]) {
   background-color: color-mix(in srgb, rgb(24 28 22) 80%, #ffffff);
+}
+
+html:has(> body[data-variante='salvia-social']):has(dialog.scheda-rapida[open]) {
+  background-color: color-mix(in srgb, rgb(24 28 22) 55%, #ffffff);
+}
+
+@media (width > 767px) {
+  html:has(> body[data-variante='salvia-social']):has(dialog.scheda-rapida[open]) {
+    background-color: color-mix(in srgb, rgb(24 28 22) 60%, #ffffff);
+  }
 }
 
 [data-variante='salvia-social'] *,

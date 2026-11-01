@@ -11,6 +11,7 @@ import {
   categorie,
   collezioni,
   fotoFinestra,
+  idSchedaRapida,
   LIMITI_SELEZIONE,
   messaggi,
   messaggioPost,
@@ -306,6 +307,17 @@ function incoerenzeProtocolli(html: string): string[] {
   for (const valore of valoriAttributo(html, 'data-post-apri')) {
     if (!dialogPost.has(valore)) manca('data-post-apri', valore, 'dialog data-post');
   }
+  // Chi apre un post è un `button`, o un link `a[href]`: senza script il link porta
+  // al suo indirizzo (per esempio WhatsApp), con lo script apre il dialog.
+  for (const [elemento] of html.matchAll(
+    /<[a-z][a-z0-9-]*\b[^>]*\sdata-post-apri(?=[\s=>/])[^>]*>/gi,
+  )) {
+    const unPulsante = /^<button\b/i.test(elemento);
+    const unLink = /^<a\b/i.test(elemento) && /\shref=["']?[^"'\s>]/i.test(elemento);
+    if (!unPulsante && !unLink) {
+      problemi.add('data-post-apri non è un button né un link a con href');
+    }
+  }
   const gruppi = destinazioni('data-storia-gruppo');
   for (const valore of valoriAttributo(html, 'data-storia-apri')) {
     if (!gruppi.has(valore)) manca('data-storia-apri', valore, 'data-storia-gruppo');
@@ -388,6 +400,9 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<button data-post-apri="x">Apri</button><dialog data-post="y"></dialog>',
     // la destinazione di un post deve essere un dialog, non un elemento qualunque
     '<button data-post-apri="x">Apri</button><div data-post="x"></div>',
+    // chi apre un post è un button, o un link con href
+    '<a data-post-apri="x">Apri</a><dialog data-post="x"></dialog>',
+    '<div data-post-apri="x"></div><dialog data-post="x"></dialog>',
     '<button data-storia-apri="arrivi">Arrivi</button>',
     '<button data-storia-apri="a"></button><section data-storia-gruppo="b"></section>',
     // un interruttore è un button con aria-pressed true o false
@@ -434,6 +449,8 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     // più pulsanti per lo stesso dialog, attributi in qualunque ordine e senza virgolette
     '<button data-post-apri=x></button><button class="b" data-post-apri="x"></button>' +
       '<dialog class="post" open data-post=x></dialog>',
+    // un link che apre il post e, senza script, porta altrove
+    '<a href="https://wa.me/1" data-post-apri="x"></a><dialog data-post="x"></dialog>',
     '<button data-storia-apri="arrivi">Arrivi</button>' +
       '<dialog data-storie><section data-storia-gruppo="arrivi"></section></dialog>',
     '<button type="button" data-interruttore aria-pressed="false">x</button>',
@@ -567,11 +584,14 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   /** Il testo decodificato, con gli spazi (a capo compresi) ridotti a uno. */
   const normalizza = (s: string) => decodifica(s).replace(/\s+/g, ' ');
 
-  /** I tag di apertura `<nome …>` che hanno l'attributo `attributo`. */
-  const tagCon = (nome: string, attributo: string) =>
+  /** I tag di apertura `<nome …>` di `testo` che hanno l'attributo `attributo`. */
+  const tagIn = (testo: string, nome: string, attributo: string) =>
     [
-      ...html().matchAll(new RegExp(`<${nome}\\b[^>]*\\s${attributo}(?=[\\s=>])[^>]*>`, 'gi')),
+      ...testo.matchAll(new RegExp(`<${nome}\\b[^>]*\\s${attributo}(?=[\\s=>])[^>]*>`, 'gi')),
     ].map((m) => m[0]);
+
+  /** I tag di apertura `<nome …>` della pagina che hanno l'attributo `attributo`. */
+  const tagCon = (nome: string, attributo: string) => tagIn(html(), nome, attributo);
 
   /** Valore di `attributo` in un tag di apertura (decodificato), o undefined. */
   const valore = (tag: string, attributo: string) => {
@@ -798,7 +818,10 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(mostra).toEqual([...gruppiAltri]);
 
     expect(pulsanti.map((t) => valore(t, 'data-post-apri'))).toEqual(post.map((p) => p.id));
-    const dialog = dialogCon('data-post').map(({ apertura }) => valore(apertura, 'data-post'));
+    // Anche le schede rapide degli articoli sono dialog `data-post`: qui contano solo i post.
+    const dialog = dialogCon('data-post')
+      .filter(({ apertura }) => !valore(apertura, 'data-post')!.startsWith('articolo-'))
+      .map(({ apertura }) => valore(apertura, 'data-post'));
     expect(dialog).toEqual(post.map((p) => p.id));
   });
 
@@ -939,6 +962,42 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       expect(scheda).toContain(articolo.dettaglio);
     });
     expect(html()).not.toMatch(/\sdata-chiedi(?:-pannello)?=/);
+  });
+
+  it('ogni scheda apre la sua scheda rapida, e senza JavaScript il link porta comunque a WhatsApp', () => {
+    const link = tagCon('a', 'data-post-apri');
+    expect(link.map((t) => valore(t, 'data-post-apri'))).toEqual(articoli.map(idSchedaRapida));
+    articoli.forEach((articolo, i) => {
+      expect(valore(link[i]!, 'href')).toBe(
+        `https://wa.me/393345205451?text=${encodeURIComponent(messaggioDisponibilita(articolo.nome))}`,
+      );
+      expect(link[i]).not.toMatch(/\saria-haspopup=/); // lo aggiunge lo script
+    });
+  });
+
+  it('la scheda rapida: titolo e nome, foto, occhiello, dettaglio, messaggio già scritto e le due azioni', () => {
+    const rapide = new Map(dialogCon('data-post').map((d) => [valore(d.apertura, 'data-post'), d]));
+    for (const articolo of articoli) {
+      const { apertura, contenuto } = rapide.get(idSchedaRapida(articolo)) ?? { apertura: '', contenuto: '' };
+      const testo = decodifica(contenuto);
+      const [titolo, nome] = (valore(apertura, 'aria-labelledby') ?? '').split(' ');
+      expect(testo, articolo.id).toMatch(new RegExp(`<p\\b[^>]*\\sid="${titolo}"[^>]*>Chiedi disponibilità</p>`));
+      expect(testo, articolo.id).toMatch(new RegExp(`<h2\\b[^>]*\\sid="${nome}"[^>]*>${articolo.nome}</h2>`));
+      expect(testo).toContain(`>${occhielloArticolo(articolo)}</p>`);
+      expect(testo).toContain(articolo.dettaglio);
+      // Almeno i due scatti; con il Task 5 la casetta ne ha tre, uno per colore.
+      expect((testo.match(/<img\b/g) ?? []).length).toBeGreaterThanOrEqual(2);
+      const messaggio = messaggioDisponibilita(articolo.nome);
+      expect(testo).toContain(messaggio);
+      expect(testo).toContain('Il messaggio è già scritto: puoi cambiarlo prima di inviarlo.');
+      expect(contenuto).toContain(`href="https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}"`);
+      expect(testo).toContain('Invia su WhatsApp');
+      expect(testo).toMatch(/<a\b[^>]*\shref="tel:\+393345205451"[^>]*>Preferisci chiamare\? 334 520 5451<\/a>/);
+      const chiudi = tagIn(contenuto, 'button', 'data-post-chiudi');
+      expect(chiudi).toHaveLength(1);
+      expect(valore(chiudi[0]!, 'aria-label')).toBe('Chiudi');
+      expect(chiudi[0]).toMatch(/\sautofocus(?=[\s=>])/);
+    }
   });
 
   it('lo stato del negozio porta gli orari della prova, e la tabella ha i sette giorni', () => {

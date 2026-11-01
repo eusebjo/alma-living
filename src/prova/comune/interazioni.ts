@@ -71,8 +71,14 @@
 //   ferma, e al rilascio riprende senza fare altro. La variante dà alla zona
 //   `touch-action: manipulation` e lascia passare i tocchi attraverso ciò che le
 //   sta sopra e non si usa (`pointer-events: none`).
-// - Post: `button[data-post-apri="<id>"]` apre `dialog[data-post="<id>"]`; dentro
-//   può esserci una galleria; `button[data-post-chiudi]` lo chiude.
+// - Post: `[data-post-apri="<id>"]` apre `dialog[data-post="<id>"]`; dentro può
+//   esserci una galleria; `button[data-post-chiudi]` lo chiude. Chi apre è un
+//   `button`, oppure un link `a[href]` (per esempio a WhatsApp). Con lo script, un
+//   clic sul link senza Ctrl, Cmd, Maiusc o Alt apre il dialog e annulla la
+//   navigazione (`preventDefault`); con un tasto modificatore, o se il dialog
+//   manca, il link fa il suo. Senza JavaScript porta al suo `href`. All'avvio lo
+//   script dà `aria-haspopup="dialog"` ai link `a[data-post-apri]` che hanno il
+//   loro dialog: nell'HTML sono link semplici.
 // - Mostra altri: `button[data-mostra-altri="<nome>"]` toglie `hidden` a
 //   `[data-altro="<nome>"]` e poi sparisce.
 // - Limite: `[data-limite="<nome>"]` con `data-limite-regole` (JSON di
@@ -93,7 +99,7 @@
 //
 // I dialog si aprono con `showModal()`, si chiudono con Esc (o con un clic sullo
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
-// pulsante da cui si sono aperti.
+// pulsante, o al link, da cui si sono aperti.
 import { filtra } from './filtra';
 import { azioneDelTocco, versoTrascinamento } from './gesti';
 import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
@@ -468,11 +474,26 @@ function allaChiusura(c: Contesto, dialog: HTMLDialogElement): void {
   if (origine?.isConnected) origine.focus();
 }
 
-function apriPost(c: Contesto, bottone: HTMLElement): void {
-  const dialog = c.radice.querySelector<HTMLDialogElement>(
-    `dialog${conValore('data-post', bottone.dataset.postApri ?? '')}`,
+/** Il dialog che `apri` (un `[data-post-apri]`) apre, o `null` se manca. */
+function dialogDelPost(c: Contesto, apri: HTMLElement): HTMLDialogElement | null {
+  return c.radice.querySelector<HTMLDialogElement>(
+    `dialog${conValore('data-post', apri.dataset.postApri ?? '')}`,
   );
-  if (dialog) apriDialog(c, dialog, bottone);
+}
+
+/**
+ * Apre il post. Da un link, apre il dialog e annulla la navigazione solo se il
+ * dialog c'è e il clic è senza tasti modificatori: con Ctrl, Cmd, Maiusc o Alt
+ * (nuova scheda, nuova finestra, scarica) il link fa il suo.
+ */
+function apriPost(c: Contesto, apri: HTMLElement, evento: MouseEvent): void {
+  const dialog = dialogDelPost(c, apri);
+  if (!dialog) return;
+  if (apri instanceof HTMLAnchorElement) {
+    if (evento.ctrlKey || evento.metaKey || evento.shiftKey || evento.altKey) return;
+    evento.preventDefault();
+  }
+  apriDialog(c, dialog, apri);
 }
 
 // --- Storie ---
@@ -693,6 +714,10 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   applicaFiltri(c);
   for (const galleria of elementi(radice, '[data-galleria]')) {
     mostraFoto(galleria, fotoCorrente(galleria));
+  }
+  // Un link che apre un post: con lo script apre un dialog, e i lettori di schermo lo sanno.
+  for (const link of elementi(radice, 'a[data-post-apri]')) {
+    if (dialogDelPost(c, link)) link.setAttribute('aria-haspopup', 'dialog');
   }
 
   radice.addEventListener('click', (evento) => {

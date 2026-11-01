@@ -399,6 +399,15 @@ export function occhielloArticolo(articolo: Articolo): string {
 }
 
 /**
+ * Il nome della scheda rapida "Chiedi disponibilità" di un articolo (protocollo
+ * "Post"): lo usano il link della scheda (`data-post-apri`) e il dialog
+ * (`data-post`); ne derivano anche gli id del titolo e del nome nel dialog.
+ */
+export function idSchedaRapida(articolo: Articolo): string {
+  return `articolo-${articolo.id}`;
+}
+
+/**
  * Quante schede della selezione si vedono prima di "Mostra tutti", per misura
  * (protocollo "Limite"): 4 sul telefono (due colonne), 6 sul tablet (tre
  * colonne), nessun limite da 1024 px (quattro colonne). Le stesse media query

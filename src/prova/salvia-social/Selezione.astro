@@ -20,12 +20,17 @@
 //
 // Misure del tablet (scelta 7): la tavola non le ha, sono quelle del computer con
 // tre colonne e i margini di 40 px.
+//
+// Ogni scheda apre la sua scheda rapida "Chiedi disponibilità" (scelta 5,
+// `SchedaRapida.astro`): un dialog per articolo, dopo la griglia, come i post del
+// diario.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
 import Finestra from './Finestra.astro';
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
 import SchedaArticolo from './SchedaArticolo.astro';
+import SchedaRapida from './SchedaRapida.astro';
 import {
   articoli,
   categorie,
@@ -134,6 +139,8 @@ const filtri: { id: 'tutti' | Categoria; nome: string; quanti: number }[] = [
       />
     </li>
   </ul>
+
+  {articoli.map((articolo) => <SchedaRapida articolo={articolo} negozio={negozio} />)}
 </section>
 
 <style>
