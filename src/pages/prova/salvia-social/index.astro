@@ -19,7 +19,7 @@ import Negozio from '../../../prova/salvia-social/Negozio.astro';
 import Piede from '../../../prova/salvia-social/Piede.astro';
 import Selezione from '../../../prova/salvia-social/Selezione.astro';
 import Testata from '../../../prova/salvia-social/Testata.astro';
-import { storie, storieInEvidenza } from '../../../prova/salvia-social/dati';
+import { storie } from '../../../prova/salvia-social/dati';
 import '../../../prova/salvia-social/tema.css';
 
 const voce = await getEntry('negozio', 'negozio');
@@ -42,8 +42,8 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
     <main>
       <Apertura negozio={negozio} />
       <Collezioni />
-      <Diario negozio={negozio} />
       <Selezione negozio={negozio} />
+      <Diario negozio={negozio} />
       <Negozio negozio={negozio} />
     </main>
     <Piede negozio={negozio} />
@@ -51,7 +51,6 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
   </div>
 
   <DialogStorie storie={storie} etichetta="Storie dal negozio" negozio={negozio} />
-  <DialogStorie storie={storieInEvidenza} etichetta="Storie in evidenza" negozio={negozio} />
   <Interazioni />
 </LayoutProva>
 

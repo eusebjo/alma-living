@@ -9,8 +9,8 @@ import {
   fotoDelNegozio,
   post,
   POST_VISIBILI,
+  sezioni,
   storie,
-  storieInEvidenza,
   type Scatto,
 } from '../../src/prova/salvia-social/dati';
 
@@ -27,7 +27,7 @@ const scatti: Scatto[] = [
   ...collezioni,
   ...altreCollezioni,
   ...articoli,
-  ...[...storie, ...storieInEvidenza].flatMap((storia) => storia.foto),
+  ...storie.flatMap((storia) => storia.foto),
   ...post.flatMap((voce) => voce.foto),
 ];
 
@@ -40,14 +40,14 @@ describe('dati di Salvia social', () => {
   });
 
   it('gli id di storie, articoli e post sono unici', () => {
-    const idStorie = [...storie, ...storieInEvidenza].map((s) => s.id);
+    const idStorie = storie.map((s) => s.id);
     expect(new Set(idStorie).size).toBe(idStorie.length);
     expect(new Set(articoli.map((a) => a.id)).size).toBe(articoli.length);
     expect(new Set(post.map((p) => p.id)).size).toBe(post.length);
   });
 
   it('ogni storia e ogni post ha almeno una foto', () => {
-    for (const storia of [...storie, ...storieInEvidenza]) expect(storia.foto.length).toBeGreaterThan(0);
+    for (const storia of storie) expect(storia.foto.length).toBeGreaterThan(0);
     for (const voce of post) expect(voce.foto.length).toBeGreaterThan(0);
   });
 
@@ -65,6 +65,10 @@ describe('dati di Salvia social', () => {
   it('la griglia mostra 9 post e ne piega almeno uno in "Mostra altri"', () => {
     expect(POST_VISIBILI).toBe(9);
     expect(post.length).toBeGreaterThan(POST_VISIBILI);
+  });
+
+  it('le sezioni seguono la pagina: il diario dopo la selezione', () => {
+    expect(sezioni.map((s) => s.href)).toEqual(['#collezioni', '#selezione', '#diario', '#negozio']);
   });
 
   it("l'apertura ha tre foto, ognuna con la frase di Martina", () => {

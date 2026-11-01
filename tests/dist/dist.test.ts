@@ -11,8 +11,8 @@ import {
   collezioni,
   post,
   POST_VISIBILI,
+  sezioni,
   storie,
-  storieInEvidenza,
 } from '../../src/prova/salvia-social/dati';
 import { VARIANTI } from '../../src/prova/varianti';
 
@@ -595,7 +595,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const gruppi = new Map(
       inizi.map((m, i) => [m[1], tutto.slice(m.index, inizi[i + 1]?.index ?? tutto.length)]),
     );
-    for (const storia of [...storie, ...storieInEvidenza]) {
+    for (const storia of storie) {
       const gruppo = gruppi.get(storia.id) ?? '';
       expect(gruppo.match(/\sdata-storia-foto\b/g) ?? [], storia.id).toHaveLength(
         storia.foto.length,
@@ -607,7 +607,36 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
-  it(`griglia del profilo: ${POST_VISIBILI} post visibili, gli altri piegati, ognuno con il suo dialog`, () => {
+  it('le sezioni si susseguono: collezioni, selezione, diario, negozio', () => {
+    const posizioni = ['collezioni', 'selezione', 'diario', 'negozio'].map((id) =>
+      html().indexOf(`id="${id}"`),
+    );
+    for (const p of posizioni) expect(p).toBeGreaterThanOrEqual(0);
+    expect([...posizioni].sort((a, b) => a - b)).toEqual(posizioni);
+  });
+
+  it("header, menu del telefono e piè di pagina elencano le sezioni nell'ordine della pagina", () => {
+    const ancore = sezioni.map((s) => s.href);
+    const elenchi = [...html().matchAll(/<nav\b[\s\S]*?<\/nav>/g)]
+      .map((m) => [...m[0].matchAll(/href="(#[^"]+)"/g)].map((h) => h[1]!).filter((a) => ancore.includes(a)))
+      .filter((elenco) => elenco.length > 0);
+    expect(elenchi).toHaveLength(3);
+    for (const elenco of elenchi) expect(elenco).toEqual(ancore);
+  });
+
+  it('il diario non è più un profilo: niente storie, un riquadro "Post dal negozio"', () => {
+    const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
+    expect(diario).not.toMatch(/\sdata-storia-apri=/);
+    expect(diario).not.toContain('Storie in evidenza');
+    expect(diario).toMatch(/<h3\b[^>]*>Post dal negozio<\/h3>/);
+    expect(diario).toContain(`Aggiornato il ${post[0]!.data}`);
+  });
+
+  it('un solo lettore di storie', () => {
+    expect(dialogCon('data-storie')).toHaveLength(1);
+  });
+
+  it(`griglia dei post: ${POST_VISIBILI} post visibili, gli altri piegati, ognuno con il suo dialog`, () => {
     const pulsanti = tagCon('button', 'data-post-apri');
     const visibili = pulsanti.filter((t) => !/\sdata-altro=/.test(t));
     const piegati = pulsanti.filter((t) => /\sdata-altro=/.test(t));

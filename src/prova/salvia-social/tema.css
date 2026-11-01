@@ -57,7 +57,7 @@
   --ombra-bottone: 0 14px 30px -18px rgb(28 40 24 / 0.8);
   --ombra-etichetta: 0 18px 40px -22px rgb(28 33 26 / 0.55);
   --ombra-biglietto: 0 24px 50px -36px rgb(28 40 24 / 0.5);
-  --ombra-profilo: 0 40px 80px -50px rgb(28 40 24 / 0.5);
+  --ombra-riquadro: 0 40px 80px -50px rgb(28 40 24 / 0.5);
   --ombra-scheda: 0 30px 50px -30px rgb(28 40 24 / 0.45);
   --ombra-pannello: 0 30px 60px -36px rgb(28 33 26 / 0.5);
   --ombra-foto: 0 40px 80px -40px rgb(28 40 24 / 0.55);
@@ -78,7 +78,7 @@
   --raggio-piccolo: 12px;
   /* Sul telefono la tavola arrotonda un po' meno. */
   --raggio-telefono: 18px;
-  --raggio-profilo-telefono: 22px;
+  --raggio-riquadro-telefono: 22px;
 
   /* Caratteri */
   --titoli: var(--font-libre-caslon-display), Georgia, serif;

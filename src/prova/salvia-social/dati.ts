@@ -52,8 +52,8 @@ function scatto(foto: NomeFoto, posizione = '50% 50%'): Scatto {
 /** Le sezioni della pagina, per la navigazione dell'header e del piè di pagina. */
 export const sezioni = [
   { nome: 'Collezioni', href: '#collezioni' },
-  { nome: 'Dal negozio', href: '#diario' },
   { nome: 'Selezione', href: '#selezione' },
+  { nome: 'Dal negozio', href: '#diario' },
   { nome: 'Il negozio', href: '#negozio' },
 ] as const;
 
@@ -237,114 +237,6 @@ export const storie: Storia[] = [
   },
 ];
 
-/** Le storie in evidenza del profilo di Martina. */
-export const storieInEvidenza: Storia[] = [
-  {
-    id: 'confezioni',
-    nome: 'Confezioni',
-    etichetta: 'Nuovo',
-    data: '26 ottobre',
-    foto: [
-      fotoStoria(
-        'asciugamano-bianco',
-        '50% 50%',
-        'Ogni regalo esce dal negozio con lo spago e il cartellino scritto a mano.',
-      ),
-      fotoStoria(
-        'candele',
-        '50% 55%',
-        'Anche le cose piccole: una candela, un sapone, un biglietto.',
-      ),
-    ],
-  },
-  {
-    id: 'il-negozio',
-    nome: 'Il negozio',
-    data: '20 ottobre',
-    foto: [
-      fotoStoria(
-        'scaffale',
-        '50% 45%',
-        'Gli scaffali bianchi fino al soffitto, pieni di biancheria piegata per colore.',
-      ),
-      fotoStoria(
-        'bagno-prodotti',
-        '50% 60%',
-        'Il mobile di legno dei saponi e dei profumi per la casa.',
-      ),
-    ],
-  },
-  {
-    id: 'natale',
-    nome: 'Natale',
-    data: '25 ottobre',
-    foto: [
-      fotoStoria(
-        'plaid-verde',
-        '50% 50%',
-        'In negozio il Natale è già cominciato: plaid verdi e decorazioni.',
-      ),
-      fotoStoria('gnomi', '50% 50%', 'Gli gnomi di stoffa vi aspettano sull’alzata.'),
-      fotoStoria(
-        'copriletto-rosso',
-        '50% 50%',
-        'E il copriletto rosso con il volant, per la camera delle feste.',
-      ),
-    ],
-  },
-  {
-    id: 'letto',
-    nome: 'Letto',
-    data: '12 ottobre',
-    foto: [
-      fotoStoria(
-        'righe-rosa',
-        '50% 40%',
-        'Righe rosa e copriletto abbinato: a volte, per cambiare la camera, basta il letto.',
-      ),
-      fotoStoria(
-        'camera-rosa',
-        '50% 50%',
-        'Testiera capitonné e trapuntato rosa, per chi ama le camere romantiche.',
-      ),
-      fotoStoria(
-        'trapunta',
-        '50% 50%',
-        'Il trapuntato bianco visto da vicino: leggero e caldo il giusto.',
-      ),
-    ],
-  },
-  {
-    id: 'bagno',
-    nome: 'Bagno',
-    data: '8 ottobre',
-    foto: [
-      fotoStoria(
-        'bagno',
-        '45% 50%',
-        'Asciugamani piegati, un accappatoio morbido e tanta luce: il bagno come piace a noi.',
-      ),
-      fotoStoria(
-        'bagno-prodotti',
-        '50% 60%',
-        'E per finire, saponi e profumi sul mobile di legno.',
-      ),
-    ],
-  },
-  {
-    id: 'mare',
-    nome: 'Mare',
-    data: '28 settembre',
-    foto: [
-      fotoStoria(
-        'mare',
-        '50% 55%',
-        'Lenzuola e plaid in riva al mare: a Livorno anche la biancheria sa di sale. Tornano in primavera.',
-      ),
-    ],
-  },
-];
-
 // --- Collezioni e categorie degli articoli ---
 
 export type Categoria = 'letto' | 'bagno' | 'bimbi' | 'tavola' | 'profumi' | 'natale' | 'mare';
@@ -485,7 +377,7 @@ export const articoli: Articolo[] = [
   },
 ];
 
-// --- Post del profilo di Martina ---
+// --- Post del diario di Martina ---
 
 export interface Post {
   /** Unico nella pagina: lo usano il pulsante della griglia e il suo dialog. */
