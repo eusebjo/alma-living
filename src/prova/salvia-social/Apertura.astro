@@ -1,8 +1,7 @@
 ---
 // L'apertura "come Diario": a sinistra le foto che scorrono (protocollo
-// "Galleria"), a destra una riga in stile post, il titolo, il biglietto firmato
-// da Martina con la frase della foto mostrata, e le azioni. Sul telefono le
-// due colonne si impilano.
+// "Galleria"), a destra una riga in stile post, il titolo, il biglietto con la
+// frase della foto mostrata, e le azioni. Sul telefono le due colonne si impilano.
 import { Image } from 'astro:assets';
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
@@ -100,7 +99,6 @@ const totale = apertura.length;
           {apertura.map(({ testo }) => <blockquote class="citazione">“{testo}”</blockquote>)}
         </div>
         <figcaption>
-          <span class="firmato"><span class="firma">Martina</span><span>dal negozio</span></span>
           <span class="conta" data-galleria-contatore>1 di {totale}</span>
         </figcaption>
       </figure>
@@ -387,24 +385,8 @@ const totale = apertura.length;
   figcaption {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    justify-content: flex-end;
     margin-top: 8px;
-  }
-
-  .firmato {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--grigio-testo);
-  }
-
-  .firma {
-    font-family: var(--firma);
-    font-size: 24px;
-    line-height: 1.5;
-    color: var(--verde-notte);
   }
 
   .conta {
@@ -610,16 +592,7 @@ const totale = apertura.length;
     }
 
     figcaption {
-      gap: 16px;
       margin-top: 10px;
-    }
-
-    .firmato {
-      gap: 10px;
-    }
-
-    .firma {
-      font-size: 26px;
     }
 
     .conta {

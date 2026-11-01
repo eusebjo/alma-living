@@ -1,7 +1,7 @@
 ---
 // Variante di prova "Salvia social" (versione 3, tavola DiarioFascia.dc.html):
 // bianco e verde salvia, storie sotto l'header, apertura come Diario, selezione,
-// diario di Martina con griglia di post e fascia Instagram. Componenti e dati in
+// diario del negozio con griglia di post e fascia Instagram. Componenti e dati in
 // src/prova/salvia-social/.
 import { getImage } from 'astro:assets';
 import { getEntry } from 'astro:content';
@@ -34,7 +34,7 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
 
 <LayoutProva
   title="Salvia social | Alma Living, prova di design"
-  description="Variante di prova del sito di Alma Living: bianco e verde salvia, storie dal negozio, la selezione e il diario di Martina."
+  description="Variante di prova del sito di Alma Living: bianco e verde salvia, storie dal negozio, la selezione e il diario del negozio."
   caratteri={CARATTERI_PER_VARIANTE['salvia-social']}
   variante="salvia-social"
 >

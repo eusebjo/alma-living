@@ -74,12 +74,7 @@ describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
     // Elenco esatto: un carattere in più sarebbe scaricato a ogni build senza
     // che nessuna pagina lo usi (come i due delle varianti annullate).
     expect([...nomi].sort()).toEqual(
-      [
-        'Libre Caslon Display',
-        'Libre Caslon Text',
-        'Instrument Sans',
-        'Beth Ellen',
-      ].sort(),
+      ['Libre Caslon Display', 'Libre Caslon Text', 'Instrument Sans'].sort(),
     );
   });
 

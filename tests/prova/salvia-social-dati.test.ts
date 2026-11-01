@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   altreCollezioni,
@@ -173,8 +174,25 @@ describe('dati di Salvia social', () => {
     for (const voce of post) expect(messaggioPost(voce), voce.id).not.toMatch(/post del (?:8|11) /);
   });
 
-  it("l'apertura ha tre foto, ognuna con la frase di Martina", () => {
+  it("l'apertura ha tre foto, ognuna con la sua frase", () => {
     expect(apertura).toHaveLength(3);
     for (const diapositiva of apertura) expect(diapositiva.testo.length).toBeGreaterThan(20);
+  });
+});
+
+/** I sorgenti testuali sotto `cartella` (le foto e i loghi no). */
+function sorgenti(cartella: string): string[] {
+  return readdirSync(cartella, { withFileTypes: true }).flatMap((voce) => {
+    const percorso = join(cartella, voce.name);
+    if (voce.isDirectory()) return sorgenti(percorso);
+    return /\.(astro|ts|css|mjs)$/.test(voce.name) ? [percorso] : [];
+  });
+}
+
+describe('la voce del sito', () => {
+  it('nessun file della variante, dello script comune o delle pagine di prova nomina Martina', () => {
+    const file = [...sorgenti('src/prova'), ...sorgenti('src/pages/prova')];
+    expect(file.length).toBeGreaterThan(20);
+    for (const f of file) expect(readFileSync(f, 'utf8'), f).not.toMatch(/martina/i);
   });
 });

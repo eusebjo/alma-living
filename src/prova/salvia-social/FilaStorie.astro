@@ -1,6 +1,6 @@
 ---
 // La fila delle storie sotto l'header; sui computer larghi, a destra, l'invito ai
-// post del diario di Martina (il link da 1150 px, anche la frase da 1380 px).
+// post del diario del negozio (il link da 1150 px, anche la frase da 1400 px).
 import CerchioStoria from './CerchioStoria.astro';
 import Icona from './Icona.astro';
 import { storie } from './dati';
@@ -18,7 +18,7 @@ import { storie } from './dati';
       }
     </ul>
     <div class="invito">
-      <p><span>Le storie di Martina</span>Le foto del negozio, per categoria</p>
+      <p><span>Le storie del negozio</span>Arrivi, vetrina e novità, per categoria</p>
       <a href="#diario">Vedi i post<Icona nome="freccia" misura={18} /></a>
     </div>
   </div>
@@ -119,7 +119,7 @@ import { storie } from './dati';
   /*
    * Gli otto cerchi misurano 810 px e non devono mai scorrere di lato. L'invito
    * compare solo dove ci sta accanto, con almeno 13 px di margine anche con la barra
-   * di scorrimento da 15 px: il solo link da 1150 px, anche la frase da 1380 px.
+   * di scorrimento da 15 px: il solo link da 1150 px, anche la frase da 1400 px.
    */
   @media (min-width: 1150px) {
     .invito {
@@ -131,7 +131,7 @@ import { storie } from './dati';
     }
   }
 
-  @media (min-width: 1380px) {
+  @media (min-width: 1400px) {
     .invito p {
       display: block;
     }

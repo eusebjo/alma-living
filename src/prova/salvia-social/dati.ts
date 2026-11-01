@@ -91,7 +91,7 @@ export const sezioni = [
 /** La foto dello scaffale nella sezione del negozio. */
 export const fotoDelNegozio: Scatto = scatto('scaffale');
 
-// --- Apertura: le tre foto che scorrono, ognuna con la frase di Martina ---
+// --- Apertura: le tre foto che scorrono, ognuna con la sua frase ---
 
 export interface Diapositiva extends Scatto {
   testo: string;

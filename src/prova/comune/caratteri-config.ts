@@ -37,13 +37,4 @@ export const CARATTERI_PROVA: NonNullable<AstroUserConfig['fonts']> = [
     styles: ['normal'],
     subsets: ['latin'],
   },
-  {
-    provider: google,
-    name: 'Beth Ellen',
-    cssVariable: '--font-beth-ellen',
-    fallbacks: ['cursive'],
-    weights: [400],
-    styles: ['normal'],
-    subsets: ['latin'],
-  },
 ];

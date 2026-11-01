@@ -11,6 +11,5 @@ export const CARATTERI_PER_VARIANTE: Record<VarianteId, string[]> = {
     '--font-libre-caslon-display',
     '--font-libre-caslon-text',
     '--font-instrument-sans',
-    '--font-beth-ellen',
   ],
 };

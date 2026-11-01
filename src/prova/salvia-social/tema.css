@@ -85,7 +85,6 @@
   --titoli: var(--font-libre-caslon-display), Georgia, serif;
   --corsivo: var(--font-libre-caslon-text), Georgia, serif;
   --testo: var(--font-instrument-sans), 'Helvetica Neue', Arial, sans-serif;
-  --firma: var(--font-beth-ellen), cursive;
 
   /* Misure: dal telefono (390 px) al computer (1440 px) */
   --larghezza: 1440px;

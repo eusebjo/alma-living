@@ -554,6 +554,9 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       .replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&');
 
+  /** Il testo decodificato, con gli spazi (a capo compresi) ridotti a uno. */
+  const normalizza = (s: string) => decodifica(s).replace(/\s+/g, ' ');
+
   /** I tag di apertura `<nome …>` che hanno l'attributo `attributo`. */
   const tagCon = (nome: string, attributo: string) =>
     [
@@ -677,6 +680,28 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     // Il pulsante del post e il suo dialog dicono "dell’8 luglio" (p6, p7) e "dell’11 ottobre" (p3).
     expect(pagina).toContain('Apri il post dell’8 luglio, Arrivi');
     expect(pagina).toContain('Post dell’11 ottobre, In vetrina');
+  });
+
+  it('la pagina parla come Alma Living: niente "Martina", niente carattere a mano', () => {
+    expect(decodifica(html())).not.toMatch(/martina/i);
+    expect(html()).not.toMatch(/beth[- ]ellen/i);
+  });
+
+  it('il diario è "del negozio", con il testo al plurale', () => {
+    const apertura = /<section\b[^>]*\sid="diario"[^>]*>/.exec(html())?.[0] ?? '';
+    expect(valore(apertura, 'aria-label')).toBe('Dal negozio, il diario');
+    const diario = normalizza(contenutiCon(html(), 'id', 'diario')[0] ?? '');
+    expect(diario).toContain('>Il diario del negozio<');
+    expect(diario).toContain(
+      'Fotografiamo quello che succede in Via Ricasoli: gli arrivi, la vetrina che cambia, le confezioni preparate al banco. Tocca una foto per aprirla.',
+    );
+  });
+
+  it('accanto alle storie, "Le storie del negozio"', () => {
+    // Astro aggiunge gli attributi `data-astro-cid-…`: il tag si cerca con un'espressione.
+    expect(normalizza(html())).toMatch(
+      /<span\b[^>]*>Le storie del negozio<\/span>Arrivi, vetrina e novità, per categoria/,
+    );
   });
 
   it('un solo lettore di storie', () => {

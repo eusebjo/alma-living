@@ -1,5 +1,5 @@
 ---
-// Il diario di Martina: a sinistra l'introduzione con il biglietto firmato; a
+// Il diario del negozio: a sinistra l'introduzione con il biglietto; a
 // destra il riquadro "Post dal negozio" (griglia 3 x 3 di post che si aprono,
 // "Mostra altri post"). Sul telefono le due parti si impilano.
 import { Image } from 'astro:assets';
@@ -17,13 +17,13 @@ interface Props {
 const { negozio } = Astro.props;
 ---
 
-<section id="diario" class="diario" aria-labelledby="diario-titolo">
+<section id="diario" class="diario" aria-label="Dal negozio, il diario">
   <div class="dentro">
     <div class="intro">
-      <p class="occhiello">Il diario di Martina</p>
-      <h2 id="diario-titolo">Dal negozio</h2>
+      <p class="occhiello">Il diario del negozio</p>
+      <h2>Dal negozio</h2>
       <p class="presentazione">
-        Martina fotografa quello che succede in Via Ricasoli: gli arrivi, la vetrina
+        Fotografiamo quello che succede in Via Ricasoli: gli arrivi, la vetrina
         che cambia, le confezioni preparate al banco. Tocca una foto per aprirla.
       </p>
       <figure class="biglietto">
@@ -37,7 +37,6 @@ const { negozio } = Astro.props;
           “Se vedete qualcosa che vi piace, scriveteci: vi mandiamo altre foto e ve lo teniamo da
           parte.”
         </blockquote>
-        <figcaption><span class="firma">Martina</span><span>dal negozio</span></figcaption>
       </figure>
       <p class="frequenza">
         <Icona nome="orologio" />Nuovi post dal negozio · l’ultimo il {post[0]!.data}
@@ -187,22 +186,6 @@ const { negozio } = Astro.props;
     font-style: italic;
     line-height: 1.55;
     text-wrap: pretty;
-  }
-
-  figcaption {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-top: 8px;
-    font-size: 13px;
-    color: var(--grigio-testo);
-  }
-
-  .firma {
-    font-family: var(--firma);
-    font-size: 28px;
-    line-height: 1.5;
-    color: var(--verde-notte);
   }
 
   .frequenza {
