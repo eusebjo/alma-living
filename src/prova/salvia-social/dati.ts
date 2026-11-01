@@ -5,6 +5,7 @@
 // Le foto sono indicate per nome (`src/prova/foto/<nome>.jpg`, vedi
 // `scripts/foto-prova/elenco.json`); i componenti le passano a `foto()`.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
+import type { RegolaLimite } from '../comune/limite';
 
 /** Testo alternativo di ogni foto di prova, come sulla tavola. */
 const ALT = {
@@ -311,6 +312,18 @@ export interface Articolo extends Scatto {
   categorie: Categoria[];
   novita: boolean;
 }
+
+/**
+ * Quante schede della selezione si vedono prima di "Mostra tutti", per misura
+ * (protocollo "Limite"): 4 sul telefono (due colonne), 6 sul tablet (tre
+ * colonne), nessun limite da 1024 px (il carosello). Le media query di
+ * `Selezione.astro` (e di `SchedaArticolo.astro`) sono le stesse: vanno
+ * cambiate insieme.
+ */
+export const LIMITI_SELEZIONE: readonly RegolaLimite[] = [
+  { media: '(max-width: 767px)', limite: 4 },
+  { media: '(max-width: 1023px)', limite: 6 },
+];
 
 export const articoli: Articolo[] = [
   {

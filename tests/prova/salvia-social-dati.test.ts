@@ -7,6 +7,7 @@ import {
   categorie,
   collezioni,
   fotoDelNegozio,
+  LIMITI_SELEZIONE,
   messaggioPost,
   post,
   POST_VISIBILI,
@@ -66,6 +67,14 @@ describe('dati di Salvia social', () => {
   it('la griglia mostra 9 post e ne piega almeno uno in "Mostra altri"', () => {
     expect(POST_VISIBILI).toBe(9);
     expect(post.length).toBeGreaterThan(POST_VISIBILI);
+  });
+
+  it('la selezione mostra 4 schede sul telefono e 6 sul tablet, e ne ha di più', () => {
+    expect(LIMITI_SELEZIONE).toEqual([
+      { media: '(max-width: 767px)', limite: 4 },
+      { media: '(max-width: 1023px)', limite: 6 },
+    ]);
+    expect(articoli.length).toBeGreaterThan(6);
   });
 
   it('le sezioni seguono la pagina: il diario dopo la selezione', () => {

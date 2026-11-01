@@ -1,13 +1,20 @@
 ---
-// La selezione dal negozio: filtri per collezione (protocollo "Filtri") e un
-// carosello di articoli (protocollo "Carosello"), in fondo la tessera "Non lo
-// trovi qui?". Un filtro senza articoli (Mare) mostra al loro posto la tessera
-// "Il mare torna in primavera", mai un carosello vuoto.
+// La selezione dal negozio: filtri per collezione (protocollo "Filtri") e gli
+// articoli, in fondo la tessera "Non lo trovi qui?". Un filtro senza articoli
+// (Mare) mostra al loro posto la tessera "Il mare torna in primavera", mai una
+// lista vuota.
+//
+// Sul telefono (fino a 767 px) gli articoli sono in griglia su due colonne e se
+// ne vedono i primi 4, sul tablet (da 768 a 1023 px) su tre colonne e i primi 6;
+// "Mostra tutti gli 8" apre gli altri (protocollo "Limite", regole in
+// `LIMITI_SELEZIONE`). Il limite vale sulla lista filtrata. Da 1024 px è il
+// carosello con le frecce (protocollo "Carosello"), senza limite. Senza
+// JavaScript la griglia mostra tutti gli articoli.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
 import Icona from './Icona.astro';
 import SchedaArticolo from './SchedaArticolo.astro';
-import { articoli, categorie, messaggi } from './dati';
+import { articoli, categorie, LIMITI_SELEZIONE, messaggi } from './dati';
 
 interface Props {
   negozio: DatiNegozio;
@@ -68,7 +75,13 @@ const filtri = [
       </div>
     </div>
 
-    <ul class="binario" data-carosello-binario role="list">
+    <ul
+      class="binario"
+      data-carosello-binario
+      data-limite="selezione"
+      data-limite-regole={JSON.stringify(LIMITI_SELEZIONE)}
+      role="list"
+    >
       {
         articoli.map((articolo) => (
           <li class="voce" data-filtrabile="selezione" data-categorie={articolo.categorie.join(' ')}>
@@ -90,6 +103,11 @@ const filtri = [
             <Icona nome="whatsapp" misura={18} />Chiedi su WhatsApp
           </a>
         </div>
+      </li>
+      <li class="voce-mostra">
+        <button type="button" class="mostra-tutti" data-limite-mostra="selezione" hidden>
+          <span data-limite-testo>Mostra tutti</span><Icona nome="giu" misura={18} />
+        </button>
       </li>
       <li class="voce voce-altro">
         <div class="tessera">
@@ -261,29 +279,91 @@ const filtri = [
     cursor: default;
   }
 
-  /* --- Carosello --- */
+  /* --- Griglia (telefono e tablet) ---
+     I punti di rottura sono le media query di `LIMITI_SELEZIONE` (`dati.ts`),
+     `(max-width: 767px)` e `(max-width: 1023px)`: vanno cambiati insieme.
+     Tablet e computer usano i loro complementi esatti (`width > 767px`,
+     `width > 1023px`), non `min-width: 768px` o `1024px`: con lo zoom o la
+     scala dello schermo al 125% la larghezza può essere 1023,2 px, e il
+     disegno deve seguire lo script, che lì non pone limiti. */
   .binario {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
-    gap: 14px;
+    gap: 16px 12px;
     margin: 18px 0 0;
     padding: 6px var(--margine) 28px;
     list-style: none;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: var(--margine);
-    scrollbar-width: none;
-  }
-
-  .binario::-webkit-scrollbar {
-    display: none;
   }
 
   .voce {
-    flex: 0 0 256px;
     min-width: 0;
-    scroll-snap-align: start;
+  }
+
+  /* Tessere e "Mostra tutti" occupano la riga intera. */
+  .voce-mostra,
+  .binario > [data-filtro-vuoto],
+  .voce-altro {
+    grid-column: 1 / -1;
+  }
+
+  .voce-mostra {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+  }
+
+  /* Senza schede piegate dal limite (o senza JavaScript) non resta una riga vuota. */
+  .voce-mostra:has(> [hidden]) {
+    display: none;
+  }
+
+  .mostra-tutti {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow: inset 0 0 0 1px var(--nero);
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .mostra-tutti:hover {
+    background: var(--latte-sopra);
+  }
+
+  /* Il pannello "Chiedi disponibilità" scende sotto la scheda se il messaggio è
+     più lungo, invece di tagliarlo. */
+  @media (max-width: 1023px) {
+    .voce :global(.pannello) {
+      bottom: auto;
+      min-height: 100%;
+    }
+  }
+
+  /* Sul telefono la scheda è stretta: il pannello copre la riga, verso la
+     scheda accanto, perché il messaggio resti leggibile. */
+  @media (max-width: 767px) {
+    .voce:nth-child(odd of [data-filtrabile]:not([hidden])) :global(.pannello) {
+      right: calc(-100% - 12px);
+    }
+
+    .voce:nth-child(even of [data-filtrabile]:not([hidden])) :global(.pannello) {
+      left: calc(-100% - 12px);
+    }
+  }
+
+  @media (767px < width <= 1023px) {
+    .binario {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px 16px;
+    }
   }
 
   /* Quando il filtro non ha articoli resta solo la sua tessera. */
@@ -299,7 +379,6 @@ const filtri = [
     justify-content: space-between;
     gap: 24px;
     height: 100%;
-    min-height: 420px;
     overflow: hidden;
     padding: 30px 26px 26px;
     border-radius: var(--raggio-scheda);
@@ -363,8 +442,8 @@ const filtri = [
     background: var(--salvia-scura-sopra);
   }
 
-  /* --- Computer --- */
-  @media (min-width: 960px) {
+  /* --- Computer (da 1024 px): il carosello con le frecce, senza limite --- */
+  @media (width > 1023px) {
     .selezione {
       padding-bottom: 88px;
     }
@@ -387,13 +466,28 @@ const filtri = [
     }
 
     .binario {
+      display: flex;
       gap: 20px;
       margin-top: 20px;
       padding: 12px var(--margine) 32px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: var(--margine);
+      scrollbar-width: none;
+    }
+
+    .binario::-webkit-scrollbar {
+      display: none;
     }
 
     .voce {
-      flex-basis: 300px;
+      flex: 0 0 300px;
+      scroll-snap-align: start;
+    }
+
+    .tessera {
+      min-height: 420px;
     }
 
     .tessera h3 {

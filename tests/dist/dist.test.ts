@@ -9,6 +9,7 @@ import {
   articoli,
   categorie,
   collezioni,
+  LIMITI_SELEZIONE,
   messaggioPost,
   post,
   POST_VISIBILI,
@@ -315,6 +316,17 @@ function incoerenzeProtocolli(html: string): string[] {
     if (!contenitori.has(valore)) manca('data-filtrabile', valore, 'data-filtri');
     if (!vuoti.has(valore)) manca('data-filtrabile', valore, 'data-filtro-vuoto');
   }
+  // Il limite conta le voci filtrabili del suo nome e ha il suo "Mostra tutti".
+  const limiti = destinazioni('data-limite');
+  const filtrabili = destinazioni('data-filtrabile');
+  const mostraTutti = destinazioni('data-limite-mostra');
+  for (const valore of valoriAttributo(html, 'data-limite-mostra')) {
+    if (!limiti.has(valore)) manca('data-limite-mostra', valore, 'data-limite');
+  }
+  for (const valore of limiti) {
+    if (!filtrabili.has(valore)) manca('data-limite', valore, 'data-filtrabile');
+    if (!mostraTutti.has(valore)) manca('data-limite', valore, 'data-limite-mostra');
+  }
   // Un link `data-filtro-scegli="<nome>:<id>"` preme il filtro `<id>` che sta
   // dentro `[data-filtri="<nome>"]`.
   for (const valore of valoriAttributo(html, 'data-filtro-scegli')) {
@@ -381,6 +393,11 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
       '<button data-filtro="letto">Letto</button>',
     '<a href="#s" data-filtro-scegli="letto"></a>' +
       '<div data-filtri="letto"><button data-filtro="letto">Letto</button></div>',
+    // "Mostra tutti" vuole il suo limite; il limite vuole le voci e il pulsante
+    '<button data-limite-mostra="s" hidden>Mostra tutti</button>',
+    '<ul data-limite="s" data-limite-regole="[]"></ul><button data-limite-mostra="s" hidden></button>',
+    '<ul data-limite="s" data-limite-regole="[]"><li data-filtrabile="s" data-categorie="a">x</li></ul>' +
+      '<div data-filtri="s"><button data-filtro="a">A</button></div><p data-filtro-vuoto="s" hidden></p>',
   ])('segnala %s', (frammento) => {
     expect(incoerenzeProtocolli(`<p>testo</p>${frammento}`).length).toBeGreaterThan(0);
   });
@@ -421,6 +438,9 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<a href="#s" data-filtro-scegli="selezione:letto">Letto</a>' +
       '<div data-filtri="selezione"><button data-filtro="tutti">Tutto</button>' +
       '<div><span>x</span></div><button class="f" data-filtro=letto>Letto</button></div>',
+    '<ul data-limite="s" data-limite-regole="[]"><li data-filtrabile="s" data-categorie="a">x</li></ul>' +
+      '<div data-filtri="s"><button data-filtro="a">A</button></div><p data-filtro-vuoto="s" hidden></p>' +
+      '<button data-limite-mostra="s" hidden><span data-limite-testo></span></button>',
   ])('non segnala %s', (frammento) => {
     expect(incoerenzeProtocolli(frammento)).toEqual([]);
   });
@@ -760,6 +780,20 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(voci.map((t) => valore(t, 'data-categorie'))).toEqual(
       articoli.map((a) => a.categorie.join(' ')),
     );
+  });
+
+  it('la selezione ha il limite per misura, e senza JavaScript mostra tutte le schede', () => {
+    const contenitori = tagCon('ul', 'data-limite');
+    expect(contenitori.map((t) => valore(t, 'data-limite'))).toEqual(['selezione']);
+    expect(JSON.parse(valore(contenitori[0]!, 'data-limite-regole') ?? '')).toEqual(
+      LIMITI_SELEZIONE,
+    );
+    const mostra = tagCon('button', 'data-limite-mostra');
+    expect(mostra.map((t) => valore(t, 'data-limite-mostra'))).toEqual(['selezione']);
+    expect(mostra[0]).toMatch(/\shidden(?=[\s=>])/);
+    for (const voce of tagCon('[a-z]+', 'data-filtrabile')) {
+      expect(voce).not.toMatch(/\shidden(?=[\s=>])/);
+    }
   });
 
   it('i riquadri delle collezioni e le pillole scelgono il loro filtro e portano alla selezione', () => {

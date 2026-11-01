@@ -77,12 +77,26 @@
 //   può esserci una galleria; `button[data-post-chiudi]` lo chiude.
 // - Mostra altri: `button[data-mostra-altri="<nome>"]` toglie `hidden` a
 //   `[data-altro="<nome>"]` e poi sparisce.
+// - Limite: `[data-limite="<nome>"]` con `data-limite-regole` (JSON di
+//   `RegolaLimite[]`, in `limite.ts`: la prima `media` vera per `matchMedia` dà
+//   il limite). Delle voci `[data-filtrabile="<nome>"]` che passano il filtro (e
+//   non sono piegate da "Mostra altri") si vedono solo le prime
+//   `quanteMostrare(passano, limiteAttivo(…), aperto)`, nell'ordine della pagina.
+//   Regole illeggibili, o nessuna media vera: nessun limite.
+//   `button[data-limite-mostra="<nome>"]`, `hidden` nella pagina, si mostra solo
+//   se resta fuori qualche voce, e lo script scrive `testoMostraTutti(passano)`
+//   ("Mostra tutti gli 8") nel suo `[data-limite-testo]`. Premuto, il nome resta
+//   aperto per ogni filtro successivo: il pulsante sparisce e il focus va al
+//   primo `a[href]` o `button` della prima voce comparsa. Il limite si ricalcola
+//   con i filtri e con "Mostra altri", e quando cambia una delle media query
+//   delle regole (non a ogni `resize`). Senza JavaScript si vedono tutte le voci.
 //
 // I dialog si aprono con `showModal()`, si chiudono con Esc (o con un clic sullo
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante da cui si sono aperti.
 import { filtra } from './filtra';
 import { azioneDelTocco, versoTrascinamento } from './gesti';
+import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
 import { avanti, indietro, type Posizione } from './sequenza';
 
@@ -118,6 +132,8 @@ type Contesto = {
   radice: ParentNode;
   /** Nomi dei gruppi per cui è stato premuto "Mostra altri". */
   altriMostrati: Set<string>;
+  /** Nomi dei limiti per cui è stato premuto "Mostra tutti": valgono per ogni filtro. */
+  limiteAperto: Set<string>;
   /** Da quale pulsante si è aperto ogni dialog, per restituirgli il focus. */
   apertoDa: WeakMap<HTMLDialogElement, HTMLElement>;
   storia: StatoStoria | null;
@@ -232,10 +248,11 @@ function aggiornaStato(c: Contesto): void {
   }
 }
 
-// --- Filtri e "Mostra altri" ---
+// --- Filtri, "Mostra altri" e limite ---
 //
-// Una voce può essere filtrabile e anche piegata da "Mostra altri": la sua
-// visibilità la decidono insieme `applicaFiltri` e `altriMostrati`.
+// Una voce può essere filtrabile, piegata da "Mostra altri" e contata da un
+// limite: la sua visibilità la decidono insieme `applicaFiltri`,
+// `altriMostrati` e `limiteAperto`.
 
 function categorieDi(voce: HTMLElement): string[] {
   return (voce.dataset.categorie ?? '').split(/\s+/).filter(Boolean);
@@ -245,6 +262,37 @@ function filtroAttivo(c: Contesto, nome: string): string {
   const contenitore = c.radice.querySelector<HTMLElement>(conValore('data-filtri', nome));
   const premuto = contenitore?.querySelector<HTMLElement>('[data-filtro][aria-pressed="true"]');
   return premuto?.dataset.filtro ?? 'tutti';
+}
+
+/** Le regole di un contenitore `data-limite`; illeggibili: nessuna (quindi nessun limite). */
+function regoleDi(contenitore: HTMLElement): RegolaLimite[] {
+  try {
+    const regole: unknown = JSON.parse(contenitore.dataset.limiteRegole ?? '');
+    if (
+      Array.isArray(regole) &&
+      regole.every((r) => typeof r?.media === 'string' && typeof r?.limite === 'number')
+    ) {
+      return regole as RegolaLimite[];
+    }
+  } catch {
+    // JSON illeggibile.
+  }
+  return [];
+}
+
+/** Il limite di adesso per il nome (`null`: nessun contenitore, o nessuna regola vera). */
+function limiteDi(c: Contesto, nome: string): number | null {
+  const contenitore = c.radice.querySelector<HTMLElement>(conValore('data-limite', nome));
+  if (!contenitore) return null;
+  return limiteAttivo(regoleDi(contenitore), (media) => matchMedia(media).matches);
+}
+
+/** Il primo comando (`a[href]` o `button`) di una voce, o la voce se è lei il comando. */
+function primoComando(voce: HTMLElement | undefined): HTMLElement | null {
+  if (!voce) return null;
+  return voce.matches('a[href], button')
+    ? voce
+    : voce.querySelector<HTMLElement>('a[href], button');
 }
 
 function applicaFiltri(c: Contesto): void {
@@ -264,15 +312,29 @@ function applicaFiltri(c: Contesto): void {
       categorie: categorieDi(el),
     }));
     const corrispondenti = new Set(filtra(voci, filtro).map((voce) => voce.el));
+    // Le voci che passano: corrispondono al filtro e non sono piegate.
+    const passano: HTMLElement[] = [];
     for (const { el } of voci) {
       const gruppoAltri = el.dataset.altro;
       const piegata =
         gruppoAltri !== undefined && filtro === 'tutti' && !c.altriMostrati.has(gruppoAltri);
-      el.hidden = !corrispondenti.has(el) || piegata;
+      if (corrispondenti.has(el) && !piegata) passano.push(el);
       if (gruppoAltri !== undefined && filtro !== 'tutti') altriInutili.add(gruppoAltri);
     }
+    // Di quelle si vedono le prime, quante ne lascia il limite.
+    const quante = quanteMostrare(passano.length, limiteDi(c, nome), c.limiteAperto.has(nome));
+    const visibili = new Set(passano.slice(0, quante));
+    for (const { el } of voci) el.hidden = !visibili.has(el);
     for (const vuoto of elementi(c.radice, conValore('data-filtro-vuoto', nome))) {
       vuoto.hidden = corrispondenti.size > 0;
+    }
+    for (const bottone of elementi(c.radice, conValore('data-limite-mostra', nome))) {
+      bottone.hidden = quante >= passano.length;
+      if (bottone.hidden) continue;
+      const testo = testoMostraTutti(passano.length);
+      for (const dove of elementi(bottone, '[data-limite-testo]')) {
+        if (dove.textContent !== testo) dove.textContent = testo;
+      }
     }
   }
 
@@ -321,11 +383,18 @@ function mostraAltri(c: Contesto, bottone: HTMLElement): void {
   for (const voce of voci) voce.hidden = false;
   applicaFiltri(c); // una voce che non passa il filtro torna nascosta
   // Il pulsante sparisce: il focus passa alla prima voce comparsa.
-  const prima = voci.find((voce) => !voce.hidden);
-  const comando = prima?.matches('a[href], button')
-    ? prima
-    : prima?.querySelector<HTMLElement>('a[href], button');
-  comando?.focus();
+  primoComando(voci.find((voce) => !voce.hidden))?.focus();
+}
+
+function mostraTutti(c: Contesto, bottone: HTMLElement): void {
+  const nome = bottone.dataset.limiteMostra ?? '';
+  const voci = elementi(c.radice, conValore('data-filtrabile', nome));
+  const giaVisibili = new Set(voci.filter((voce) => !voce.hidden));
+  c.limiteAperto.add(nome);
+  applicaFiltri(c);
+  aggiornaCaroselli(c);
+  // Il pulsante sparisce: il focus passa alla prima voce comparsa.
+  primoComando(voci.find((voce) => !voce.hidden && !giaVisibili.has(voce)))?.focus();
 }
 
 // --- Galleria ---
@@ -621,6 +690,7 @@ const AZIONI: [
   // Niente preventDefault: il link porta comunque alla sua sezione.
   ['[data-filtro-scegli]', scegliFiltroDaLink],
   ['[data-mostra-altri]', mostraAltri],
+  ['[data-limite-mostra]', mostraTutti],
   ['[data-galleria-prec]', (_c, el) => spostaGalleria(el, -1)],
   ['[data-galleria-succ]', (_c, el) => spostaGalleria(el, 1)],
   ['[data-galleria-punto]', (_c, el) => vaiAlPunto(el)],
@@ -645,6 +715,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   const c: Contesto = {
     radice,
     altriMostrati: new Set(),
+    limiteAperto: new Set(),
     apertoDa: new WeakMap(),
     storia: null,
     inizioPressione: null,
@@ -787,4 +858,16 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     true,
   );
   addEventListener('resize', () => aggiornaCaroselli(c));
+  // Il limite dipende dalla misura dello schermo: si ricalcola quando cambia una
+  // delle sue media query (il telefono ruotato, la finestra allargata), non a
+  // ogni `resize`. Un ascoltatore per media query distinta.
+  const medie = new Set(
+    elementi(radice, '[data-limite]').flatMap((el) => regoleDi(el).map((r) => r.media)),
+  );
+  for (const media of medie) {
+    matchMedia(media).addEventListener('change', () => {
+      applicaFiltri(c);
+      aggiornaCaroselli(c);
+    });
+  }
 }
