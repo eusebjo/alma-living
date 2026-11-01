@@ -41,12 +41,13 @@
 //   cambiare foto, a giro come le frecce, con un trascinamento del dito o del
 //   mouse (pulsante principale): verso sinistra la foto dopo, verso destra quella
 //   prima (`versoTrascinamento`, in `gesti.ts`). Non conta un trascinamento che
-//   comincia su un `button` o un `a`. Allo `pointerdown` lo script cattura il
-//   puntatore (così anche un rilascio fuori dall'area conta) e decide allo
+//   comincia su un `button` o un `a`. Al `pointerdown` lo script cattura il
+//   puntatore (così anche un rilascio fuori dall'area conta) e decide al
 //   `pointerup`; un `pointercancel` (il browser ha preso lo scorrimento della
 //   pagina) annulla. Il trascinamento nativo delle immagini dell'area è bloccato.
-//   La variante dà all'area `touch-action: pan-y`, perché la pagina scorra in
-//   verticale.
+//   La variante dà all'area `touch-action: pan-y pinch-zoom`, perché la pagina
+//   scorra in verticale e resti ingrandibile con due dita (il pizzico fa partire
+//   un `pointercancel`, che annulla il trascinamento).
 // - Carosello: `[data-carosello]` con `[data-carosello-binario]` (scroll-snap) e
 //   `button[data-carosello-prec|succ]`: scorrono di una larghezza visibile e
 //   hanno `aria-disabled="true"` agli estremi.
@@ -89,7 +90,9 @@
 //   aperto per ogni filtro successivo: il pulsante sparisce e il focus va al
 //   primo `a[href]` o `button` della prima voce comparsa. Il limite si ricalcola
 //   con i filtri e con "Mostra altri", e quando cambia una delle media query
-//   delle regole (non a ogni `resize`). Senza JavaScript si vedono tutte le voci.
+//   delle regole (non a ogni `resize`): gli ascoltatori di `matchMedia` si
+//   registrano all'avvio e coprono solo i `[data-limite]` presenti allora.
+//   Senza JavaScript si vedono tutte le voci.
 //
 // I dialog si aprono con `showModal()`, si chiudono con Esc (o con un clic sullo
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
@@ -707,7 +710,9 @@ const AZIONI: [
 
 /**
  * Fa funzionare il markup dei protocolli dentro `radice` (per delega: vale anche
- * per gli elementi aggiunti dopo). Chiamarla due volte sulla stessa radice non fa nulla.
+ * per gli elementi aggiunti dopo). Fa eccezione il protocollo Limite: i suoi
+ * ascoltatori di `matchMedia` si registrano all'avvio e coprono solo i
+ * `[data-limite]` presenti allora. Chiamarla due volte sulla stessa radice non fa nulla.
  */
 export function avviaInterazioni(radice: ParentNode = document): void {
   if (avviate.has(radice)) return;
