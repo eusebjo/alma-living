@@ -10,6 +10,7 @@
     "dev": "node scripts/foto-prova/prepara.mjs && astro dev",
     "build": "node scripts/foto-prova/prepara.mjs && astro build",
     "preview": "astro preview",
+    "foto:carica": "node scripts/foto-prova/carica.mjs",
     "astro": "astro",
     "test": "vitest run",
     "test:dist": "vitest run --config vitest.dist.config.ts"

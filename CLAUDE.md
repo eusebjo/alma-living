@@ -19,6 +19,7 @@ Node `>=22.22.0` (come richiede Astro), npm. Funziona su Windows (PowerShell e G
 | `npm run dev` | Prepara le foto di prova (vedi "Prova delle varianti"), poi server di sviluppo su `http://localhost:4321` |
 | `npm run build` | Prepara le foto di prova, poi build statica in `dist/`; serve rete verso Google Fonts (vedi "Vincoli globali") |
 | `npm run preview` | Serve `dist/` in locale |
+| `npm run foto:carica` | Carica nel bucket R2 le foto di `elenco.json` che mancano, prendendole da `foto/prova/`; serve `npx wrangler login`, fatto da eusebjo. Con `-- --prova` stampa solo l'elenco |
 | `npm test` | Test unitari e di contenuto (esclude `tests/dist`) |
 | `npm run test:dist` | Test sui file generati in `dist/`: da lanciare **dopo** `npm run build` |
 
@@ -107,6 +108,7 @@ Il ramo `fase2/1-varianti` ospita le pagine di prova del design (spec: `docs/sup
 - **Ramo e anteprima:** il lavoro resta su `fase2/1-varianti` (branch di sviluppo: solo gli admin lo toccano) e si guarda su `https://fase2-1-varianti-alma-living.sebjomuho.workers.dev/prova/`. Durante la prova il ramo non si unisce a `main`.
 - **Sempre `noindex`:** `LayoutProva` passa `noindex` a `SeoHead`, quindi le pagine `/prova/` non hanno mai indicizzazione né JSON-LD, anche in una build di lancio. Restano fuori dalla sitemap (`src/lib/sitemap.ts`) e da `llms.txt` (che elenca solo la collection `pagine`).
 - **Foto di prova:** non entrano mai in git (cartella di destinazione `src/prova/foto/` in `.gitignore`). `scripts/foto-prova/prepara.mjs` gira prima di `astro build` e di `astro dev` (vedi `package.json`) e, per ogni nome di `scripts/foto-prova/elenco.json`, usa la foto già presente in `src/prova/foto/`, altrimenti la copia da `foto/prova/` (cartella locale, esclusa da git in `.gitignore` con tutta `foto/`: il repository è pubblico), altrimenti la scarica dal bucket R2 pubblico `alma-living-prova` (indirizzo base in `scripts/foto-prova/config.mjs`; al più 30 secondi per foto). Se una foto manca ovunque, la build si ferma. Per aggiornare una foto si elimina dalla cartella `src/prova/foto/` e si rilancia la preparazione.
+- **Aggiungere una foto:** si copia in `foto/prova/`, si aggiunge il nome a `scripts/foto-prova/elenco.json` e si lancia `npm run foto:carica` (`scripts/foto-prova/carica.mjs`): per ogni nome dell'elenco controlla con una richiesta `HEAD` se la foto è già nel bucket, carica con `wrangler r2 object put` quelle che mancano e ricontrolla dopo ogni invio. Non sovrascrive le foto già nel bucket. Serve `npx wrangler login`, che fa eusebjo di persona; con `-- --prova` fa solo i controlli e stampa l'elenco. Nome del bucket e prefisso stanno in `scripts/foto-prova/config.mjs`, accanto all'indirizzo pubblico.
 - **Caratteri:** vedi "Vincoli globali" (scaricati alla build, serviti da `/_astro/fonts`).
 - **Ogni modifica durante la prova** è un commit piccolo sul ramo, con gli stessi controlli di sempre (`npm test`, `npm run build`, `npm run test:dist`).
 
@@ -136,6 +138,6 @@ src/components/         SeoHead (title, canonical, Open Graph, noindex, JSON-LD)
 src/layouts/            BaseLayout
 src/pages/              index, admin (pannello), prova (varianti di prova), robots.txt, llms.txt
 src/prova/              varianti di prova: comune (logica, script del browser, layout), salvia-social
-scripts/foto-prova/     prepara le foto di prova prima della build (da foto/prova o dal bucket R2)
+scripts/foto-prova/     prepara le foto di prova prima della build (da foto/prova o dal bucket R2); carica.mjs manda nel bucket quelle nuove
 tests/                  test unitari; tests/dist sui file generati
 ```
