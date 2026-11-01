@@ -7,6 +7,21 @@
 
 **Aggiornamento del 2026-10-30:** su decisione di eusebjo si costruisce solo la variante Salvia social; Salvia bianca e Cipria app non si realizzano. Il resto del documento vale per Salvia social.
 
+**Aggiornamento del 2026-11-01 (ciclo di prova, §11):** dopo la prova sull'anteprima, eusebjo ha rivisto Salvia social sulla tela (sesta, settima e ottava proposta) e ha scelto la versione 3, la tavola `DiarioFascia.dc.html` (con `DiarioFasciaTelefono.dc.html`). Da qui è il disegno di riferimento di Salvia social al posto di `SalviaSocial.dc.html`. Cambia rispetto alla versione in codice:
+- **Ordine:** il diario di Martina sta dopo la selezione ("Sugli scaffali adesso"), anche nel menu e nel footer.
+- **Apertura:** le foto scorrono anche trascinando con il dito o con il mouse (oltre 40 px in orizzontale, se il movimento è più orizzontale che verticale), oltre a frecce e pallini.
+- **Storie:** un tocco a sinistra torna indietro, a destra va avanti; al centro mette in pausa o riprende; tenendo premuto si ferma e rilasciando riprende. Il pulsante di pausa resta.
+- **Selezione sul telefono:** griglia a due colonne con le prime 4 schede e "Mostra tutti gli 8"; sul tablet (768-1023 px) tre colonne con le prime 6; sul computer il carosello con le frecce di oggi. Il limite vale sulla lista filtrata.
+- **Storie e Instagram distinti:** le storie in alto sono del sito, raccolte per categoria, e non si sincronizzano con Instagram. Il pulsante del riquadro accanto alla fila diventa "Vedi i post".
+- **Diario:**
+  - senza il riquadro profilo (nome Instagram, bio, indirizzo e stato, "Segui su Instagram", "Scrivici") e senza storie in evidenza;
+  - il riquadro bianco tiene l'intestazione "Post dal negozio" con la data dell'ultimo aggiornamento, la griglia 3 x 3 e "Mostra altri post";
+  - nel post aperto l'autore è "Alma Living";
+  - in storie e post "Vedi su Instagram" diventa "Chiama il negozio".
+- **Fascia Instagram:** dopo il diario e prima della sezione del negozio, una fascia propria, bianca tra due linee sottili e senza foto. Contiene il simbolo, "Seguici anche su Instagram", "@almaliving.viaricasoli · Le foto di ogni giorno sono anche lì." e il pulsante; sul telefono è centrata. Restano l'icona di Instagram nell'header e la riga nel footer.
+
+Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime quattro voci. Le note della tela sono in `research_notes/Design UI/sesta/`, `settima/` e `ottava/`.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:
