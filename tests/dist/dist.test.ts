@@ -691,6 +691,13 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(contenuto).toContain('Le foto di ogni giorno sono anche lì.');
     expect(contenuto).toContain('aria-label="Apri Instagram: @almaliving.viaricasoli"');
     expect(contenuto).not.toMatch(/<(?:img|picture)\b/);
+    // Per i lettori di schermo: tolto ciò che è `aria-hidden` (il puntino) e i tag,
+    // nome e frase restano separati da uno spazio vero, non da quello del separatore.
+    const riga = /<p\b[^>]*>([\s\S]*?)<\/p>/.exec(contenuto)?.[1] ?? '';
+    const letto = riga
+      .replace(/<span\b[^>]*\saria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, '')
+      .replace(/<[^>]*>/g, '');
+    expect(letto).toMatch(/@almaliving\.viaricasoli\s+Le foto/);
   });
 
   it('accanto alla fila delle storie "Vedi i post" porta al diario', () => {
