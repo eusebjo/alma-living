@@ -60,6 +60,45 @@ Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime 
 
 Così l'ordine sullo schermo è anche quello di lettori di schermo e tastiera.
 
+**Aggiornamento del 2026-11-02, secondo: l'apertura.** Dopo tre giri sulla tela (decima e undicesima proposta), eusebjo ha scelto una nuova apertura: "La foto grande", nella tavola `FotoGrande2.dc.html` (pagina "Apertura scelta", versione 53). Le note sono in `research_notes/Design UI/decima/` e `undicesima/`.
+
+- **Una pagina sola, più pulita.** La sezione "Per ogni stanza della casa" non c'è più. Dopo l'apertura vengono subito gli scaffali, dove le collezioni sono i filtri.
+  - Nel menu, "Collezioni" porta agli scaffali (`#selezione`). La voce "Selezione" non c'è più, perché sarebbe un doppione.
+  - Le foto delle stanze restano come cerchietti dei filtri.
+- **Le storie solo sul telefono.** La fila delle storie si vede solo sotto i 768 px. Il riquadro "Le storie del negozio / Vedi i post" non c'è più.
+- **L'apertura: le foto dei prodotti protagoniste.** In alto, allineati a sinistra sul bordo del contenuto, ci sono:
+  - il claim "Rendiamo la tua casa ancora più casa." (`h1`, piccolo);
+  - sotto, la frase "Biancheria, profumi e dettagli che scaldano l'ambiente, scelti uno per uno per il negozio di Via Ricasoli, nell'isola pedonale di Livorno.".
+
+  Sul telefono la frase è corta: "Biancheria, profumi e dettagli scelti uno per uno, nel negozio di Via Ricasoli a Livorno.". Sotto, le foto di dodici prodotti, in un ordine fisso:
+  1. Lenzuola e copriletto a righe rosa
+  2. Coperta in maglia
+  3. Plaid Abbracciami
+  4. Asciugamano con casetta
+  5. Lenzuola color sabbia
+  6. Accappatoio con orsetto
+  7. Tovaglia con volant
+  8. Parure con volant
+  9. Candele nelle ciotole di legno
+  10. Copriletto rosso con volant
+  11. Cuscini delle feste
+  12. Saponi e profumi
+- **Computer (da 1024 px).** L'apertura usa la larghezza del contenuto, la stessa dell'header e degli scaffali.
+  - Al centro c'è una cornice orizzontale (872 x 580 a 1440 px) con le cinque foto più grandi: 1, 2, 7, 11 e 12. Cambiano da sole ogni 5 secondi, in dissolvenza.
+  - Ai lati, due colonne di miniature 3:4 con le altre sette foto. Scorrono lente in senso opposto: a sinistra verso l'alto, a destra verso il basso.
+  - Sotto la cornice, a sinistra il nome del prodotto e a destra le tacche.
+- **Telefono e tablet (sotto i 1024 px).** Resta solo la cornice, che sfoglia da sola tutte e dodici le foto.
+  - Sul telefono la cornice è verticale (358 x 440 a 390 px), con il nome del prodotto in una pillola e il contatore.
+  - Tra 768 e 1023 px la cornice è orizzontale (4:3). È una scelta di sviluppo, perché la tela non ha il tablet.
+  - Niente miniature.
+- **Il movimento è sempre automatico e non c'è un pulsante pausa visibile.** Per l'accessibilità (WCAG 2.2.2) un modo per fermare le foto resta, nascosto:
+  - il mouse sopra la cornice o le miniature le ferma per il tempo in cui resta lì;
+  - un clic o un tocco sulla foto la ferma, e un altro la fa ripartire; da ferma compare la pillola "In pausa · tocca per riprendere" (sul computer "In pausa · clic per riprendere");
+  - trascinare la foto con il dito, o scegliere una tacca, cambia foto e ferma il giro;
+  - chi usa la tastiera trova per primo un pulsante "Metti in pausa le foto" / "Riprendi le foto", che si vede solo quando riceve il focus;
+  - con "riduci movimento" non parte nulla.
+- **Senza JavaScript** si vede la prima foto, ferma, e le miniature restano ferme.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:
