@@ -101,12 +101,36 @@
 //   `[data-storia-barra]` (avanzamento in `--avanzamento`, da 0 a 1). Pulsanti
 //   `[data-storia-prec|succ|chiudi]`, frecce della tastiera; alla fine
 //   dell'ultima foto si chiude. Il pulsante di un gruppo mostrato riceve
-//   `data-vista`. L'avanzamento automatico si può fermare: tenendo premuto sulla
-//   storia (sulla foto o sulla zona dei tocchi, qui sotto); con
-//   `button[data-storia-pausa]` (`aria-pressed`, da mettere in ogni storia: ferma
-//   e riprende); e da tastiera, perché portare il focus su un controllo della
-//   storia la mette in pausa (si riprende con quel pulsante).
-//   Un elemento `[data-storia-tocchi]` per dialog, sopra le foto e sotto i
+//   `data-vista`. Ogni foto resta il tempo della sua `data-storia-durata`, in ms,
+//   letto con `Number`: se non è un numero finito e positivo, 6000.
+//   Pausa. Il tempo di una foto conta solo se nulla lo ferma. Lo fermano: tenere
+//   premuto sulla storia (sulla foto o sulla zona dei tocchi, qui sotto); la frase
+//   o la scheda degli inviti aperte (qui sotto); `button[data-storia-pausa]`
+//   (`aria-pressed`, da mettere in ogni storia: ferma e riprende); e la tastiera,
+//   perché portare il focus su un controllo della storia la mette in pausa (si
+//   riprende con quel pulsante).
+//   Frase. In ogni foto `[data-storia-frase]` e `button[data-storia-altro]`, con
+//   `aria-expanded="false"` e `hidden` nell'HTML. Quando la foto diventa attuale,
+//   lo script mostra "altro" solo se la frase non ci sta tutta (`scrollHeight`
+//   oltre `clientHeight` + 1). Il taglio lo fa il CSS della variante, e dalla
+//   frase non deve uscire in basso nulla di posizionato (un velo in `::before`):
+//   `scrollHeight` lo conterebbe. Un clic su "altro" alterna `data-aperta` sulla
+//   frase della sua foto e `aria-expanded`. Al cambio di foto la frase si richiude.
+//   Scheda degli inviti. In ogni gruppo la pillola
+//   `button[data-storia-invito-apri]` (`aria-expanded="false"`) e tanti
+//   `[data-storia-invito]` quante le foto, nello stesso ordine: lo script mostra
+//   quello della foto attuale (gli altri `hidden`), con i suoi link e un
+//   `button[data-storia-invito-chiudi]`. La pillola, o un trascinamento in su
+//   sulla zona dei tocchi, apre la scheda: il dialog riceve
+//   `data-storia-invito-aperto` (la variante la mostra con il CSS), le pillole
+//   `aria-expanded="true"` e il focus va al primo `a[href]` o `button` della
+//   scheda. La chiudono `[data-storia-invito-chiudi]`, Esc (l'evento `cancel` del
+//   dialog: a scheda aperta Esc chiude solo lei, non il lettore) e un
+//   trascinamento in giù che parte dalla scheda; il focus torna alla pillola del
+//   gruppo. Al cambio di foto la scheda si richiude, senza spostare il focus. Se
+//   la foto attuale non ha la sua scheda, né la pillola né il trascinamento
+//   aprono nulla.
+//   Tocchi. Un elemento `[data-storia-tocchi]` per dialog, sopra le foto e sotto i
 //   controlli, con `aria-hidden="true"` e non focalizzabile (da tastiera e con i
 //   lettori di schermo restano i pulsanti e le frecce), raccoglie i tocchi: un
 //   clic o un tocco su di lui fa quello che dice `azioneDelTocco` (in `gesti.ts`)
@@ -115,10 +139,28 @@
 //   `[data-storia-prec]`, nel resto come `[data-storia-succ]`: la pausa non è un
 //   punto della zona, è il pulsante `[data-storia-pausa]`, che riflette lo stato
 //   con `aria-pressed`.
-//   Una pressione oltre 300 ms non è un tocco: tenendo premuto la storia si
-//   ferma, e al rilascio riprende senza fare altro. La variante dà alla zona
-//   `touch-action: manipulation` e lascia passare i tocchi attraverso ciò che le
-//   sta sopra e non si usa (`pointer-events: none`).
+//   Tenere premuto. La storia si ferma alla pressione e riprende al rilascio (o
+//   all'annullamento); oltre 300 ms la pressione non è un tocco, e il rilascio
+//   non cambia foto. Dopo 500 ms di pressione sulla zona dei tocchi il dialog
+//   riceve `data-storia-nascosta` (la variante nasconde testata, frase e pillola:
+//   resta la foto), che il rilascio o l'annullamento tolgono. A scheda aperta la
+//   pressione non nasconde nulla.
+//   Trascinamenti. Un trascinamento parte dalla zona dei tocchi o dalla scheda
+//   aperta, non da un link o un pulsante (per il mouse, solo con il tasto
+//   principale); al rilascio `gestoDellaStoria` (in `gesti.ts`) dice cosa fare.
+//   Dalla zona dei tocchi, in giù chiude il dialog e in su apre la scheda (se è
+//   già aperta, nulla); dalla scheda, in giù la chiude. Uno spostamento oltre 10 px
+//   su un asse non è un tocco: il clic che segue non fa nulla. Il dito arriva al
+//   rilascio solo dove la variante toglie lo scorrimento al browser
+//   (`touch-action: none` sulla zona dei tocchi, e sulla scheda se non deve
+//   scorrere): altrimenti il browser si prende il trascinamento e lo annulla con
+//   `pointercancel`. La variante lascia passare i tocchi attraverso ciò che sta
+//   sopra la zona e non si usa (`pointer-events: none`).
+//   Menu del browser. Tenendo premuto su una foto il browser aprirebbe il menu
+//   dell'immagine: lo script annulla `contextmenu` in tutto `dialog[data-storie]`,
+//   tranne che su link e pulsanti. Su iPhone `contextmenu` non arriva: lì basta la
+//   variante, con `pointer-events: none` e `-webkit-touch-callout: none` sulle
+//   `img`.
 // - Post: `[data-post-apri="<id>"]` apre `dialog[data-post="<id>"]`; dentro può
 //   esserci una galleria; `button[data-post-chiudi]` lo chiude. Chi apre è un
 //   `button`, oppure un link `a[href]` (per esempio a WhatsApp). Con lo script, un
@@ -150,14 +192,16 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante, o al link, da cui si sono aperti.
 import { filtra } from './filtra';
-import { azioneDelTocco } from './gesti';
+import { azioneDelTocco, gestoDellaStoria, SOGLIA_MOVIMENTO_PX } from './gesti';
 import { fotoDelGiro, passoDelGiro } from './giro';
 import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
 import { avanti, indietro, type Posizione } from './sequenza';
 
-/** Quanto resta ferma ogni foto di una storia prima di passare alla successiva. */
+/** Quanto resta ferma una foto di una storia senza una `data-storia-durata` valida. */
 const DURATA_FOTO_MS = 6000;
+/** Dopo quanto, tenendo premuto sulla zona dei tocchi, il dialog riceve `data-storia-nascosta`. */
+const NASCONDI_DOPO_MS = 500;
 /** Ogni quanto si ricalcola "aperto ora". */
 const RICALCOLO_STATO_MS = 60_000;
 
@@ -165,7 +209,13 @@ const PANNELLI = '[data-menu]';
 const APRITORI = '[data-menu-apri]';
 const DIALOG = 'dialog[data-post], dialog[data-storie]';
 
-type GruppoStoria = { gruppo: HTMLElement; foto: HTMLElement[]; barre: HTMLElement[] };
+type GruppoStoria = {
+  gruppo: HTMLElement;
+  foto: HTMLElement[];
+  barre: HTMLElement[];
+  /** Le schede degli inviti, una per foto e nello stesso ordine (anche nessuna). */
+  inviti: HTMLElement[];
+};
 
 type StatoStoria = {
   dialog: HTMLDialogElement;
@@ -173,10 +223,18 @@ type StatoStoria = {
   posizione: Posizione;
   /** Millisecondi passati sulla foto corrente. */
   trascorso: number;
+  /** Quanto resta la foto corrente, in ms (da `data-storia-durata`, o `DURATA_FOTO_MS`). */
+  durata: number;
   /** Vero mentre si tiene premuto sulla foto. */
   premuto: boolean;
   /** Pausa scelta: dal pulsante, o da un focus arrivato con la tastiera. */
   pausaUtente: boolean;
+  /** Vero mentre la scheda degli inviti è aperta. */
+  invitoAperto: boolean;
+  /** Vero mentre la frase della foto corrente è aperta da "altro". */
+  fraseAperta: boolean;
+  /** Il timer che, tenendo premuto, nasconde l'interfaccia (0: nessuno). */
+  nascondi: number;
   frame: number;
   ultimoFrame: number;
 };
@@ -211,6 +269,8 @@ type Contesto = {
   inizioTocco: number;
   /** Quanto è durata l'ultima pressione sulla zona dei tocchi, finché il clic non la usa (`NaN`: nessuna). */
   durataTocco: number;
+  /** Dove e da cosa è partito il trascinamento in corso sulla storia (`null`: nessuno). */
+  inizioTrascinamento: { x: number; y: number; da: 'tocchi' | 'invito' } | null;
 };
 
 const avviate = new WeakSet<object>();
@@ -759,6 +819,7 @@ function apriStoria(c: Contesto, bottone: HTMLElement): void {
       gruppo: g,
       foto: elementi(g, '[data-storia-foto]'),
       barre: elementi(g, '[data-storia-barra]'),
+      inviti: elementi(g, '[data-storia-invito]'),
     }))
     .filter((g) => g.foto.length > 0);
   const indice = gruppi.findIndex((g) => g.gruppo === gruppo);
@@ -768,8 +829,12 @@ function apriStoria(c: Contesto, bottone: HTMLElement): void {
     gruppi,
     posizione: { gruppo: indice, foto: 0 },
     trascorso: 0,
+    durata: DURATA_FOTO_MS,
     premuto: false,
     pausaUtente: false,
+    invitoAperto: false,
+    fraseAperta: false,
+    nascondi: 0,
     frame: 0,
     ultimoFrame: 0,
   };
@@ -791,18 +856,103 @@ function alternaPausa(c: Contesto): void {
   sincronizzaPausa(c.storia);
 }
 
+/** Vero se il tempo della foto non conta: si tiene premuto, c'è una pausa scelta, la scheda o la frase sono aperte. */
+function storiaFerma(s: StatoStoria): boolean {
+  return s.premuto || s.pausaUtente || s.invitoAperto || s.fraseAperta;
+}
+
+/** Quanto resta una foto: la sua `data-storia-durata` se è un numero finito e positivo, se no `DURATA_FOTO_MS`. */
+function durataDi(foto: HTMLElement | undefined): number {
+  const durata = Number(foto?.dataset.storiaDurata ?? '');
+  return Number.isFinite(durata) && durata > 0 ? durata : DURATA_FOTO_MS;
+}
+
+/** Scrive lo stato della scheda degli inviti: `data-storia-invito-aperto` sul dialog e `aria-expanded` delle pillole. */
+function scriviInvito(s: StatoStoria, aperto: boolean): void {
+  s.invitoAperto = aperto;
+  s.dialog.toggleAttribute('data-storia-invito-aperto', aperto);
+  for (const pillola of elementi(s.dialog, '[data-storia-invito-apri]')) {
+    pillola.setAttribute('aria-expanded', String(aperto));
+  }
+}
+
+/**
+ * Chi guarda apre la scheda (la pillola, o un trascinamento in su): il focus va al
+ * primo comando della scheda della foto attuale. Senza quella scheda non fa nulla.
+ */
+function apriInvito(c: Contesto): void {
+  const s = c.storia;
+  if (!s || s.invitoAperto) return;
+  const invito = s.gruppi[s.posizione.gruppo]?.inviti[s.posizione.foto];
+  if (!invito) return;
+  scriviInvito(s, true);
+  primoComando(invito)?.focus();
+}
+
+/** Chi guarda chiude la scheda ("Torna alla storia", Esc, un trascinamento in giù): il focus torna alla pillola. */
+function chiudiInvito(c: Contesto): void {
+  const s = c.storia;
+  if (!s?.invitoAperto) return;
+  scriviInvito(s, false);
+  s.gruppi[s.posizione.gruppo]?.gruppo
+    .querySelector<HTMLElement>('[data-storia-invito-apri]')
+    ?.focus();
+}
+
+/** "altro" sotto una frase: la apre o la richiude. Aperta, la storia è ferma. */
+function alternaFrase(c: Contesto, bottone: HTMLElement): void {
+  const frase = bottone
+    .closest<HTMLElement>('[data-storia-foto]')
+    ?.querySelector<HTMLElement>('[data-storia-frase]');
+  if (!c.storia || !frase) return;
+  const aperta = !frase.hasAttribute('data-aperta');
+  frase.toggleAttribute('data-aperta', aperta);
+  bottone.setAttribute('aria-expanded', String(aperta));
+  c.storia.fraseAperta = aperta;
+}
+
+/** Richiude la frase aperta da "altro", se c'è. */
+function chiudiFrase(s: StatoStoria): void {
+  s.fraseAperta = false;
+  for (const frase of elementi(s.dialog, '[data-storia-frase][data-aperta]')) {
+    frase.removeAttribute('data-aperta');
+  }
+  for (const altro of elementi(s.dialog, '[data-storia-altro][aria-expanded="true"]')) {
+    altro.setAttribute('aria-expanded', 'false');
+  }
+}
+
+/** Rimette l'interfaccia nascosta tenendo premuto, e ferma il timer che la nasconde. */
+function mostraInterfaccia(s: StatoStoria): void {
+  clearTimeout(s.nascondi);
+  s.nascondi = 0;
+  s.dialog.removeAttribute('data-storia-nascosta');
+}
+
 function mostraStoria(c: Contesto, posizione: Posizione): void {
   const s = c.storia;
   const corrente = s?.gruppi[posizione.gruppo];
   if (!s || !corrente) return;
   s.posizione = posizione;
   s.trascorso = 0;
+  s.durata = durataDi(corrente.foto[posizione.foto]);
+  // Una foto nuova riparte pulita: scheda e frase chiuse (il focus resta dov'è).
+  scriviInvito(s, false);
+  chiudiFrase(s);
   s.gruppi.forEach((g, i) => {
     g.gruppo.hidden = i !== posizione.gruppo;
   });
   corrente.foto.forEach((foto, i) => {
     foto.hidden = i !== posizione.foto;
   });
+  corrente.inviti.forEach((invito, i) => {
+    invito.hidden = i !== posizione.foto;
+  });
+  // "altro" solo se la frase non ci sta tutta (il taglio lo fa il CSS): si misura a foto visibile.
+  const foto = corrente.foto[posizione.foto];
+  const frase = foto?.querySelector<HTMLElement>('[data-storia-frase]');
+  const altro = foto?.querySelector<HTMLElement>('[data-storia-altro]');
+  if (frase && altro) altro.hidden = !(frase.scrollHeight > frase.clientHeight + 1);
   // Barre: le foto già viste piene, la corrente da riempire (o piena, se il
   // movimento è ridotto: allora non c'è avanzamento e si passa a mano).
   corrente.barre.forEach((barra, i) => {
@@ -824,9 +974,9 @@ function mostraStoria(c: Contesto, posizione: Posizione): void {
 function fotogramma(c: Contesto, ora: number): void {
   const s = c.storia;
   if (!s) return;
-  if (!s.premuto && !s.pausaUtente) s.trascorso += Math.max(0, ora - s.ultimoFrame);
+  if (!storiaFerma(s)) s.trascorso += Math.max(0, ora - s.ultimoFrame);
   s.ultimoFrame = ora;
-  const avanzamento = Math.min(s.trascorso / DURATA_FOTO_MS, 1);
+  const avanzamento = Math.min(s.trascorso / s.durata, 1);
   s.gruppi[s.posizione.gruppo]?.barre[s.posizione.foto]?.style.setProperty(
     '--avanzamento',
     String(avanzamento),
@@ -862,9 +1012,16 @@ function indietroStoria(c: Contesto): void {
   );
 }
 
+/** Il dialog si è chiuso: niente più fotogrammi né timer, e il dialog non resta con la scheda aperta o l'interfaccia nascosta. */
 function fermaStoria(c: Contesto): void {
-  if (c.storia) cancelAnimationFrame(c.storia.frame);
+  const s = c.storia;
+  if (s) {
+    cancelAnimationFrame(s.frame);
+    mostraInterfaccia(s);
+    scriviInvito(s, false);
+  }
   c.storia = null;
+  c.inizioTrascinamento = null;
 }
 
 /** Pressione del puntatore primario: sulla zona dei tocchi parte il cronometro del tocco. */
@@ -894,6 +1051,59 @@ function toccoSullaStoria(c: Contesto, zona: HTMLElement, evento: MouseEvent): v
   else if (azione === 'succ') avantiStoria(c);
 }
 
+/**
+ * Pressione del puntatore primario (per il mouse, il tasto principale) sulla
+ * storia: dalla zona dei tocchi, o dalla scheda aperta fuori dai suoi link e
+ * pulsanti, comincia un trascinamento. Sulla zona dei tocchi, a scheda chiusa,
+ * parte anche il timer che dopo `NASCONDI_DOPO_MS` nasconde l'interfaccia.
+ */
+function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
+  if (!evento.isPrimary) return;
+  c.inizioTrascinamento = null;
+  const s = c.storia;
+  const bersaglio = evento.target;
+  if (!s || evento.button !== 0 || !(bersaglio instanceof Element)) return;
+  if (!s.dialog.contains(bersaglio) || bersaglio.closest('a, button')) return;
+  const punto = { x: evento.clientX, y: evento.clientY };
+  if (bersaglio.closest('[data-storia-tocchi]')) {
+    c.inizioTrascinamento = { ...punto, da: 'tocchi' };
+    if (s.invitoAperto) return; // a scheda aperta la storia è già ferma: la pressione non nasconde nulla
+    clearTimeout(s.nascondi);
+    s.nascondi = window.setTimeout(() => {
+      s.nascondi = 0;
+      if (c.storia === s && s.premuto) s.dialog.setAttribute('data-storia-nascosta', '');
+    }, NASCONDI_DOPO_MS);
+  } else if (s.invitoAperto && bersaglio.closest('[data-storia-invito]:not([hidden])')) {
+    c.inizioTrascinamento = { ...punto, da: 'invito' };
+  }
+}
+
+/**
+ * Rilascio del puntatore primario: il trascinamento cominciato da
+ * `iniziaTrascinamento` finisce. Oltre `SOGLIA_MOVIMENTO_PX` su un asse non era un
+ * tocco (il clic che segue non fa nulla); il gesto lo dice `gestoDellaStoria`.
+ * Va chiamata dopo `finisciTocco`, che misura la durata del tocco.
+ */
+function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
+  if (!evento.isPrimary) return;
+  const inizio = c.inizioTrascinamento;
+  c.inizioTrascinamento = null;
+  const s = c.storia;
+  if (!inizio || !s) return;
+  const dx = evento.clientX - inizio.x;
+  const dy = evento.clientY - inizio.y;
+  if (Math.abs(dx) > SOGLIA_MOVIMENTO_PX || Math.abs(dy) > SOGLIA_MOVIMENTO_PX) {
+    c.durataTocco = Number.NaN;
+  }
+  const gesto = gestoDellaStoria(dx, dy);
+  if (inizio.da === 'tocchi') {
+    if (gesto === 'chiudi') s.dialog.close();
+    else if (gesto === 'invito') apriInvito(c); // a scheda già aperta non fa nulla
+  } else if (gesto === 'chiudi') {
+    chiudiInvito(c);
+  }
+}
+
 // --- Avvio ---
 
 const AZIONI: [
@@ -920,6 +1130,9 @@ const AZIONI: [
   ['button[data-colore]', scegliColore],
   ['[data-storia-apri]', apriStoria],
   ['[data-storia-tocchi]', toccoSullaStoria],
+  ['button[data-storia-altro]', alternaFrase],
+  ['button[data-storia-invito-apri]', (c) => apriInvito(c)],
+  ['button[data-storia-invito-chiudi]', (c) => chiudiInvito(c)],
   ['[data-storia-prec]', (c) => indietroStoria(c)],
   ['[data-storia-succ]', (c) => avantiStoria(c)],
   ['[data-storia-pausa]', (c) => alternaPausa(c)],
@@ -946,6 +1159,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     inizioPressione: null,
     inizioTocco: Number.NaN,
     durataTocco: Number.NaN,
+    inizioTrascinamento: null,
   };
 
   // Stato iniziale: la pagina può arrivare con più o meno già scritto.
@@ -1010,7 +1224,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   });
 
   // Il puntatore (dito, penna, mouse): pressione, rilascio, annullamento, per le
-  // storie (tenere premuto, misurare un tocco).
+  // storie (tenere premuto, misurare un tocco, trascinare).
   radice.addEventListener('pointerdown', (evento) => {
     c.inizioPressione = evento.target;
     const bersaglio = evento.target;
@@ -1024,15 +1238,36 @@ export function avviaInterazioni(radice: ParentNode = document): void {
       c.storia.premuto = true;
     }
     iniziaTocco(c, evento as PointerEvent);
+    iniziaTrascinamento(c, evento as PointerEvent);
   });
+  // Il rilascio, o l'annullamento, fa ripartire la storia e rimette l'interfaccia.
   const rilascia = () => {
-    if (c.storia) c.storia.premuto = false;
+    if (!c.storia) return;
+    c.storia.premuto = false;
+    mostraInterfaccia(c.storia);
   };
   radice.addEventListener('pointerup', (evento) => {
     rilascia();
     finisciTocco(c, evento as PointerEvent);
+    finisciTrascinamento(c, evento as PointerEvent);
   });
-  radice.addEventListener('pointercancel', rilascia);
+  radice.addEventListener('pointercancel', () => {
+    rilascia();
+    c.inizioTrascinamento = null;
+  });
+
+  // Tenendo premuto su una foto il browser aprirebbe il menu dell'immagine: nel
+  // dialog delle storie si annulla, tranne che su link e pulsanti.
+  radice.addEventListener('contextmenu', (evento) => {
+    const bersaglio = evento.target;
+    if (
+      bersaglio instanceof Element &&
+      bersaglio.closest('dialog[data-storie]') &&
+      !bersaglio.closest('a, button')
+    ) {
+      evento.preventDefault();
+    }
+  });
 
   // Un focus arrivato con la tastiera (`:focus-visible`: non un clic) su un
   // controllo della storia la ferma, perché si possa leggere e usare senza
@@ -1065,6 +1300,19 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     (evento) => {
       const dialog = evento.target;
       if (dialog instanceof HTMLDialogElement && dialog.matches(DIALOG)) allaChiusura(c, dialog);
+    },
+    true,
+  );
+  // Esc con la scheda degli inviti aperta chiude solo lei, non il lettore. Anche
+  // `cancel` non risale: si ascolta in cattura. Se il browser non lo lascia
+  // annullare (Esc ripetuto senza altri gesti), il dialog si chiude e basta.
+  radice.addEventListener(
+    'cancel',
+    (evento) => {
+      if (!c.storia?.invitoAperto || evento.target !== c.storia.dialog) return;
+      if (!evento.cancelable) return;
+      evento.preventDefault();
+      chiudiInvito(c);
     },
     true,
   );
