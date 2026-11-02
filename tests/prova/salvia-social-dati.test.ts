@@ -10,6 +10,7 @@ import {
   fotoFinestra,
   LIMITI_SELEZIONE,
   messaggioPost,
+  messaggioStoria,
   nomeConColore,
   occhielloArticolo,
   post,
@@ -88,6 +89,44 @@ describe('dati di Salvia social', () => {
   it('ogni storia e ogni post ha almeno una foto', () => {
     for (const storia of storie) expect(storia.foto.length).toBeGreaterThan(0);
     for (const voce of post) expect(voce.foto.length).toBeGreaterThan(0);
+  });
+
+  it('ogni foto di ogni storia ha il suo soggetto: minuscolo all’inizio, senza punto finale', () => {
+    for (const storia of storie) {
+      for (const foto of storia.foto) {
+        const dove = `${storia.id} ${foto.foto}`;
+        expect(foto.soggetto.trim(), dove).not.toBe('');
+        expect(foto.soggetto, dove).toBe(foto.soggetto.trim());
+        expect(foto.soggetto[0], dove).toBe(foto.soggetto[0]!.toLowerCase());
+        expect(foto.soggetto, dove).not.toMatch(/\.$/);
+        // L’apostrofo è quello tipografico, come negli altri testi del file.
+        expect(foto.soggetto, dove).not.toContain("'");
+      }
+    }
+  });
+
+  it('gli inviti delle storie, nell’ordine, sono quelli scelti', () => {
+    expect(storie.map((s) => s.invito)).toEqual([
+      'whatsapp',
+      'whatsapp',
+      'indicazioni',
+      'whatsapp',
+      'indicazioni',
+      'chiama',
+      'whatsapp',
+      'whatsapp',
+    ]);
+  });
+
+  it('il messaggio WhatsApp di una storia dice il nome e il soggetto della foto', () => {
+    const arrivi = storie.find((s) => s.id === 'arrivi')!;
+    expect(messaggioStoria(arrivi, arrivi.foto[0]!)).toBe(
+      'Buongiorno, ho visto la storia «Arrivi» sul sito: i plaid delle feste. ',
+    );
+    const casette = storie.find((s) => s.id === 'casette')!;
+    expect(messaggioStoria(casette, casette.foto[1]!)).toBe(
+      'Buongiorno, ho visto la storia «Casette» sul sito: l’asciugamano verde con la casetta. ',
+    );
   });
 
   it('articoli e cerchietti dei filtri usano le categorie dei filtri, e almeno un filtro resta vuoto', () => {

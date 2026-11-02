@@ -111,9 +111,10 @@
 //   lettori di schermo restano i pulsanti e le frecce), raccoglie i tocchi: un
 //   clic o un tocco su di lui fa quello che dice `azioneDelTocco` (in `gesti.ts`)
 //   per il punto toccato, misurato dal bordo sinistro della zona, e per la durata
-//   dalla pressione al rilascio. Nel terzo di sinistra fa come
-//   `[data-storia-prec]`, a destra come `[data-storia-succ]`, al centro come
-//   `[data-storia-pausa]`, che resta e ne riflette lo stato con `aria-pressed`.
+//   dalla pressione al rilascio. Nel 25% di sinistra fa come
+//   `[data-storia-prec]`, nel resto come `[data-storia-succ]`: la pausa non è un
+//   punto della zona, è il pulsante `[data-storia-pausa]`, che riflette lo stato
+//   con `aria-pressed`.
 //   Una pressione oltre 300 ms non è un tocco: tenendo premuto la storia si
 //   ferma, e al rilascio riprende senza fare altro. La variante dà alla zona
 //   `touch-action: manipulation` e lascia passare i tocchi attraverso ciò che le
@@ -883,14 +884,13 @@ function finisciTocco(c: Contesto, evento: PointerEvent): void {
   c.inizioTocco = Number.NaN;
 }
 
-/** Il clic che segue il rilascio sulla zona dei tocchi: indietro, pausa o avanti, secondo il punto toccato. */
+/** Il clic che segue il rilascio sulla zona dei tocchi: indietro nel 25% di sinistra, avanti nel resto. */
 function toccoSullaStoria(c: Contesto, zona: HTMLElement, evento: MouseEvent): void {
   const durata = c.durataTocco;
   c.durataTocco = Number.NaN; // un tocco vale una volta sola
   const { left, width } = zona.getBoundingClientRect();
   const azione = azioneDelTocco(evento.clientX - left, width, durata);
   if (azione === 'prec') indietroStoria(c);
-  else if (azione === 'pausa') alternaPausa(c);
   else if (azione === 'succ') avantiStoria(c);
 }
 

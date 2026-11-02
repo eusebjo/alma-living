@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avanti, indietro } from '../../src/prova/comune/sequenza';
+import { avanti, durataFoto, indietro } from '../../src/prova/comune/sequenza';
 
 // Due gruppi di storie: il primo con due foto, il secondo con una.
 const FOTO = [2, 1];
@@ -17,6 +17,16 @@ describe('avanti', () => {
     const inizio = { gruppo: 0, foto: 0 };
     avanti(inizio, FOTO);
     expect(inizio).toEqual({ gruppo: 0, foto: 0 });
+  });
+});
+
+describe('durataFoto', () => {
+  it('max(5 s, parole / 3 + 1 s), arrotondato al mezzo secondo', () => {
+    expect(durataFoto('')).toBe(5000);
+    expect(durataFoto('uno due tre quattro cinque sei sette otto nove')).toBe(5000); // 9 parole: 4 s
+    expect(durataFoto(Array(13).fill('x').join(' '))).toBe(5500); // 5,33 s
+    expect(durataFoto(Array(17).fill('x').join('  '))).toBe(6500); // 6,67 s
+    expect(durataFoto(Array(19).fill('x').join('\n'))).toBe(7500); // 7,33 s
   });
 });
 

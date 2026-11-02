@@ -138,8 +138,16 @@ export const vetrina: ProdottoInVetrina[] = [
 
 // --- Storie ---
 
+/** L'invito che la scheda di una storia mette in evidenza: WhatsApp, telefono o indicazioni. */
+export type InvitoStoria = 'whatsapp' | 'chiama' | 'indicazioni';
+
 export interface FotoStoria extends Scatto {
   testo: string;
+  /**
+   * Di che cosa parla la foto, nella scheda degli inviti e nel messaggio WhatsApp:
+   * con l'articolo e in minuscolo ("i plaid delle feste"), senza il punto finale.
+   */
+  soggetto: string;
 }
 
 export interface Storia {
@@ -149,11 +157,18 @@ export interface Storia {
   /** Etichetta sul cerchio ("Oggi", "Nuovo"). */
   etichetta?: string;
   data: string;
+  /** L'invito che la scheda mette in evidenza per questa storia. */
+  invito: InvitoStoria;
   foto: FotoStoria[];
 }
 
-function fotoStoria(foto: NomeFoto, posizione: string, testo: string): FotoStoria {
-  return { ...scatto(foto, posizione), testo };
+function fotoStoria(
+  foto: NomeFoto,
+  posizione: string,
+  testo: string,
+  soggetto: string,
+): FotoStoria {
+  return { ...scatto(foto, posizione), testo, soggetto };
 }
 
 /** Le storie della fila sotto l'header. */
@@ -163,16 +178,19 @@ export const storie: Storia[] = [
     nome: 'Oggi',
     etichetta: 'Oggi',
     data: '28 ottobre',
+    invito: 'whatsapp',
     foto: [
       fotoStoria(
         'scaffale',
         '50% 45%',
         'Buongiorno da Via Ricasoli. La parete dei plaid è pronta: bianchi, rosa e grigi, con i cuscini in pelo.',
+        'la parete dei plaid',
       ),
       fotoStoria(
         'camera-rosa',
         '50% 50%',
         'Nell’angolo romantico è arrivato il copriletto trapuntato rosa, con i cuscini abbinati.',
+        'il copriletto trapuntato rosa',
       ),
     ],
   },
@@ -181,16 +199,19 @@ export const storie: Storia[] = [
     nome: 'Arrivi',
     etichetta: 'Nuovo',
     data: '27 ottobre',
+    invito: 'whatsapp',
     foto: [
       fotoStoria(
         'plaid-rosso',
         '50% 45%',
         'Sono arrivati i plaid delle feste, rossi e verdi, con le frange lunghe.',
+        'i plaid delle feste',
       ),
       fotoStoria(
         'abbracciami-rosso',
         '50% 40%',
         'E gli Abbracciami in rosso e marrone: il regalo per chi sente sempre freddo.',
+        'gli Abbracciami rossi e marroni',
       ),
     ],
   },
@@ -198,29 +219,39 @@ export const storie: Storia[] = [
     id: 'vetrina',
     nome: 'Vetrina',
     data: '25 ottobre',
+    invito: 'indicazioni',
     foto: [
       fotoStoria(
         'gnomi',
         '50% 50%',
         'In vetrina sono comparsi gli gnomi di stoffa. Ognuno ha la sua faccia e il suo cappello.',
+        'gli gnomi di stoffa',
       ),
-      fotoStoria('cuori', '50% 45%', 'Accanto, i cuori dorati sulle basi di legno e le stelle rosse.'),
+      fotoStoria(
+        'cuori',
+        '50% 45%',
+        'Accanto, i cuori dorati sulle basi di legno e le stelle rosse.',
+        'i cuori dorati',
+      ),
     ],
   },
   {
     id: 'casette',
     nome: 'Casette',
     data: '24 ottobre',
+    invito: 'whatsapp',
     foto: [
       fotoStoria(
         'asciugamano-rosso',
         '50% 50%',
         'Asciugamani con la casetta ricamata: rosso per le feste.',
+        'l’asciugamano rosso con la casetta',
       ),
       fotoStoria(
         'asciugamano-verde',
         '50% 50%',
         'Verde per chi ama il bosco. E c’è anche il bianco, per tutto l’anno.',
+        'l’asciugamano verde con la casetta',
       ),
     ],
   },
@@ -228,11 +259,13 @@ export const storie: Storia[] = [
     id: 'candele',
     nome: 'Candele',
     data: '22 ottobre',
+    invito: 'indicazioni',
     foto: [
       fotoStoria(
         'candele',
         '50% 55%',
         'Candele alla vaniglia nelle ciotole di legno, con lo spago e il cartellino.',
+        'le candele alla vaniglia',
       ),
     ],
   },
@@ -240,16 +273,19 @@ export const storie: Storia[] = [
     id: 'bimbi',
     nome: 'Bimbi',
     data: '20 ottobre',
+    invito: 'chiama',
     foto: [
       fotoStoria(
         'neonato',
         '50% 40%',
         'Accappatoi con il cappuccio e l’orsetto ricamato, per i più piccoli di casa.',
+        'gli accappatoi con l’orsetto',
       ),
       fotoStoria(
         'accappatoi-appesi',
         '50% 40%',
         'In rosa, bianco e azzurro. Belli anche da regalare per una nascita.',
+        'gli accappatoi rosa, bianchi e azzurri',
       ),
     ],
   },
@@ -257,16 +293,19 @@ export const storie: Storia[] = [
     id: 'tavola',
     nome: 'Tavola',
     data: '18 ottobre',
+    invito: 'whatsapp',
     foto: [
       fotoStoria(
         'tovaglia-volant',
         '50% 50%',
         'La tovaglia color lino con il volant e il profilo rosso.',
+        'la tovaglia con il volant',
       ),
       fotoStoria(
         'tavola',
         '40% 50%',
         'E la tavola delle domeniche lunghe, quando nessuno ha fretta di alzarsi.',
+        'la tavola delle domeniche',
       ),
     ],
   },
@@ -274,16 +313,19 @@ export const storie: Storia[] = [
     id: 'lenzuola',
     nome: 'Lenzuola',
     data: '15 ottobre',
+    invito: 'whatsapp',
     foto: [
       fotoStoria(
         'lenzuola-beige',
         '50% 45%',
         'Lenzuola color sabbia: stanno bene con il bianco e con il rosa cipria.',
+        'le lenzuola color sabbia',
       ),
       fotoStoria(
         'volant',
         '50% 50%',
         'E le parure bianche con il volant, piegate per colore sugli scaffali.',
+        'le parure con il volant',
       ),
     ],
   },
@@ -692,8 +734,9 @@ export const messaggi = {
   mare: 'Buongiorno, avete ancora qualcosa della collezione mare?',
 };
 
-export function messaggioStoria(storia: Storia): string {
-  return `Buongiorno, ho visto la storia «${storia.nome}» sul sito. `;
+/** Il messaggio WhatsApp della scheda di una storia: il suo nome e il soggetto della foto vista. */
+export function messaggioStoria(storia: Storia, foto: FotoStoria): string {
+  return `Buongiorno, ho visto la storia «${storia.nome}» sul sito: ${foto.soggetto}. `;
 }
 
 /**
