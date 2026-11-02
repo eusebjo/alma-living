@@ -5,11 +5,8 @@ import { GIORNI } from '../../src/content/limits';
 import { messaggioDisponibilita } from '../../src/prova/comune/contatti';
 import { ORARI_PROVA } from '../../src/prova/comune/orari';
 import {
-  altreCollezioni,
-  apertura,
   articoli,
   categorie,
-  collezioni,
   fotoFinestra,
   idSchedaRapida,
   LIMITI_SELEZIONE,
@@ -22,6 +19,7 @@ import {
   sezioni,
   storie,
   testoColori,
+  vetrina,
 } from '../../src/prova/salvia-social/dati';
 import { VARIANTI } from '../../src/prova/varianti';
 
@@ -29,6 +27,13 @@ import { VARIANTI } from '../../src/prova/varianti';
 // WORKERS_CI_BRANCH), che non è indicizzabile: niente JSON-LD, niente sitemap,
 // `noindex` su ogni pagina. La build di lancio si verifica a mano (vedi
 // CLAUDE.md, "Stato di lancio").
+
+/**
+ * Gli attributi di un tag di apertura, fino al `>` che lo chiude: un `>` dentro un
+ * valore tra virgolette non lo chiude (per esempio `sizes="(width > 1023px) …"` o
+ * `data-galleria-salta="(width > 1023px)"`). Da usare al posto di `[^>]*`.
+ */
+const ATTRIBUTI = String.raw`(?:[^>"']|"[^"]*"|'[^']*')*`;
 
 function paginePerFile(cartella = 'dist'): string[] {
   return readdirSync(cartella, { withFileTypes: true }).flatMap((voce) => {
@@ -89,7 +94,9 @@ const INDIRIZZO_ESTERNO = /^(?:https?:)?\/\//i;
  */
 function risorseEsterne(html: string): string[] {
   const trovati: string[] = [];
-  for (const [tag, nome] of html.matchAll(/<(script|img|iframe|link)\b[^>]*>/gi)) {
+  for (const [tag, nome] of html.matchAll(
+    new RegExp(`<(script|img|iframe|link)\\b${ATTRIBUTI}>`, 'gi'),
+  )) {
     const attributo = nome!.toLowerCase() === 'link' ? 'href' : 'src';
     const indirizzo = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(tag)?.[1];
     if (indirizzo === undefined || !INDIRIZZO_ESTERNO.test(indirizzo)) continue;
@@ -285,11 +292,16 @@ describe('llms.txt', () => {
  */
 function valoriAttributo(html: string, attributo: string, tag = '[a-z][a-z0-9-]*'): string[] {
   const valori: string[] = [];
-  for (const [elemento] of html.matchAll(new RegExp(`<${tag}\\b[^>]*>`, 'gi'))) {
+  for (const [elemento] of html.matchAll(new RegExp(`<${tag}\\b${ATTRIBUTI}>`, 'gi'))) {
     const valore = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(elemento)?.[1];
     if (valore !== undefined) valori.push(valore);
   }
   return valori;
+}
+
+/** Quante volte l'attributo `attributo` (con o senza valore) compare nei tag di `testo`. */
+function quanti(testo: string, attributo: string): number {
+  return (testo.match(new RegExp(`\\s${attributo}(?=[\\s=>/])`, 'gi')) ?? []).length;
 }
 
 /**
@@ -351,19 +363,25 @@ function incoerenzeProtocolli(html: string): string[] {
     if (!filtrabili.has(valore)) manca('data-limite', valore, 'data-filtrabile');
     if (!mostraTutti.has(valore)) manca('data-limite', valore, 'data-limite-mostra');
   }
-  // Un link `data-filtro-scegli="<nome>:<id>"` preme il filtro `<id>` che sta
-  // dentro `[data-filtri="<nome>"]`.
-  for (const valore of valoriAttributo(html, 'data-filtro-scegli')) {
-    const due = valore.indexOf(':');
-    const nome = due < 0 ? '' : valore.slice(0, due);
-    const filtro = due < 0 ? '' : valore.slice(due + 1);
-    const presente = contenutiCon(html, 'data-filtri', nome).some((contenuto) =>
-      valoriAttributo(contenuto, 'data-filtro').includes(filtro),
-    );
-    if (!presente) {
-      problemi.add(
-        `data-filtro-scegli="${valore}" senza [data-filtri="${nome}"] con data-filtro="${filtro}"`,
-      );
+  // Galleria: pausa, foto saltate, didascalie, zona di sosta e annuncio valgono
+  // solo dentro una `[data-galleria]` (lo script la cerca con `closest`); e le
+  // didascalie, quando ci sono, sono una per foto, nello stesso ordine.
+  const gallerie = elementiCon(html, 'data-galleria');
+  for (const attributo of [
+    'data-galleria-pausa',
+    'data-galleria-salta',
+    'data-galleria-didascalia',
+    'data-galleria-sosta',
+    'data-galleria-annuncio',
+  ]) {
+    const dentro = gallerie.reduce((somma, galleria) => somma + quanti(galleria, attributo), 0);
+    if (quanti(html, attributo) !== dentro) problemi.add(`${attributo} fuori da una galleria data-galleria`);
+  }
+  for (const galleria of gallerie) {
+    const didascalie = quanti(galleria, 'data-galleria-didascalia');
+    const foto = quanti(galleria, 'data-galleria-foto');
+    if (didascalie > 0 && didascalie !== foto) {
+      problemi.add(`${didascalie} data-galleria-didascalia per ${foto} data-galleria-foto nella stessa galleria`);
     }
   }
   // Un pulsante colore sta dentro un contenitore `data-colori`; e la foto che
@@ -390,17 +408,19 @@ function incoerenzeProtocolli(html: string): string[] {
 }
 
 /**
- * Il contenuto (fino al tag di chiusura corrispondente) di ogni elemento di
- * `html` con `attributo="valore"`.
+ * Ogni elemento di `html` il cui tag di apertura soddisfa `scegli`: il tag di
+ * apertura e il contenuto, fino al tag di chiusura corrispondente.
  */
-function contenutiCon(html: string, attributo: string, valore: string): string[] {
-  const contenuti: string[] = [];
-  for (const apertura of html.matchAll(/<([a-z][a-z0-9-]*)\b[^>]*>/gi)) {
-    const trovato = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i').exec(apertura[0])?.[1];
-    if (trovato !== valore) continue;
+function elementiDove(
+  html: string,
+  scegli: (apertura: string) => boolean,
+): { apertura: string; contenuto: string }[] {
+  const elementi: { apertura: string; contenuto: string }[] = [];
+  for (const apertura of html.matchAll(new RegExp(`<([a-z][a-z0-9-]*)\\b${ATTRIBUTI}>`, 'gi'))) {
+    if (!scegli(apertura[0])) continue;
     const tag = apertura[1]!;
     const inizio = apertura.index + apertura[0].length;
-    const tagStesso = new RegExp(`<(/?)${tag}\\b[^>]*>`, 'gi');
+    const tagStesso = new RegExp(`<(/?)${tag}\\b${ATTRIBUTI}>`, 'gi');
     tagStesso.lastIndex = inizio;
     let profondita = 1;
     let fine = html.length;
@@ -411,9 +431,30 @@ function contenutiCon(html: string, attributo: string, valore: string): string[]
         break;
       }
     }
-    contenuti.push(html.slice(inizio, fine));
+    elementi.push({ apertura: apertura[0], contenuto: html.slice(inizio, fine) });
   }
-  return contenuti;
+  return elementi;
+}
+
+/**
+ * Il contenuto (fino al tag di chiusura corrispondente) di ogni elemento di
+ * `html` con `attributo="valore"`.
+ */
+function contenutiCon(html: string, attributo: string, valore: string): string[] {
+  const conValore = new RegExp(`\\s${attributo}=["']?([^"'\\s>]*)`, 'i');
+  return elementiDove(html, (apertura) => conValore.exec(apertura)?.[1] === valore).map(
+    (e) => e.contenuto,
+  );
+}
+
+/**
+ * Ogni elemento di `html` che ha l'attributo `attributo`, con o senza valore: il
+ * tag di apertura seguito dal contenuto.
+ */
+function elementiCon(html: string, attributo: string): string[] {
+  return elementiDove(html, (apertura) => quanti(apertura, attributo) > 0).map(
+    (e) => e.apertura + e.contenuto,
+  );
 }
 
 describe('controllo dei rimandi tra i protocolli di markup', () => {
@@ -431,16 +472,17 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<div data-interruttore></div>',
     '<button data-interruttore>x</button>',
     '<li data-filtrabile="selezione" data-categorie="letto">Lenzuola</li>',
-    // un link che sceglie un filtro vuole il contenitore e, dentro, quel filtro
-    '<a href="#s" data-filtro-scegli="selezione:letto">Letto</a>',
-    '<a href="#s" data-filtro-scegli="selezione:letto"></a>' +
-      '<div data-filtri="selezione"><button data-filtro="bagno">Bagno</button></div>',
-    '<a href="#s" data-filtro-scegli="altri:letto"></a>' +
-      '<div data-filtri="selezione"><button data-filtro="letto">Letto</button></div>',
-    '<a href="#s" data-filtro-scegli="selezione:letto"></a><div data-filtri="selezione"></div>' +
-      '<button data-filtro="letto">Letto</button>',
-    '<a href="#s" data-filtro-scegli="letto"></a>' +
-      '<div data-filtri="letto"><button data-filtro="letto">Letto</button></div>',
+    // pausa, foto saltate, didascalie, sosta e annuncio vogliono la loro galleria
+    '<button type="button" data-galleria-pausa aria-pressed="false">Pausa</button>',
+    '<ul><li data-galleria-foto data-galleria-salta="(width > 1023px)"></li></ul>',
+    '<p data-galleria-annuncio><span data-galleria-didascalia>Coperta</span></p>',
+    '<div data-galleria-sosta><div data-galleria><div data-galleria-foto></div></div></div>',
+    '<div data-galleria><div data-galleria-foto></div></div><p data-galleria-annuncio></p>',
+    // una didascalia per foto, nella stessa galleria
+    '<div data-galleria><div data-galleria-foto></div><div data-galleria-foto></div>' +
+      '<p data-galleria-annuncio><span data-galleria-didascalia>a</span></p></div>',
+    '<div data-galleria><div data-galleria-foto></div></div>' +
+      '<div data-galleria><span data-galleria-didascalia>a</span></div>',
     // "Mostra tutti" vuole il suo limite; il limite vuole le voci e il pulsante
     '<button data-limite-mostra="s" hidden>Mostra tutti</button>',
     '<ul data-limite="s" data-limite-regole="[]"></ul><button data-limite-mostra="s" hidden></button>',
@@ -487,10 +529,14 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
       '<p data-filtro-vuoto="selezione" hidden>Nessun articolo</p>',
     // data-filtro (il pulsante) e data-post (il dialog) da soli non sono rimandi
     '<button data-filtro="letto">Letto</button><dialog data-post="x"></dialog>',
-    // il filtro scelto dal link sta dentro il suo contenitore, anche dopo altri elementi
-    '<a href="#s" data-filtro-scegli="selezione:letto">Letto</a>' +
-      '<div data-filtri="selezione"><button data-filtro="tutti">Tutto</button>' +
-      '<div><span>x</span></div><button class="f" data-filtro=letto>Letto</button></div>',
+    // una galleria che gira da sola, con tutto dentro: un ">" in un valore non chiude il tag
+    '<section data-galleria data-galleria-auto="5000"><div data-galleria-sosta>' +
+      '<button type="button" data-galleria-pausa aria-pressed="false">Pausa</button>' +
+      '<ul><li data-galleria-foto></li><li data-galleria-foto data-galleria-salta="(width > 1023px)" hidden></li></ul>' +
+      '<p data-galleria-annuncio><span data-galleria-didascalia>a</span><span data-galleria-didascalia hidden>b</span></p>' +
+      '</div></section>',
+    // una galleria senza didascalie non ne chiede
+    '<div data-galleria><div data-galleria-foto></div><div data-galleria-foto></div></div>',
     '<ul data-limite="s" data-limite-regole="[]"><li data-filtrabile="s" data-categorie="a">x</li></ul>' +
       '<div data-filtri="s"><button data-filtro="a">A</button></div><p data-filtro-vuoto="s" hidden></p>' +
       '<button data-limite-mostra="s" hidden><span data-limite-testo></span></button>',
@@ -547,7 +593,7 @@ describe('pagine di prova (/prova/)', () => {
     });
 
     it('ogni immagine ha un alt, e una foto servita da /_astro/', () => {
-      for (const [tag] of html().matchAll(/<img\b[^>]*>/gi)) {
+      for (const [tag] of html().matchAll(new RegExp(`<img\\b${ATTRIBUTI}>`, 'gi'))) {
         // Un'immagine decorativa ha l'alt vuoto, che Astro scrive senza valore (`alt`).
         expect(tag, tag).toMatch(/\salt(?:=|(?=[\s/>]))/i);
         const src = /\ssrc=["']?([^"'\s>]*)/i.exec(tag)?.[1];
@@ -617,7 +663,9 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   /** I tag di apertura `<nome …>` di `testo` che hanno l'attributo `attributo`. */
   const tagIn = (testo: string, nome: string, attributo: string) =>
     [
-      ...testo.matchAll(new RegExp(`<${nome}\\b[^>]*\\s${attributo}(?=[\\s=>])[^>]*>`, 'gi')),
+      ...testo.matchAll(
+        new RegExp(`<${nome}\\b${ATTRIBUTI}\\s${attributo}(?=[\\s=>])${ATTRIBUTI}>`, 'gi'),
+      ),
     ].map((m) => m[0]);
 
   /** I tag di apertura `<nome …>` della pagina che hanno l'attributo `attributo`. */
@@ -701,12 +749,13 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
-  it('le sezioni si susseguono: collezioni, selezione, diario, negozio', () => {
-    const posizioni = ['collezioni', 'selezione', 'diario', 'negozio'].map((id) =>
+  it('le sezioni si susseguono: apertura, selezione, diario, negozio; "Per ogni stanza" non c’è più', () => {
+    const posizioni = ['apertura', 'selezione', 'diario', 'negozio'].map((id) =>
       html().indexOf(`id="${id}"`),
     );
     for (const p of posizioni) expect(p).toBeGreaterThanOrEqual(0);
     expect([...posizioni].sort((a, b) => a - b)).toEqual(posizioni);
+    expect(html()).not.toContain('id="collezioni"');
   });
 
   it("header, menu del telefono e piè di pagina elencano le sezioni nell'ordine della pagina", () => {
@@ -973,12 +1022,9 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(css).not.toContain(' of [data-filtrabile]');
   });
 
-  it('i riquadri delle collezioni e le pillole scelgono il loro filtro e portano alla selezione', () => {
-    const link = tagCon('a', 'data-filtro-scegli');
-    expect(link.map((t) => valore(t, 'data-filtro-scegli'))).toEqual(
-      [...collezioni, ...altreCollezioni].map((c) => `selezione:${c.id}`),
-    );
-    for (const tag of link) expect(valore(tag, 'href')).toBe('#selezione');
+  it('nessun link sceglie più un filtro da fuori, e nessuno porta a #collezioni', () => {
+    expect(html()).not.toMatch(/\sdata-filtro-scegli(?=[\s=>])/);
+    expect(html()).not.toContain('href="#collezioni"');
   });
 
   it('per ogni articolo, un link WhatsApp con il messaggio di disponibilità già scritto', () => {
@@ -1105,51 +1151,166 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(piede).toContain('href="tel:+393345205451"');
     expect(piede).toMatch(/href="https:\/\/wa\.me\/393345205451(?:\?text=[^"]*)?"/);
     expect(piede).toContain('href="https://www.instagram.com/almaliving.viaricasoli/"');
-    for (const ancora of ['#collezioni', '#diario', '#selezione', '#negozio']) {
+    for (const ancora of ['#diario', '#selezione', '#negozio']) {
       expect(piede, ancora).toContain(`href="${ancora}"`);
     }
   });
 
-  /** I tag `<img>` delle diapositive dell'apertura, nell'ordine. */
-  const fotoApertura = () =>
-    [
-      ...(contenutiCon(html(), 'id', 'apertura')[0] ?? '').matchAll(
-        /<li\b[^>]*\sdata-galleria-foto\b[^>]*>([\s\S]*?)<\/li>/gi,
-      ),
-    ].map((m) => /<img\b[^>]*>/i.exec(m[1]!)?.[0] ?? '');
+  /** Il contenuto di `#apertura`. */
+  const dentroApertura = () => contenutiCon(html(), 'id', 'apertura')[0] ?? '';
+
+  /** I tag `<nome …>`, anche con un `>` dentro un valore tra virgolette (`sizes`, `data-galleria-salta`). */
+  const tagRe = (nome: string, flag = 'gi') => new RegExp(`<${nome}\\b${ATTRIBUTI}>`, flag);
+
+  /** Il testo di un frammento: senza tag, decodificato, con gli spazi ridotti a uno. */
+  const soloTesto = (frammento: string) =>
+    normalizza(
+      frammento.replace(tagRe('[a-z][a-z0-9-]*'), ' ').replace(/<\/[a-z0-9-]+>/gi, ' '),
+    ).trim();
+
+  /** Le foto della cornice dell'apertura, nell'ordine: il tag `<li>` e la sua `<img>`. */
+  const fotoCornice = () =>
+    elementiDove(
+      dentroApertura(),
+      (apertura) => /^<li\b/i.test(apertura) && quanti(apertura, 'data-galleria-foto') > 0,
+    ).map(({ apertura, contenuto }) => ({
+      li: apertura,
+      img: tagRe('img', 'i').exec(contenuto)?.[0] ?? '',
+    }));
+
+  const nascosto = (tag: string) => /\shidden(?=[\s=>/])/.test(tag);
 
   it("l'apertura è una galleria che si trascina: un'area sola, che contiene le foto", () => {
     const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
     expect(sezione).toMatch(/\sdata-galleria(?=[\s=>])/);
-    const dentro = contenutiCon(html(), 'id', 'apertura')[0] ?? '';
+    const dentro = dentroApertura();
     expect(dentro.match(/\sdata-galleria-trascina(?=[\s=>])/g) ?? []).toHaveLength(1);
     const area = dentro.search(/\sdata-galleria-trascina(?=[\s=>])/);
     expect(area).toBeLessThan(dentro.search(/\sdata-galleria-foto(?=[\s=>])/));
   });
 
-  it("solo la prima foto d'apertura si carica subito e con priorità alta", () => {
-    const immagini = [...html().matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
-    const prioritarie = immagini.filter((t) => /\sfetchpriority="high"/.test(t));
-    expect(prioritarie).toHaveLength(1);
-    expect(prioritarie[0]).toMatch(/\sloading="eager"/);
-    expect(prioritarie[0]).toBe(fotoApertura()[0]);
-    // Delle altre immagini, si caricano subito solo i loghi in alto e le altre
-    // foto dell'apertura.
-    const altreApertura = fotoApertura().slice(1);
-    const subito = immagini.filter(
-      (t) => !/\sloading="lazy"/.test(t) && !/\sfetchpriority=/.test(t),
+  it("claim e frase: l'h1 dell'apertura è il claim, e la pagina ha la frase lunga e la corta", () => {
+    const h1 = elementiDove(dentroApertura(), (apertura) => /^<h1\b/i.test(apertura));
+    expect(h1).toHaveLength(1);
+    expect(soloTesto(h1[0]!.contenuto)).toBe('Rendiamo la tua casa ancora più casa.');
+    expect(valore(h1[0]!.apertura, 'id')).toBe('apertura-titolo');
+    const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
+    expect(valore(sezione, 'aria-labelledby')).toBe('apertura-titolo');
+    const testo = soloTesto(html());
+    expect(testo).toContain(
+      'Biancheria, profumi e dettagli che scaldano l’ambiente, scelti uno per uno per il negozio di Via Ricasoli, nell’isola pedonale di Livorno.',
     );
-    for (const tag of subito) {
-      if (!altreApertura.includes(tag)) expect(tag).toMatch(/\salt="Alma Living"/);
+    expect(testo).toContain(
+      'Biancheria, profumi e dettagli scelti uno per uno, nel negozio di Via Ricasoli a Livorno.',
+    );
+  });
+
+  it("l'apertura è una galleria che gira da sola: 12 foto, 7 solo sotto i 1024 px, 12 didascalie, 5 tacche, il contatore", () => {
+    const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
+    expect(valore(sezione, 'data-galleria-auto')).toBe('5000');
+    // Lo stato lo scrive lo script: nell'HTML non c'è.
+    expect(sezione + dentroApertura()).not.toMatch(
+      /\sdata-galleria-(?:ferma|avviata|in-sosta)(?=[\s=>])/,
+    );
+
+    const foto = fotoCornice();
+    expect(foto.map((f) => valore(f.img, 'alt'))).toEqual(vetrina.map((p) => p.scatto.alt));
+    expect(foto.map((f) => nascosto(f.li))).toEqual(vetrina.map((_, i) => i > 0));
+    const saltate = foto.filter((f) => valore(f.li, 'data-galleria-salta') !== undefined);
+    expect(saltate).toHaveLength(7);
+    for (const f of saltate) expect(valore(f.li, 'data-galleria-salta')).toBe('(width > 1023px)');
+    expect(foto.map((f) => valore(f.li, 'data-galleria-salta') === undefined)).toEqual(
+      vetrina.map((p) => p.grande),
+    );
+
+    const annunci = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-annuncio') > 0);
+    expect(annunci).toHaveLength(1);
+    const didascalie = elementiDove(
+      annunci[0]!.contenuto,
+      (a) => quanti(a, 'data-galleria-didascalia') > 0,
+    );
+    expect(didascalie.map((d) => soloTesto(d.contenuto))).toEqual(vetrina.map((p) => p.nome));
+    expect(didascalie.map((d) => nascosto(d.apertura))).toEqual(vetrina.map((_, i) => i > 0));
+
+    const tacche = tagIn(dentroApertura(), 'button', 'data-galleria-punto');
+    expect(tacche.map((t) => valore(t, 'data-galleria-punto'))).toEqual(['0', '1', '6', '10', '11']);
+    expect(tacche.map((t) => valore(t, 'aria-label'))).toEqual(
+      [0, 1, 6, 10, 11].map((n, k) => `${vetrina[n]!.nome}, foto ${k + 1} di 5`),
+    );
+
+    const contatori = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-contatore') > 0);
+    expect(contatori).toHaveLength(1);
+    expect(soloTesto(contatori[0]!.contenuto)).toBe('1 di 12');
+  });
+
+  it('le foto della cornice: misure, e posizione del computer e del telefono', () => {
+    const foto = fotoCornice();
+    expect(foto).toHaveLength(vetrina.length);
+    foto.forEach((f, i) => {
+      const prodotto = vetrina[i]!;
+      expect(valore(f.img, 'sizes'), prodotto.nome).toBe('(width > 1023px) min(61vw, 872px), 100vw');
+      const stile = valore(f.li, 'style') ?? '';
+      expect(stile, prodotto.nome).toContain(`--pos-computer: ${prodotto.scatto.posizione}`);
+      expect(stile, prodotto.nome).toContain(`--pos-telefono: ${prodotto.posizioneTelefono}`);
+      expect(valore(f.img, 'style'), prodotto.nome).toContain('object-position: var(--posizione)');
+    });
+  });
+
+  it("il primo elemento attivabile dell'apertura è la pausa, con i suoi due testi", () => {
+    const primo = new RegExp(`<(?:a|button)\\b${ATTRIBUTI}>`, 'i').exec(dentroApertura())?.[0] ?? '';
+    expect(primo).toMatch(/^<button\b/);
+    expect(quanti(primo, 'data-galleria-pausa')).toBe(1);
+    expect(valore(primo, 'aria-pressed')).toBe('false');
+    const pausa = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-pausa') > 0);
+    expect(pausa).toHaveLength(1);
+    const testo = soloTesto(pausa[0]!.contenuto);
+    expect(testo).toContain('Metti in pausa le foto');
+    expect(testo).toContain('Riprendi le foto');
+  });
+
+  it('la pillola della pausa ha i due testi, per il dito e per il mouse', () => {
+    const testo = soloTesto(dentroApertura());
+    expect(testo).toContain('In pausa · tocca per riprendere');
+    expect(testo).toContain('In pausa · clic per riprendere');
+  });
+
+  it('le miniature sono decorative: due colonne nascoste ai lettori di schermo, con le foto 3-6 e 8-10 due volte', () => {
+    const colonne = elementiDove(dentroApertura(), (a) => valore(a, 'aria-hidden') === 'true').filter(
+      (e) => /<img\b/i.test(e.contenuto),
+    );
+    const immagini = colonne.map((c) => [...c.contenuto.matchAll(tagRe('img'))].map((m) => m[0]));
+    expect(immagini.map((lista) => lista.length)).toEqual([8, 6]);
+    const sinistra = [2, 3, 4, 5].map((i) => vetrina[i]!.scatto.foto);
+    const destra = [7, 8, 9].map((i) => vetrina[i]!.scatto.foto);
+    const nomi = immagini.map((lista) =>
+      lista.map((t) => /^\/_astro\/([a-z0-9-]+)\./.exec(valore(t, 'src') ?? '')?.[1]),
+    );
+    expect(nomi).toEqual([
+      [...sinistra, ...sinistra],
+      [...destra, ...destra],
+    ]);
+    for (const tag of immagini.flat()) {
+      expect(tag).toMatch(/\salt(?:=""|(?=[\s/>]))/);
+      expect(tag).toMatch(/\sloading="lazy"/);
+      expect(valore(tag, 'sizes')).toBe('204px');
     }
   });
 
-  it("le altre foto d'apertura si caricano subito, senza priorità: al primo cambio sono già pronte", () => {
-    const foto = fotoApertura();
-    expect(foto).toHaveLength(apertura.length);
+  it('solo la prima foto della cornice si carica subito, con priorità alta; le altre aspettano', () => {
+    const immagini = [...html().matchAll(tagRe('img'))].map((m) => m[0]);
+    const prioritarie = immagini.filter((t) => /\sfetchpriority="high"/.test(t));
+    expect(prioritarie).toHaveLength(1);
+    expect(prioritarie[0]).toMatch(/\sloading="eager"/);
+    const foto = fotoCornice().map((f) => f.img);
+    expect(foto).toHaveLength(vetrina.length);
+    expect(prioritarie[0]).toBe(foto[0]);
     for (const tag of foto.slice(1)) {
-      expect(tag).toMatch(/\sloading="eager"/);
+      expect(tag).toMatch(/\sloading="lazy"/);
       expect(tag).not.toMatch(/\sfetchpriority=/);
+    }
+    // A parte la prima foto della cornice e i loghi in alto, nessuna immagine si carica subito.
+    for (const tag of immagini.filter((t) => !/\sloading="lazy"/.test(t) && t !== foto[0])) {
+      expect(tag).toMatch(/\salt="Alma Living"/);
     }
   });
 });

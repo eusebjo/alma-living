@@ -2,11 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  altreCollezioni,
-  apertura,
   articoli,
   categorie,
-  collezioni,
   delData,
   fotoDeiFiltri,
   fotoDelNegozio,
@@ -22,6 +19,7 @@ import {
   storie,
   testoColori,
   type Scatto,
+  vetrina,
 } from '../../src/prova/salvia-social/dati';
 
 // I contenuti di esempio di Salvia social: le foto devono esistere tra quelle
@@ -33,9 +31,7 @@ const elenco = (JSON.parse(readFileSync('scripts/foto-prova/elenco.json', 'utf8'
 
 const scatti: Scatto[] = [
   fotoDelNegozio,
-  ...apertura,
-  ...collezioni,
-  ...altreCollezioni,
+  ...vetrina.map((p) => p.scatto),
   ...Object.values(fotoDeiFiltri),
   ...Object.values(fotoFinestra),
   ...articoli.flatMap((a) => a.scatti),
@@ -94,13 +90,14 @@ describe('dati di Salvia social', () => {
     for (const voce of post) expect(voce.foto.length).toBeGreaterThan(0);
   });
 
-  it('articoli e collezioni usano le categorie dei filtri, e almeno un filtro resta vuoto', () => {
+  it('articoli e cerchietti dei filtri usano le categorie dei filtri, e almeno un filtro resta vuoto', () => {
     const ids = categorie.map((c) => c.id);
     for (const articolo of articoli) {
       expect(articolo.categorie.length).toBeGreaterThan(0);
       for (const categoria of articolo.categorie) expect(ids).toContain(categoria);
     }
-    for (const stanza of [...collezioni, ...altreCollezioni]) expect(ids).toContain(stanza.id);
+    // Ogni chiave dei cerchietti è "tutti" o una categoria.
+    for (const chiave of Object.keys(fotoDeiFiltri)) expect(['tutti', ...ids]).toContain(chiave);
     // Il caso "filtro senza articoli" della tavola (Mare) deve restare provabile.
     expect(ids.filter((id) => !articoli.some((a) => a.categorie.includes(id)))).toEqual(['mare']);
   });
@@ -154,12 +151,22 @@ describe('dati di Salvia social', () => {
     expect(articoli.length).toBeGreaterThan(6);
   });
 
-  it('ogni filtro ha il cerchietto foto della sua collezione, e "Tutto" lo scaffale', () => {
+  it('ogni filtro ha il cerchietto foto della sua stanza, e "Tutto" lo scaffale', () => {
     expect(Object.keys(fotoDeiFiltri).sort()).toEqual(['tutti', ...categorie.map((c) => c.id)].sort());
-    expect(fotoDeiFiltri.tutti).toMatchObject({ foto: 'scaffale', posizione: '50% 45%' });
-    for (const c of [...collezioni, ...altreCollezioni]) {
-      expect(fotoDeiFiltri[c.id], c.id).toMatchObject({ foto: c.foto, posizione: c.posizione });
-    }
+    expect(
+      Object.fromEntries(
+        Object.entries(fotoDeiFiltri).map(([id, s]) => [id, [s.foto, s.posizione]]),
+      ),
+    ).toEqual({
+      tutti: ['scaffale', '50% 45%'],
+      letto: ['camera-rosa', '50% 55%'],
+      bagno: ['bagno', '50% 58%'],
+      bimbi: ['accappatoi-appesi', '50% 24%'],
+      tavola: ['tavola', '40% 55%'],
+      profumi: ['candele', '50% 60%'],
+      natale: ['gnomi', '50% 45%'],
+      mare: ['mare', '50% 60%'],
+    });
   });
 
   it('le coppie di scatti sono quelle della tavola', () => {
@@ -240,8 +247,9 @@ describe('dati di Salvia social', () => {
     expect(per('saponi')).toBe('Profumi per la casa');
   });
 
-  it('le sezioni seguono la pagina: il diario dopo la selezione', () => {
-    expect(sezioni.map((s) => s.href)).toEqual(['#collezioni', '#selezione', '#diario', '#negozio']);
+  it('le sezioni seguono la pagina: «Collezioni» porta agli scaffali, il diario dopo', () => {
+    expect(sezioni.map((s) => s.href)).toEqual(['#selezione', '#diario', '#negozio']);
+    expect(sezioni.map((s) => s.nome)).toEqual(['Collezioni', 'Dal negozio', 'Il negozio']);
   });
 
   it('il messaggio WhatsApp di un post dice di che cosa parla, con la preposizione', () => {
@@ -269,9 +277,31 @@ describe('dati di Salvia social', () => {
     for (const voce of post) expect(messaggioPost(voce), voce.id).not.toMatch(/post del (?:8|11) /);
   });
 
-  it("l'apertura ha tre foto, ognuna con la sua frase", () => {
-    expect(apertura).toHaveLength(3);
-    for (const diapositiva of apertura) expect(diapositiva.testo.length).toBeGreaterThan(20);
+  it('la vetrina ha i 12 prodotti della sequenza, cinque grandi', () => {
+    expect(vetrina.map((p) => p.nome)).toEqual([
+      'Lenzuola e copriletto a righe rosa', 'Coperta in maglia', 'Plaid Abbracciami',
+      'Asciugamano con casetta', 'Lenzuola color sabbia', 'Accappatoio con orsetto',
+      'Tovaglia con volant', 'Parure con volant', 'Candele nelle ciotole di legno',
+      'Copriletto rosso con volant', 'Cuscini delle feste', 'Saponi e profumi',
+    ]);
+    expect(vetrina.map((p, i) => (p.grande ? i : -1)).filter((i) => i >= 0)).toEqual([0, 1, 6, 10, 11]);
+  });
+
+  it('la vetrina: foto e posizioni, computer e telefono, della sequenza fissa', () => {
+    expect(vetrina.map((p) => [p.scatto.foto, p.scatto.posizione, p.posizioneTelefono])).toEqual([
+      ['righe-rosa', '50% 24%', '50% 40%'],
+      ['coperta', '50% 52%', '50% 50%'],
+      ['abbracciami-verde', '50% 50%', '50% 50%'],
+      ['asciugamano-rosso', '50% 50%', '50% 50%'],
+      ['lenzuola-beige', '50% 40%', '50% 40%'],
+      ['neonato', '50% 40%', '50% 40%'],
+      ['tovaglia-volant', '50% 45%', '50% 50%'],
+      ['volant', '50% 50%', '50% 50%'],
+      ['candele', '50% 60%', '50% 60%'],
+      ['copriletto-rosso', '50% 50%', '50% 50%'],
+      ['ig-cuscini-1', '50% 62%', '50% 55%'],
+      ['bagno-prodotti', '50% 62%', '50% 78%'],
+    ]);
   });
 });
 

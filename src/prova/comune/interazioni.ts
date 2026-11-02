@@ -25,10 +25,7 @@
 //   (`aria-pressed`; `tutti` non filtra); voci `[data-filtrabile="<nome>"]` con
 //   `data-categorie="a b"`; `[data-filtro-vuoto="<nome>"]` si vede solo con zero
 //   voci. Un filtro diverso da `tutti` mostra anche le voci piegate da "Mostra
-//   altri" e ne nasconde il pulsante. Da fuori dei filtri, un link
-//   `a[href="#<sezione>"][data-filtro-scegli="<nome>:<id>"]` preme il pulsante
-//   `[data-filtri="<nome>"] [data-filtro="<id>"]` come un clic e lascia andare il
-//   link alla sezione (senza JavaScript ci porta e basta).
+//   altri" e ne nasconde il pulsante.
 // - Interruttore: `button[data-interruttore]` con `aria-pressed="true|false"`: un
 //   clic ne inverte il valore. Il resto lo fa il CSS della variante, che legge lo
 //   stato (per esempio con `:has()` sul contenitore): lo script non sposta nulla.
@@ -411,20 +408,6 @@ function scegliFiltro(c: Contesto, bottone: HTMLElement): void {
     altro.setAttribute('aria-pressed', String(altro === bottone));
   }
   applicaFiltri(c);
-}
-
-/** Un link `data-filtro-scegli="<nome>:<id>"`: preme quel filtro; il link poi fa il suo. */
-function scegliFiltroDaLink(c: Contesto, link: HTMLElement): void {
-  const valore = link.dataset.filtroScegli ?? '';
-  const due = valore.indexOf(':');
-  if (due < 0) return;
-  const contenitore = c.radice.querySelector<HTMLElement>(
-    conValore('data-filtri', valore.slice(0, due)),
-  );
-  const bottone = contenitore?.querySelector<HTMLElement>(
-    conValore('data-filtro', valore.slice(due + 1)),
-  );
-  if (bottone) scegliFiltro(c, bottone);
 }
 
 function mostraAltri(c: Contesto, bottone: HTMLElement): void {
@@ -915,8 +898,6 @@ const AZIONI: [
   [APRITORI, alternaPannello],
   ['[data-interruttore]', (_c, el) => alternaInterruttore(el)],
   ['[data-filtro]', scegliFiltro],
-  // Niente preventDefault: il link porta comunque alla sua sezione.
-  ['[data-filtro-scegli]', scegliFiltroDaLink],
   ['[data-mostra-altri]', mostraAltri],
   ['[data-limite-mostra]', mostraTutti],
   ['[data-galleria-prec]', (c, el) => spostaGalleria(c, el, -1)],

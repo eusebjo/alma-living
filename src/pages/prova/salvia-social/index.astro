@@ -1,8 +1,9 @@
 ---
-// Variante di prova "Salvia social" (versione 3, tavola DiarioFascia.dc.html):
-// bianco e verde salvia, storie sotto l'header, apertura come Diario, selezione,
-// diario del negozio con griglia di post e fascia Instagram. Componenti e dati in
-// src/prova/salvia-social/.
+// Variante di prova "Salvia social" (versione 3, tavola DiarioFascia.dc.html, con
+// l'apertura "La foto grande" della tavola FotoGrande2.dc.html): bianco e verde
+// salvia, storie sotto l'header, apertura con le foto dei prodotti che scorrono da
+// sole, selezione, diario del negozio con griglia di post e fascia Instagram.
+// Componenti e dati in src/prova/salvia-social/.
 import { getImage } from 'astro:assets';
 import { getEntry } from 'astro:content';
 import Interazioni from '../../../prova/comune/Interazioni.astro';
@@ -12,7 +13,6 @@ import grana from '../../../prova/comune/grana.png';
 import { datiNegozio } from '../../../prova/comune/negozio';
 import Apertura from '../../../prova/salvia-social/Apertura.astro';
 import BarraTelefono from '../../../prova/salvia-social/BarraTelefono.astro';
-import Collezioni from '../../../prova/salvia-social/Collezioni.astro';
 import DialogStorie from '../../../prova/salvia-social/DialogStorie.astro';
 import Diario from '../../../prova/salvia-social/Diario.astro';
 import FasciaInstagram from '../../../prova/salvia-social/FasciaInstagram.astro';
@@ -42,8 +42,7 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
     <Testata negozio={negozio} />
     <FilaStorie />
     <main>
-      <Apertura negozio={negozio} />
-      <Collezioni />
+      <Apertura />
       <Selezione negozio={negozio} />
       <Diario negozio={negozio} />
       <FasciaInstagram negozio={negozio} />

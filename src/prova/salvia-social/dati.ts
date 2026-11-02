@@ -1,9 +1,10 @@
-// Contenuti della variante Salvia social. Apertura, storie, collezioni e selezione
-// sono esempi trascritti da `renderVals()` della tavola `SalviaSocial.dc.html`
-// (tela di Claude Design) e aggiornati alla versione 3, la tavola
-// `DiarioFascia.dc.html` (messaggi dei post con la preposizione articolata, diario
-// dopo la selezione). I post del diario sono invece i 13 post veri del profilo
-// Instagram di Alma Living (didascalie senza emoji né promozioni scadute).
+// Contenuti della variante Salvia social. Storie e selezione sono esempi
+// trascritti da `renderVals()` della tavola `SalviaSocial.dc.html` (tela di Claude
+// Design) e aggiornati alla versione 3, la tavola `DiarioFascia.dc.html` (messaggi
+// dei post con la preposizione articolata, diario dopo la selezione). La vetrina
+// dell'apertura è la sequenza fissa della tavola `FotoGrande2.dc.html` ("La foto
+// grande", 2 novembre 2026). I post del diario sono invece i 13 post veri del
+// profilo Instagram di Alma Living (didascalie senza emoji né promozioni scadute).
 // Le foto sono indicate per nome (`src/prova/foto/<nome>.jpg`, vedi
 // `scripts/foto-prova/elenco.json`); i componenti le passano a `foto()`.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
@@ -80,10 +81,12 @@ function scatto(foto: NomeFoto, posizione = '50% 50%'): Scatto {
   return { foto, alt: ALT[foto], posizione };
 }
 
-/** Le sezioni della pagina, per la navigazione dell'header e del piè di pagina. */
+/**
+ * Le sezioni della pagina, per la navigazione dell'header e del piè di pagina.
+ * Le collezioni sono i filtri degli scaffali: «Collezioni» porta alla selezione.
+ */
 export const sezioni = [
-  { nome: 'Collezioni', href: '#collezioni' },
-  { nome: 'Selezione', href: '#selezione' },
+  { nome: 'Collezioni', href: '#selezione' },
   { nome: 'Dal negozio', href: '#diario' },
   { nome: 'Il negozio', href: '#negozio' },
 ] as const;
@@ -91,28 +94,47 @@ export const sezioni = [
 /** La foto dello scaffale nella sezione del negozio. */
 export const fotoDelNegozio: Scatto = scatto('scaffale');
 
-// --- Apertura: le tre foto che scorrono, ognuna con la sua frase ---
+// --- Apertura: la vetrina, dodici prodotti in un ordine fisso ---
 
-export interface Diapositiva extends Scatto {
-  testo: string;
+export interface ProdottoInVetrina {
+  nome: string;
+  /** Nella cornice del computer (le cinque foto più larghe). */
+  grande: boolean;
+  /** Lo scatto: `posizione` è quella del computer. */
+  scatto: Scatto;
+  /** `object-position` sul telefono e sul tablet. */
+  posizioneTelefono: string;
 }
 
-export const apertura: Diapositiva[] = [
-  {
-    ...scatto('righe-rosa', '50% 34%'),
-    testo:
-      'In vetrina oggi c’è la camera a righe rosa: lenzuola, federe e copriletto abbinati. Dal vivo il rosa è ancora più delicato.',
-  },
-  {
-    ...scatto('letto-giardino', '50% 62%'),
-    testo:
-      'Abbiamo portato un letto in giardino per fotografare le lenzuola bianche nuove. In negozio le trovate piegate, pronte da portare a casa.',
-  },
-  {
-    ...scatto('trapunta'),
-    testo:
-      'Il trapuntato bianco visto da vicino: leggero, caldo il giusto, perfetto per le sere di fine ottobre.',
-  },
+function inVetrina(
+  nome: string,
+  foto: NomeFoto,
+  posizione: string,
+  posizioneTelefono: string,
+  grande = false,
+): ProdottoInVetrina {
+  return { nome, grande, scatto: scatto(foto, posizione), posizioneTelefono };
+}
+
+/**
+ * I dodici prodotti dell'apertura, nell'ordine in cui si sfogliano. Sotto i 1024
+ * px la cornice li mostra tutti; sul computer la cornice ha solo i cinque
+ * `grande` e le due colonne di miniature gli altri sette (3-6 a sinistra, 8-10 a
+ * destra), nello stesso ordine.
+ */
+export const vetrina: ProdottoInVetrina[] = [
+  inVetrina('Lenzuola e copriletto a righe rosa', 'righe-rosa', '50% 24%', '50% 40%', true),
+  inVetrina('Coperta in maglia', 'coperta', '50% 52%', '50% 50%', true),
+  inVetrina('Plaid Abbracciami', 'abbracciami-verde', '50% 50%', '50% 50%'),
+  inVetrina('Asciugamano con casetta', 'asciugamano-rosso', '50% 50%', '50% 50%'),
+  inVetrina('Lenzuola color sabbia', 'lenzuola-beige', '50% 40%', '50% 40%'),
+  inVetrina('Accappatoio con orsetto', 'neonato', '50% 40%', '50% 40%'),
+  inVetrina('Tovaglia con volant', 'tovaglia-volant', '50% 45%', '50% 50%', true),
+  inVetrina('Parure con volant', 'volant', '50% 50%', '50% 50%'),
+  inVetrina('Candele nelle ciotole di legno', 'candele', '50% 60%', '50% 60%'),
+  inVetrina('Copriletto rosso con volant', 'copriletto-rosso', '50% 50%', '50% 50%'),
+  inVetrina('Cuscini delle feste', 'ig-cuscini-1', '50% 62%', '50% 55%', true),
+  inVetrina('Saponi e profumi', 'bagno-prodotti', '50% 62%', '50% 78%', true),
 ];
 
 // --- Storie ---
@@ -268,7 +290,7 @@ export const storie: Storia[] = [
   },
 ];
 
-// --- Collezioni e categorie degli articoli ---
+// --- Categorie degli articoli ---
 
 export type Categoria = 'letto' | 'bagno' | 'bimbi' | 'tavola' | 'profumi' | 'natale' | 'mare';
 
@@ -283,75 +305,23 @@ export const categorie: { id: Categoria; nome: string }[] = [
   { id: 'mare', nome: 'Mare' },
 ];
 
-export interface Stanza extends Scatto {
-  id: Categoria;
-  nome: string;
-  frase: string;
-}
-
-/** Le collezioni per stanza: quattro riquadri di misure diverse, in quest'ordine. */
-export const collezioni: Stanza[] = [
-  {
-    id: 'letto',
-    nome: 'Per il letto',
-    frase: 'Lenzuola, copriletti trapuntati e volant, dal bianco al rosa cipria.',
-    ...scatto('camera-rosa', '50% 55%'),
-  },
-  {
-    id: 'bagno',
-    nome: 'Per il bagno',
-    frase: 'Spugne morbide, accappatoi e set legati con lo spago.',
-    ...scatto('bagno', '50% 58%'),
-  },
-  {
-    id: 'tavola',
-    nome: 'Per la tavola',
-    frase: 'Tovaglie con il volant, runner e cuscini per le sedie.',
-    ...scatto('tavola', '40% 55%'),
-  },
-  {
-    id: 'bimbi',
-    nome: 'Per i piccoli',
-    frase: 'Accappatoi con il cappuccio e asciugamani ricamati.',
-    ...scatto('accappatoi-appesi', '50% 24%'),
-  },
-];
-
-export interface AltraCollezione extends Scatto {
-  id: Categoria;
-  nome: string;
-}
-
-/** Le pillole "In negozio trovi anche". */
-export const altreCollezioni: AltraCollezione[] = [
-  { id: 'profumi', nome: 'Profumi per la casa', ...scatto('candele', '50% 60%') },
-  { id: 'natale', nome: 'Natale e regali', ...scatto('gnomi', '50% 45%') },
-  { id: 'mare', nome: 'Mare', ...scatto('mare', '50% 60%') },
-];
-
 // --- Selezione dal negozio ---
-
-/** Lo scatto di una voce di `collezioni` o `altreCollezioni`, senza il resto della voce. */
-function scattoDellaCollezione(id: Categoria): Scatto {
-  const voce = [...collezioni, ...altreCollezioni].find((c) => c.id === id);
-  if (!voce) throw new Error(`Nessuna collezione per la categoria "${id}".`);
-  return { foto: voce.foto, alt: voce.alt, posizione: voce.posizione };
-}
 
 /**
  * Il cerchietto foto di ogni filtro della selezione: "Tutto" ha lo scaffale, ogni
- * categoria lo scatto della sua collezione (di `collezioni` o `altreCollezioni`,
- * non riscritto qui). Nei filtri è decorativo (`alt` vuoto): il nome è il testo.
+ * categoria la foto della sua stanza (le stesse dei riquadri di "Per ogni stanza
+ * della casa", che non c'è più). Nei filtri è decorativo (`alt` vuoto): il nome
+ * è il testo.
  */
 export const fotoDeiFiltri: Readonly<Record<'tutti' | Categoria, Scatto>> = {
   tutti: scatto('scaffale', '50% 45%'),
-  letto: scattoDellaCollezione('letto'),
-  bagno: scattoDellaCollezione('bagno'),
-  bimbi: scattoDellaCollezione('bimbi'),
-  tavola: scattoDellaCollezione('tavola'),
-  profumi: scattoDellaCollezione('profumi'),
-  natale: scattoDellaCollezione('natale'),
-  mare: scattoDellaCollezione('mare'),
+  letto: scatto('camera-rosa', '50% 55%'),
+  bagno: scatto('bagno', '50% 58%'),
+  bimbi: scatto('accappatoi-appesi', '50% 24%'),
+  tavola: scatto('tavola', '40% 55%'),
+  profumi: scatto('candele', '50% 60%'),
+  natale: scatto('gnomi', '50% 45%'),
+  mare: scatto('mare', '50% 60%'),
 };
 
 /** Le foto delle due finestre della selezione: quella dello scaffale e quella del filtro Mare. */
