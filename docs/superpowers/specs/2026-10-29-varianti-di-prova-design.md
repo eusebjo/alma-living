@@ -98,6 +98,40 @@ Così l'ordine sullo schermo è anche quello di lettori di schermo e tastiera.
 - *Superato il 2 novembre 2026:* la prima versione in codice fermava le foto anche con il mouse sopra, con un clic o un tocco sulla foto (con la pillola "In pausa · tocca per riprendere"), con il trascinamento e con le tacche, e sul telefono mostrava il contatore.
 - **Senza JavaScript** si vede la prima foto, ferma, e le miniature restano ferme.
 
+**Aggiornamento del 2026-11-02, terzo: le storie sul telefono.**
+
+**Perché.** Dopo la prova su un telefono vero, eusebjo tiene le storie ma ha visto tre problemi:
+- la foto è coperta per metà dalla frase e da due pulsanti larghi;
+- la scheda non copre lo schermo;
+- tenendo premuto, Chrome su Android apre il menu dell'immagine.
+
+Sulla tela (dodicesima proposta, versione 55) ha scelto la versione 7, "Scheda a richiesta" (`StorieRichiesta.dc.html`), **senza il titolo "In negozio c'è molto di più", la riga dell'invito e lo stato del negozio**. Note, ricerche e regole comuni sono in `research_notes/Design UI/dodicesima/` (`versioni_storie.md`, sezioni "Regole comuni" e "7").
+
+**Come diventa il lettore:**
+- **Tutto schermo, fondo pieno.** La pagina sotto non si vede più. Su uno schermo largo la scena resta una colonna centrata.
+- **In alto.**
+  - Barre di avanzamento alte 2 px, con 4 px tra l'una e l'altra.
+  - Una sola riga di testata: cerchio, nome, "Alma Living · data", pausa e X.
+- **La foto** occupa la scena sopra una fascia scura in basso.
+  - Sulla foto c'è solo la frase: 2 righe al massimo e, se è più lunga, "altro". Toccando "altro" la frase si apre e la storia si ferma.
+  - Nella fascia scura c'è la pillola "Chiedi, chiama, vieni".
+- **La scheda a richiesta.** Un tocco sulla pillola, o un trascinamento in su, ferma la storia. Sul posto, senza cassetto, compare una scheda su un velo sfocato con:
+  - la miniatura della foto e il suo soggetto;
+  - tre inviti: "Indicazioni per Via Ricasoli", "Scrivici su WhatsApp" e "Chiama il negozio". Per primo, pieno, quello scelto per la storia; gli altri bordati;
+  - "Torna alla storia", che chiude la scheda e fa ripartire la storia.
+
+  Il messaggio WhatsApp nomina storia e foto: "Buongiorno, ho visto la storia «Arrivi» sul sito: i plaid delle feste. ".
+
+  Non c'è una scheda automatica a fine storia.
+- **Gesti.**
+  - Un tocco nel 25% sinistro torna indietro, nel resto va avanti; il centro non mette più in pausa (la pausa è il pulsante).
+  - Tenendo premuto la storia si ferma subito, e dopo mezzo secondo spariscono testata, frase e pillola. Al rilascio tutto torna, senza cambiare foto.
+  - Trascinando in basso il lettore si chiude.
+- **Il menu dell'immagine.** Le foto non ricevono il puntatore e, nel lettore, il menu del browser è bloccato (tranne su link e pulsanti).
+- **Il tempo di ogni foto** dipende dalla frase: max(5 s, parole / 3 + 1 s), arrotondato al mezzo secondo.
+- **Le frecce** non si vedono più sul telefono: restano come pulsanti per la tastiera e i lettori di schermo, visibili con il focus.
+- **I video** restano per dopo: servono una scelta su dove tenerli e il campo nel pannello.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:
