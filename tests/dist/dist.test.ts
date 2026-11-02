@@ -818,6 +818,15 @@ describe('Salvia social (/prova/salvia-social/)', () => {
         expect(indirizzi[tipi.indexOf('indicazioni')], dove).toBe(MAPPE);
         // Il primo è pieno, gli altri bordati.
         expect(link.map((t) => /\sclass="pieno[\s"]/.test(t)), dove).toEqual([true, false, false]);
+        const TESTI = {
+          indicazioni: 'Indicazioni per Via Ricasoli',
+          whatsapp: 'Scrivici su WhatsApp',
+          chiama: 'Chiama il negozio',
+        } as const;
+        const testi = elementiDove(schede[i]!.contenuto, (a) => /^<a\b/i.test(a)).map((e) =>
+          soloTesto(e.contenuto),
+        );
+        expect(testi, dove).toEqual(attesi.map((k) => TESTI[k]));
         const chiudi = elementiDove(schede[i]!.contenuto, (a) => quanti(a, 'data-storia-invito-chiudi') > 0);
         expect(chiudi, dove).toHaveLength(1);
         expect(chiudi[0]!.apertura).toMatch(/^<button\b/);
@@ -833,7 +842,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       expect(testo).not.toContain(frase);
     }
     expect(testo).not.toMatch(/\bPoi\b/);
-    expect(contenuto).not.toContain('class="azioni"');
+    expect(contenuto).not.toMatch(/\sclass="[^"]*\bazioni\b/);
   });
 
   it('le frecce per la tastiera ci sono ancora: un pulsante "Indietro" e uno "Avanti"', () => {
@@ -871,6 +880,29 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
     // Il fondo è un colore pieno: niente trasparenza, la pagina sotto non si vede.
     expect(css).toMatch(/--fondo-storie:#[0-9a-f]{6}(?=[;}])/i);
+  });
+
+  it('le frecce del lettore: ritagliate sul telefono, sempre visibili con il mouse', () => {
+    const css = cssDellaPagina();
+    const { apertura } = dialogCon('data-storie')[0] ?? { apertura: '' };
+    const cid = /\sdata-astro-cid-([a-z0-9]+)/.exec(apertura)?.[1];
+    expect(cid).toBeDefined();
+    const freccia = `.freccia[data-astro-cid-${cid}]`;
+    const conFreccia = (testo: string) =>
+      regole(testo).filter((r) => r.selettore.split(',').map((s) => s.trim()).includes(freccia));
+    // Fuori da ogni `@media` la freccia è ritagliata.
+    const blocchi = blocchiMedia(css);
+    let base = css;
+    for (const b of [...blocchi].reverse()) base = base.slice(0, b.da) + base.slice(b.a);
+    expect(conFreccia(base).map((r) => r.dichiarazioni)).toContainEqual(
+      expect.stringMatching(/(?:^|;)clip-path:inset\(50%\)(?:;|$)/),
+    );
+    // Con un mouse (passaggio e puntatore preciso) non lo è più, e prende il puntatore.
+    const mouse = blocchi
+      .filter((b) => /^\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)$/.test(b.condizione))
+      .flatMap((b) => conFreccia(b.contenuto).map((r) => r.dichiarazioni));
+    expect(mouse).toContainEqual(expect.stringMatching(/(?:^|;)clip-path:none(?:;|$)/));
+    expect(mouse).toContainEqual(expect.stringMatching(/(?:^|;)pointer-events:auto(?:;|$)/));
   });
 
   it('le sezioni si susseguono: apertura, selezione, diario, negozio; "Per ogni stanza" non c’è più', () => {

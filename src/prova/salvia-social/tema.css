@@ -51,6 +51,8 @@
   --velo-storia: rgb(16 18 14 / 0.72);
   --velo-storia-fondo: rgb(16 18 14 / 0.82);
   --velo-invito: rgb(20 23 18 / 0.72);
+  /* Il soggetto della foto sulla scheda degli inviti. */
+  --testo-scheda-storia: #e6e3db;
   /* Le pillole sul fondo scuro: il bordo al 70% fa 9,9:1 (al 30% della tavola
      sarebbe 3,5:1, appena sopra il minimo di WCAG 1.4.11). */
   --vetro-pillola: rgb(255 255 255 / 0.1);

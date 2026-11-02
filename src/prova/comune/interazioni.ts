@@ -104,7 +104,8 @@
 //   `data-vista`. Ogni foto resta il tempo della sua `data-storia-durata`, in ms,
 //   letto con `Number`: se non è un numero finito e positivo, 6000.
 //   Pausa. Il tempo di una foto conta solo se nulla lo ferma. Lo fermano: tenere
-//   premuto sulla storia (sulla foto o sulla zona dei tocchi, qui sotto); la frase
+//   premuto sulla storia con il puntatore primario (sulla foto o sulla zona dei
+//   tocchi, qui sotto: un secondo dito non la fa ripartire sotto il primo); la frase
 //   o la scheda degli inviti aperte (qui sotto); `button[data-storia-pausa]`
 //   (`aria-pressed`, da mettere in ogni storia: ferma e riprende); e la tastiera,
 //   perché portare il focus su un controllo della storia la mette in pausa (si
@@ -120,8 +121,10 @@
 //   `button[data-storia-invito-apri]` (`aria-expanded="false"`) e tanti
 //   `[data-storia-invito]` quante le foto, nello stesso ordine: lo script mostra
 //   quello della foto attuale (gli altri `hidden`), con i suoi link e un
-//   `button[data-storia-invito-chiudi]`. La pillola apre e chiude la scheda; la
-//   apre anche un trascinamento in su sulla zona dei tocchi. Aperta, il dialog
+//   `button[data-storia-invito-chiudi]`. La pillola apre la scheda e, se è
+//   aperta, la chiude (serve alle varianti in cui la scheda non copre la
+//   pillola: Salvia social la nasconde). La apre anche un trascinamento in su che
+//   parte dalla zona dei tocchi o dalla pillola (qui sotto). Aperta, il dialog
 //   riceve `data-storia-invito-aperto` (la variante la mostra con il CSS), le
 //   pillole `aria-expanded="true"` e il focus va subito al primo `a[href]` o
 //   `button` della scheda. Per questo la variante rende la scheda focalizzabile
@@ -138,29 +141,37 @@
 //   si chiude. Allora va alla pillola del gruppo attuale.
 //   Tocchi. Un elemento `[data-storia-tocchi]` per dialog, sopra le foto e sotto i
 //   controlli, con `aria-hidden="true"` e non focalizzabile (da tastiera e con i
-//   lettori di schermo restano i pulsanti e le frecce), raccoglie i tocchi: un
+//   lettori di schermo restano i pulsanti e le frecce), raccoglie i tocchi. Non
+//   deve coprire tutto il dialog: dove non c'è (per esempio una fascia attorno
+//   alla pillola) un tocco non cambia foto. Un
 //   clic o un tocco su di lui fa quello che dice `azioneDelTocco` (in `gesti.ts`)
 //   per il punto toccato, misurato dal bordo sinistro della zona, e per la durata
 //   dalla pressione al rilascio. Nel 25% di sinistra fa come
 //   `[data-storia-prec]`, nel resto come `[data-storia-succ]`: la pausa non è un
 //   punto della zona, è il pulsante `[data-storia-pausa]`, che riflette lo stato
-//   con `aria-pressed`. A scheda aperta un tocco sulla zona non fa nulla.
-//   Tenere premuto. La storia si ferma alla pressione e riprende al rilascio (o
-//   all'annullamento); oltre 300 ms la pressione non è un tocco, e il rilascio
+//   con `aria-pressed`. A scheda aperta un tocco sulla zona non fa nulla (serve
+//   alle varianti in cui la scheda non copre la zona: in Salvia social la copre).
+//   Tenere premuto. La storia si ferma alla pressione del puntatore primario e
+//   riprende al suo rilascio (o annullamento): gli altri puntatori non contano.
+//   Oltre 300 ms la pressione non è un tocco, e il rilascio
 //   non cambia foto. Dopo 500 ms di pressione sulla zona dei tocchi il dialog
 //   riceve `data-storia-nascosta` (la variante nasconde testata, frase e pillola:
 //   resta la foto), che il rilascio o l'annullamento tolgono. Un trascinamento
 //   non nasconde nulla: appena si sposta oltre 10 px su un asse, il timer si
 //   ferma e l'attributo se ne va. A scheda aperta la pressione non nasconde nulla.
-//   Trascinamenti. Un trascinamento parte dalla zona dei tocchi o dalla scheda
-//   aperta, non da un link o un pulsante (per il mouse, solo con il tasto
-//   principale); al rilascio `gestoDellaStoria` (in `gesti.ts`) dice cosa fare.
-//   Dalla zona dei tocchi, in giù chiude il dialog (a scheda aperta, solo la
-//   scheda) e in su apre la scheda (se è già aperta, nulla); dalla scheda, in giù
-//   la chiude. Un trascinamento che si è spostato oltre 10 px su un asse non è un
-//   tocco: il clic che segue non fa nulla. Il dito arriva al rilascio solo dove
-//   la variante toglie lo scorrimento al browser (`touch-action: none` sulla zona
-//   dei tocchi, e sulla scheda se non deve scorrere): altrimenti il browser si
+//   Trascinamenti. Un trascinamento parte dalla zona dei tocchi, dalla pillola a
+//   scheda chiusa o dalla scheda aperta; non da altri link o pulsanti (per il
+//   mouse, solo con il tasto principale). Al rilascio `gestoDellaStoria` (in
+//   `gesti.ts`) dice cosa fare. Dalla zona dei tocchi, in giù chiude il dialog e
+//   in su apre la scheda; a scheda aperta in giù chiude solo la scheda e in su non
+//   fa nulla (anche questo serve alle varianti in cui la scheda non copre la
+//   zona). Dalla pillola, in su apre la scheda: la pressione sulla pillola non
+//   ferma la storia e non nasconde nulla. Dalla scheda, in giù la chiude. Un
+//   trascinamento che si è spostato oltre 10 px su un asse non è un tocco: il clic
+//   che segue non fa nulla, né sulla zona né sulla pillola (che così non richiude
+//   la scheda appena aperta). Il dito arriva al rilascio solo dove la variante
+//   toglie lo scorrimento al browser (`touch-action: none` sulla zona dei tocchi,
+//   sulla pillola, e sulla scheda se non deve scorrere): altrimenti il browser si
 //   prende il trascinamento e lo annulla con `pointercancel`. La variante lascia
 //   passare i tocchi attraverso ciò che sta sopra la zona e non si usa
 //   (`pointer-events: none`).
@@ -285,9 +296,15 @@ type Contesto = {
     id: number;
     x: number;
     y: number;
-    da: 'tocchi' | 'invito';
+    da: 'tocchi' | 'pillola' | 'invito';
     mosso: boolean;
   } | null;
+  /**
+   * Vero dopo un trascinamento dalla pillola oltre `SOGLIA_MOVIMENTO_PX`: il clic
+   * che segue non apre né chiude la scheda. Lo azzerano quel clic, la pressione
+   * successiva o un tasto.
+   */
+  clicPillolaAnnullato: boolean;
 };
 
 const avviate = new WeakSet<object>();
@@ -929,6 +946,15 @@ function alternaInvito(c: Contesto): void {
   else apriInvito(c);
 }
 
+/** Il clic sulla pillola, se non è la fine di un trascinamento partito da lei. */
+function clicSullaPillola(c: Contesto): void {
+  if (c.clicPillolaAnnullato) {
+    c.clicPillolaAnnullato = false;
+    return;
+  }
+  alternaInvito(c);
+}
+
 /** "altro" sotto una frase: la apre o la richiude. Aperta, la storia è ferma. */
 function alternaFrase(c: Contesto, bottone: HTMLElement): void {
   const frase = bottone
@@ -1100,18 +1126,26 @@ function toccoSullaStoria(c: Contesto, zona: HTMLElement, evento: MouseEvent): v
 
 /**
  * Pressione del puntatore primario (per il mouse, il tasto principale) sulla
- * storia: dalla zona dei tocchi, o dalla scheda aperta fuori dai suoi link e
- * pulsanti, comincia un trascinamento. Sulla zona dei tocchi, a scheda chiusa,
- * parte anche il timer che dopo `NASCONDI_DOPO_MS` nasconde l'interfaccia.
+ * storia: dalla zona dei tocchi, dalla pillola a scheda chiusa, o dalla scheda
+ * aperta fuori dai suoi link e pulsanti, comincia un trascinamento. Sulla zona
+ * dei tocchi, a scheda chiusa, parte anche il timer che dopo `NASCONDI_DOPO_MS`
+ * nasconde l'interfaccia; dalla pillola no.
  */
 function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
   if (!evento.isPrimary) return;
   c.inizioTrascinamento = null;
+  c.clicPillolaAnnullato = false;
   const s = c.storia;
   const bersaglio = evento.target;
   if (!s || evento.button !== 0 || !(bersaglio instanceof Element)) return;
-  if (!s.dialog.contains(bersaglio) || bersaglio.closest('a, button')) return;
+  if (!s.dialog.contains(bersaglio)) return;
   const punto = { id: evento.pointerId, x: evento.clientX, y: evento.clientY, mosso: false };
+  // Dalla pillola un trascinamento in su apre la scheda; un tocco resta un clic.
+  if (!s.invitoAperto && bersaglio.closest('button[data-storia-invito-apri]')) {
+    c.inizioTrascinamento = { ...punto, da: 'pillola' };
+    return;
+  }
+  if (bersaglio.closest('a, button')) return;
   if (bersaglio.closest('[data-storia-tocchi]')) {
     c.inizioTrascinamento = { ...punto, da: 'tocchi' };
     // A scheda aperta la storia è già ferma: la pressione non nasconde nulla.
@@ -1134,16 +1168,17 @@ function oltreSoglia(inizio: { x: number; y: number }, x: number, y: number): bo
 }
 
 /**
- * Il puntatore si sposta durante un trascinamento dalla zona dei tocchi: oltre
- * `SOGLIA_MOVIMENTO_PX` non è più una pressione, e un trascinamento lento non
- * nasconde l'interfaccia. Senza trascinamento in corso non fa nulla.
+ * Il puntatore si sposta durante un trascinamento dalla zona dei tocchi o dalla
+ * pillola: oltre `SOGLIA_MOVIMENTO_PX` non è più un tocco (né un clic), e un
+ * trascinamento lento dalla zona non nasconde l'interfaccia. Senza trascinamento
+ * in corso non fa nulla.
  */
 function muoviTrascinamento(c: Contesto, evento: PointerEvent): void {
   const inizio = c.inizioTrascinamento;
-  if (!inizio || inizio.mosso || inizio.da !== 'tocchi' || evento.pointerId !== inizio.id) return;
+  if (!inizio || inizio.mosso || inizio.da === 'invito' || evento.pointerId !== inizio.id) return;
   if (!oltreSoglia(inizio, evento.clientX, evento.clientY)) return;
   inizio.mosso = true;
-  if (c.storia) mostraInterfaccia(c.storia);
+  if (inizio.da === 'tocchi' && c.storia) mostraInterfaccia(c.storia);
 }
 
 /**
@@ -1158,11 +1193,14 @@ function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
   c.inizioTrascinamento = null;
   const s = c.storia;
   if (!inizio || !s) return;
-  if (inizio.mosso || oltreSoglia(inizio, evento.clientX, evento.clientY)) {
-    c.durataTocco = Number.NaN;
-  }
+  const mosso = inizio.mosso || oltreSoglia(inizio, evento.clientX, evento.clientY);
+  if (mosso) c.durataTocco = Number.NaN;
   const gesto = gestoDellaStoria(evento.clientX - inizio.x, evento.clientY - inizio.y);
-  if (inizio.da === 'tocchi' && !s.invitoAperto) {
+  if (inizio.da === 'pillola') {
+    // Non era un clic: quello che segue non richiude la scheda appena aperta.
+    if (mosso) c.clicPillolaAnnullato = true;
+    if (gesto === 'invito') apriInvito(c);
+  } else if (inizio.da === 'tocchi' && !s.invitoAperto) {
     if (gesto === 'chiudi') s.dialog.close();
     else if (gesto === 'invito') apriInvito(c);
   } else if (gesto === 'chiudi') {
@@ -1198,7 +1236,7 @@ const AZIONI: [
   ['[data-storia-apri]', apriStoria],
   ['[data-storia-tocchi]', toccoSullaStoria],
   ['button[data-storia-altro]', alternaFrase],
-  ['button[data-storia-invito-apri]', (c) => alternaInvito(c)],
+  ['button[data-storia-invito-apri]', (c) => clicSullaPillola(c)],
   ['button[data-storia-invito-chiudi]', (c) => chiudiInvito(c)],
   ['[data-storia-prec]', (c) => indietroStoria(c)],
   ['[data-storia-succ]', (c) => avantiStoria(c)],
@@ -1227,6 +1265,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     inizioTocco: Number.NaN,
     durataTocco: Number.NaN,
     inizioTrascinamento: null,
+    clicPillolaAnnullato: false,
   };
 
   // Stato iniziale: la pagina può arrivare con più o meno già scritto.
@@ -1274,6 +1313,8 @@ export function avviaInterazioni(radice: ParentNode = document): void {
 
   radice.addEventListener('keydown', (evento) => {
     const tasto = evento as KeyboardEvent;
+    // Un clic da tastiera sulla pillola (Invio, Spazio) non è la fine di un trascinamento.
+    c.clicPillolaAnnullato = false;
     if (tasto.key === 'Escape') {
       // Con un dialog aperto ci pensa lui.
       if (!radice.querySelector('dialog[open]')) chiudiPannelliAperti(c);
@@ -1295,9 +1336,11 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   radice.addEventListener('pointerdown', (evento) => {
     c.inizioPressione = evento.target;
     const bersaglio = evento.target;
-    // Tenendo premuto sulla storia (la foto o la zona dei tocchi, che le sta sopra) l'avanzamento si ferma.
+    // Tenendo premuto sulla storia (la foto o la zona dei tocchi, che le sta sopra)
+    // l'avanzamento si ferma. Solo il puntatore primario: un secondo dito non conta.
     if (
       c.storia &&
+      (evento as PointerEvent).isPrimary &&
       bersaglio instanceof Element &&
       c.storia.dialog.contains(bersaglio) &&
       !bersaglio.closest('button, a')
@@ -1310,19 +1353,21 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   radice.addEventListener('pointermove', (evento) => {
     if (c.inizioTrascinamento) muoviTrascinamento(c, evento as PointerEvent);
   });
-  // Il rilascio, o l'annullamento, fa ripartire la storia e rimette l'interfaccia.
-  const rilascia = () => {
-    if (!c.storia) return;
+  // Il rilascio, o l'annullamento, del puntatore primario fa ripartire la storia
+  // e rimette l'interfaccia: alzare un secondo dito non la fa ripartire sotto il primo.
+  const rilascia = (evento: PointerEvent) => {
+    if (!c.storia || !evento.isPrimary) return;
     c.storia.premuto = false;
     mostraInterfaccia(c.storia);
   };
   radice.addEventListener('pointerup', (evento) => {
-    rilascia();
+    rilascia(evento as PointerEvent);
     finisciTocco(c, evento as PointerEvent);
     finisciTrascinamento(c, evento as PointerEvent);
   });
-  radice.addEventListener('pointercancel', () => {
-    rilascia();
+  radice.addEventListener('pointercancel', (evento) => {
+    if (!(evento as PointerEvent).isPrimary) return;
+    rilascia(evento as PointerEvent);
     c.inizioTrascinamento = null;
   });
 

@@ -10,15 +10,18 @@
 //   riga di testata (cerchio, nome, "Alma Living · data"). La foto riempie la
 //   scena sopra una fascia scura e porta solo la frase: due righe al massimo e,
 //   se non ci sta, "altro". Nella fascia la pillola "Chiedi, chiama, vieni".
-// - La pillola, o un trascinamento in su, apre sul posto la scheda degli inviti
-//   della foto attuale, su un velo che sfoca la foto: miniatura, soggetto, i tre
-//   link (per primo, pieno, quello della storia) e "Torna alla storia".
-// - Sopra le foto la zona dei tocchi, un `div` trasparente fuori dal tab e dai
-//   lettori di schermo: il quarto di sinistra torna indietro, il resto va avanti;
-//   tenendo premuto la storia si ferma e poi l'interfaccia sparisce, resta la
-//   foto; trascinando in giù il lettore si chiude, in su si apre la scheda. Per
-//   la tastiera e i lettori di schermo restano i pulsanti: pausa e X nella
-//   testata, le frecce "Indietro" e "Avanti", che si vedono solo con il focus.
+// - La pillola (un tocco, o un trascinamento in su che parte da lei o dalla
+//   foto) apre sul posto la scheda degli inviti della foto attuale, su un velo
+//   che sfoca la foto: miniatura, soggetto, i tre link (per primo, pieno, quello
+//   della storia) e "Torna alla storia".
+// - Sopra la foto, fino alla fascia, la zona dei tocchi, un `div` trasparente
+//   fuori dal tab e dai lettori di schermo: il quarto di sinistra torna indietro,
+//   il resto va avanti; tenendo premuto la storia si ferma e poi l'interfaccia
+//   sparisce, resta la foto; trascinando in giù il lettore si chiude, in su si
+//   apre la scheda. Un tocco sulla fascia, accanto alla pillola, non cambia foto.
+//   Per la tastiera, il mouse e i lettori di schermo restano i pulsanti: pausa e
+//   X nella testata, le frecce "Indietro" e "Avanti" (con il mouse sempre
+//   visibili, sul telefono solo con il focus da tastiera).
 // Nell'HTML sono `hidden` i gruppi e le foto dopo i primi, le schede dopo la prima
 // e "altro"; gli altri stati (`data-aperta`, `data-storia-invito-aperto`,
 // `data-storia-nascosta`, `aria-expanded="true"`) li scrive lo script.
@@ -349,6 +352,8 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     transition: opacity 200ms ease;
   }
 
+  /* Aperta prende il dito per scorrere, ma tenendo premuto non si seleziona il
+     testo (su iPhone niente menu della selezione). */
   .frase[data-aperta] {
     display: block;
     -webkit-line-clamp: none;
@@ -358,6 +363,9 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     overscroll-behavior: contain;
     touch-action: pan-y;
     pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 
   /* "altro" in fondo a destra, centrato sull'ultima riga della frase. Il testo
@@ -388,15 +396,16 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     display: none;
   }
 
-  /* --- La zona dei tocchi: un livello trasparente su tutta la scena. Lo script
-     la divide in due: il quarto di sinistra torna indietro, il resto va avanti.
-     Nessun gesto del browser (scorrere, ingrandire): i trascinamenti arrivano
-     allo script. I tocchi passano attraverso ciò che le sta sopra e non si usa
-     (barre, testata, frase chiusa, fascia). --- */
+  /* --- La zona dei tocchi: un livello trasparente sulla scena, fino alla fascia
+     della pillola (un tocco sulla fascia, accanto alla pillola, non cambia
+     foto). Lo script la divide in due: il quarto di sinistra torna indietro, il
+     resto va avanti. Nessun gesto del browser (scorrere, ingrandire): i
+     trascinamenti arrivano allo script. I tocchi passano attraverso ciò che le
+     sta sopra e non si usa (barre, testata, frase chiusa). --- */
   .tocchi {
     position: absolute;
     z-index: 1;
-    inset: 0;
+    inset: 0 0 var(--fascia-storie);
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
@@ -488,7 +497,7 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     position: absolute;
     z-index: 6;
     top: 18px;
-    right: 4px;
+    right: 6px;
     display: flex;
     transition: opacity 200ms ease;
   }
@@ -548,16 +557,18 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* La fascia lascia passare i tocchi, la sua pillola no. "Torna alla storia"
-     segue la scheda: mentre sfuma chiudendosi non prende il puntatore. */
+  /* La fascia lascia passare il puntatore, la sua pillola no. Il browser non
+     usa i trascinamenti che partono dalla pillola: uno in su arriva allo script,
+     che apre la scheda. */
   .fascia .pillola {
     pointer-events: auto;
+    touch-action: none;
   }
 
-  /* --- Le frecce, per la tastiera e i lettori di schermo: ritagliate
-     (nell'ordine di Tab, ma invisibili e non toccabili) finché non ricevono il
-     focus da tastiera; allora pulsanti tondi bianchi a metà della foto. Con il
-     dito si tocca la foto. --- */
+  /* --- Le frecce. Con il mouse sono sempre visibili: pulsanti tondi bianchi a
+     metà della foto. Sul telefono si tocca la foto, e le frecce restano per la
+     tastiera e i lettori di schermo: ritagliate (nell'ordine di Tab, ma
+     invisibili e non toccabili) finché non ricevono il focus da tastiera. --- */
   .freccia {
     position: absolute;
     z-index: 3;
@@ -574,11 +585,19 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     color: var(--nero);
     clip-path: inset(50%);
     pointer-events: none;
+    transition: opacity 200ms ease;
   }
 
   .freccia:focus-visible {
     clip-path: none;
     pointer-events: auto;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .freccia {
+      clip-path: none;
+      pointer-events: auto;
+    }
   }
 
   .prec {
@@ -593,10 +612,11 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
      su un velo che sfoca la foto. Chiusa non c'è (`display: none`: fuori dal tab
      e dai lettori di schermo); con `data-storia-invito-aperto` sul dialog c'è
      subito, e il focus ci entra, mentre compare in dissolvenza (250 ms, opacità
-     e un ingrandimento da 0,98 a 1). Chiudendosi sfuma allo stesso modo, ma non
-     prende più il puntatore. Il browser non usa i trascinamenti per scorrerla:
-     un trascinamento in giù arriva allo script, che la chiude. Se il contenuto
-     non ci sta (testo ingrandito) scorre almeno con la rotella e con il focus. --- */
+     e un ingrandimento da 0,98 a 1). La dissolvenza sta solo sullo stato aperto:
+     chiudendosi la scheda sparisce subito. Il browser non usa i trascinamenti
+     per scorrerla: un trascinamento in giù arriva allo script, che la chiude. Se
+     il contenuto non ci sta (testo ingrandito) scorre almeno con la rotella e
+     con il focus. --- */
   .inviti {
     position: absolute;
     z-index: 4;
@@ -608,20 +628,14 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     -webkit-backdrop-filter: blur(24px);
     backdrop-filter: blur(24px);
     touch-action: none;
-    opacity: 0;
-    transform: scale(0.98);
-    pointer-events: none;
-    transition:
-      opacity 250ms ease,
-      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      display 250ms allow-discrete;
   }
 
   .storie[data-storia-invito-aperto] .inviti {
     display: block;
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
+    transition:
+      opacity 250ms ease,
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      display 250ms allow-discrete;
   }
 
   @starting-style {
@@ -672,7 +686,7 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     margin: 10px 0 0;
     font-size: 14px;
     line-height: 1.35;
-    color: var(--linea-testata);
+    color: var(--testo-scheda-storia);
     text-wrap: balance;
   }
 
@@ -720,10 +734,10 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     visibility: hidden;
   }
 
-  /* --- Tenendo premuto: testata, comandi, frase, "altro", pillola e il velo
-     della frase spariscono in dissolvenza; restano la foto e le barre (con il
-     loro velo). Dopo la regola della frase aperta, che ha lo stesso peso. --- */
-  .storie[data-storia-nascosta] :is(.testa, .comandi, .frase, .altro, .fascia),
+  /* --- Tenendo premuto: testata, comandi, frase, "altro", pillola, frecce e il
+     velo della frase spariscono in dissolvenza; restano la foto e le barre (con
+     il loro velo). Dopo la regola della frase aperta, che ha lo stesso peso. --- */
+  .storie[data-storia-nascosta] :is(.testa, .comandi, .frase, .altro, .fascia, .freccia),
   .storie[data-storia-nascosta] .foto::before,
   .storie[data-storia-nascosta] .foto::after {
     opacity: 0;
@@ -755,12 +769,13 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
       display: none;
     }
 
-    .inviti,
+    .storie[data-storia-invito-aperto] .inviti,
     .testa,
     .comandi,
     .frase,
     .altro,
     .fascia,
+    .freccia,
     .foto::before,
     .foto::after {
       transition: none;
