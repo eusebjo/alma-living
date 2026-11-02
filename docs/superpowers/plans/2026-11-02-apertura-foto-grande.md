@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-29-varianti-di-prova-design.md`, "Aggiornamento del 2026-11-02, secondo: l'apertura". La tavola di riferimento è `research_notes/Design UI/tela/project/FotoGrande2.dc.html`: i commenti in `renderVals`, dalla riga 1067 circa, descrivono misure e comportamento.
 
+> **Superato in parte il 2 novembre 2026, dopo la prova nell'anteprima.** eusebjo vuole che le foto siano una scena che gira sempre da sola. Sono stati tolti la sosta con il mouse (`data-galleria-sosta`, `data-galleria-in-sosta`), il tocco che alterna la pausa (`gestoDellaGalleria`, `SOGLIA_TOCCO_PX`), la pillola "In pausa", il contatore dell'apertura e il trascinamento della cornice. Le tacche sono `span` che segnano il giro e non si cliccano (lo script cambia foto solo da un `button[data-galleria-punto]`). Restano la pausa da tastiera e "riduci movimento". Lo stato attuale è nello spec e nel commento in testa a `Apertura.astro`.
+
 ## Global Constraints
 
 ### Testi

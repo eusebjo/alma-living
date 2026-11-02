@@ -34,7 +34,9 @@
 // - Galleria: `[data-galleria]` con `[data-galleria-foto]` (una alla volta, le
 //   altre `hidden`), `button[data-galleria-prec|succ]` (a giro),
 //   `button[data-galleria-punto]` (`aria-current`) e `[data-galleria-contatore]`
-//   ("1 di 3"). Dentro la galleria, un'area `[data-galleria-trascina]` fa
+//   ("1 di 3"). Un `[data-galleria-punto]` che non è un `button` è solo un
+//   indicatore: riceve `aria-current` (e `--avanzamento`, vedi Giro) ma un clic
+//   non fa nulla. Dentro la galleria, un'area `[data-galleria-trascina]` fa
 //   cambiare foto, a giro come le frecce, con un trascinamento del dito o del
 //   mouse (pulsante principale): verso sinistra la foto dopo, verso destra quella
 //   prima (`versoTrascinamento`, in `gesti.ts`). Non conta un trascinamento che
@@ -67,7 +69,7 @@
 //   finestra non precarica; ci riprova quando ci torna.
 //   Giro. `[data-galleria][data-galleria-auto="<ms>"]` avanza da solo di una foto
 //   ogni `<ms>`, a giro. Il giro è in corsa quando è avviato, la galleria non è
-//   ferma né in sosta, la pagina è visibile e la galleria è nel riquadro della
+//   ferma, la pagina è visibile e la galleria è nel riquadro della
 //   finestra (un `IntersectionObserver` per giro). Solo allora gira l'orologio,
 //   un `requestAnimationFrame` come quello delle storie (`passoDelGiro`, in
 //   `giro.ts`): fuori corsa non si chiede nessun fotogramma, il tempo non conta e
@@ -80,9 +82,7 @@
 //   Pausa. `data-galleria-ferma`, scritto dallo script, vuol dire ferma per scelta
 //   o per "riduci movimento": all'avvio segue `prefers-reduced-motion`; se la
 //   preferenza passa a `reduce` a pagina aperta la galleria si ferma, e se torna a
-//   `no-preference` resta com'è (la fa ripartire chi guarda, con un tocco o un
-//   clic). `data-galleria-in-sosta` vale mentre un puntatore `mouse` (non il
-//   dito) è sopra un `[data-galleria-sosta]` della galleria.
+//   `no-preference` resta com'è (la fa ripartire chi guarda, con la pausa).
 //   `button[data-galleria-pausa]` alterna con un clic. È il controllo di rotazione
 //   del carosello W3C APG: niente `aria-pressed`, cambia il testo ("Metti in
 //   pausa" / "Riprendi"); lo stato sta solo in `data-galleria-ferma` sulla
@@ -92,13 +92,10 @@
 //   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira; la variante
 //   lo scrive già nell'HTML con `aria-live="off"`, perché alcuni lettori di schermo
 //   registrano le regioni live solo al caricamento.
-//   Comandi e gesti, con il giro. `[data-galleria-prec|succ]` e
-//   `[data-galleria-punto]` fermano il giro e poi cambiano foto: l'annuncio è già
-//   `polite` quando la foto cambia, e il cambio si sente. Un gesto su
-//   `[data-galleria-trascina]`, che non comincia su un `button` o un `a`, si decide
-//   con `gestoDellaGalleria` (in `gesti.ts`): un tocco (meno di 10 px su entrambi
-//   gli assi) alterna la pausa; un trascinamento come sopra ferma il giro e cambia
-//   foto; ogni altro spostamento non fa nulla. `pointercancel` annulla, come sopra.
+//   Comandi e gesti, con il giro. `[data-galleria-prec|succ]`,
+//   `button[data-galleria-punto]` e un trascinamento che conta su
+//   `[data-galleria-trascina]` fermano il giro e poi cambiano foto: l'annuncio è
+//   già `polite` quando la foto cambia, e il cambio si sente.
 // - Colori: un contenitore `[data-colori="<nome>"]` con i pulsanti
 //   `button[data-colore="<colore>"]` (`aria-pressed`): premerne uno lo sceglie, ed
 //   è l'unico premuto; ripremerlo non fa nulla. Ogni pulsante porta i testi del suo
@@ -163,7 +160,7 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante, o al link, da cui si sono aperti.
 import { filtra } from './filtra';
-import { azioneDelTocco, gestoDellaGalleria, versoTrascinamento } from './gesti';
+import { azioneDelTocco, versoTrascinamento } from './gesti';
 import { fotoDelGiro, passoDelGiro } from './giro';
 import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
@@ -559,14 +556,13 @@ function cambiaFoto(c: Contesto, galleria: HTMLElement, passo: 1 | -1): void {
 }
 
 /**
- * Vero se il giro è in corsa: avviato, non fermo, non in sosta, con la pagina
+ * Vero se il giro è in corsa: avviato, non fermo, con la pagina
  * visibile e la galleria nel riquadro della finestra.
  */
 function giroInCorsa(galleria: HTMLElement, giro: StatoGiro): boolean {
   return (
     galleria.hasAttribute('data-galleria-avviata') &&
     !galleria.hasAttribute('data-galleria-ferma') &&
-    !galleria.hasAttribute('data-galleria-in-sosta') &&
     !document.hidden &&
     giro.visibile
   );
@@ -603,7 +599,7 @@ function impostaFerma(c: Contesto, galleria: HTMLElement, ferma: boolean): void 
   aggiornaOrologio(c, galleria);
 }
 
-/** Un clic sul pulsante della pausa, o un tocco sulla foto: ferma il giro, o lo fa ripartire. Senza giro non fa nulla. */
+/** Un clic sul pulsante della pausa: ferma il giro, o lo fa ripartire. Senza giro non fa nulla. */
 function alternaGiro(c: Contesto, galleria: HTMLElement): void {
   if (!c.giri.has(galleria)) return;
   impostaFerma(c, galleria, !galleria.hasAttribute('data-galleria-ferma'));
@@ -686,20 +682,6 @@ function fotogrammaGiro(c: Contesto, galleria: HTMLElement, ora: number): void {
   giro.frame = requestAnimationFrame((prossimo) => fotogrammaGiro(c, galleria, prossimo));
 }
 
-/** Il mouse entra o esce da un `data-galleria-sosta` (il dito no): la galleria va in sosta, o ne esce. */
-function aggiornaSosta(c: Contesto, evento: PointerEvent, dentro: boolean): void {
-  const bersaglio = evento.target;
-  if (evento.pointerType !== 'mouse' || !(bersaglio instanceof Element)) return;
-  const zona = bersaglio.closest<HTMLElement>('[data-galleria-sosta]');
-  const galleria = zona?.closest<HTMLElement>('[data-galleria]');
-  if (!zona || !galleria) return;
-  // Passare da un elemento all'altro della stessa zona non è uscirne.
-  const verso = evento.relatedTarget;
-  if (!dentro && verso instanceof Node && zona.contains(verso)) return;
-  galleria.toggleAttribute('data-galleria-in-sosta', dentro);
-  aggiornaOrologio(c, galleria);
-}
-
 /** Pressione su un'area `data-galleria-trascina`, non su un pulsante o un link: parte il trascinamento. */
 function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
   // Un puntatore solo (il primo dito) e, col mouse, il pulsante principale.
@@ -722,28 +704,17 @@ function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
 }
 
 /**
- * Rilascio del puntatore che trascinava: cambia foto se lo spostamento conta. In
- * una galleria che gira da sola un tocco alterna la pausa, e un trascinamento che
- * conta cambia foto e ferma il giro.
+ * Rilascio del puntatore che trascinava: se lo spostamento conta, ferma il giro
+ * (se c'è) e cambia foto.
  */
 function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
   const t = c.trascinamento;
   if (!t || t.id !== evento.pointerId) return;
   c.trascinamento = null;
-  const dx = evento.clientX - t.x;
-  const dy = evento.clientY - t.y;
-  if (!c.giri.has(t.galleria)) {
-    const verso = versoTrascinamento(dx, dy);
-    if (verso !== 0) cambiaFoto(c, t.galleria, verso);
-    return;
-  }
-  const gesto = gestoDellaGalleria(dx, dy);
-  if (gesto === 'tocco') {
-    alternaGiro(c, t.galleria);
-  } else if (gesto !== null) {
-    fermaGiro(c, t.galleria);
-    cambiaFoto(c, t.galleria, gesto);
-  }
+  const verso = versoTrascinamento(evento.clientX - t.x, evento.clientY - t.y);
+  if (verso === 0) return;
+  fermaGiro(c, t.galleria);
+  cambiaFoto(c, t.galleria, verso);
 }
 
 /** Il browser ha preso il gesto (scorrimento della pagina, trascinamento nativo): niente cambio. */
@@ -997,7 +968,7 @@ const AZIONI: [
   ['[data-limite-mostra]', mostraTutti],
   ['[data-galleria-prec]', (c, el) => spostaGalleria(c, el, -1)],
   ['[data-galleria-succ]', (c, el) => spostaGalleria(c, el, 1)],
-  ['[data-galleria-punto]', vaiAlPunto],
+  ['button[data-galleria-punto]', vaiAlPunto],
   ['button[data-galleria-pausa]', alternaPausaGalleria],
   ['button[data-colore]', scegliColore],
   ['[data-storia-apri]', apriStoria],
@@ -1122,9 +1093,6 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     rilascia();
     annullaTrascinamento(c, evento as PointerEvent);
   });
-  // Il mouse sopra la zona di sosta di una galleria che gira da sola ne ferma l'orologio.
-  radice.addEventListener('pointerover', (evento) => aggiornaSosta(c, evento as PointerEvent, true));
-  radice.addEventListener('pointerout', (evento) => aggiornaSosta(c, evento as PointerEvent, false));
   // Un'immagine dell'area si trascinerebbe come file: qui trascinare vuol dire cambiare foto.
   radice.addEventListener('dragstart', (evento) => {
     const bersaglio = evento.target;
@@ -1193,7 +1161,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   // Con "riduci movimento" le gallerie che girano da sole stanno ferme: se la
   // preferenza passa a `reduce` a pagina aperta, si fermano. Se torna a
   // `no-preference` non ripartono da sole (e una pausa scelta resta): le fa
-  // ripartire chi guarda, con un tocco o un clic.
+  // ripartire chi guarda, con la pausa.
   if (c.giri.size > 0) {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (evento) => {
       if (!evento.matches) return;

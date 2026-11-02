@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   azioneDelTocco,
-  gestoDellaGalleria,
   PRESSIONE_LUNGA_MS,
-  SOGLIA_TOCCO_PX,
   SOGLIA_TRASCINAMENTO_PX,
   versoTrascinamento,
 } from '../../src/prova/comune/gesti';
@@ -59,29 +57,5 @@ describe('azioneDelTocco', () => {
   it('una zona senza larghezza valida (negativa, NaN) non dà azioni', () => {
     expect(azioneDelTocco(10, -300, 50)).toBeNull();
     expect(azioneDelTocco(10, Number.NaN, 50)).toBeNull();
-  });
-});
-
-describe('gestoDellaGalleria', () => {
-  it('uno spostamento sotto i 10 px su entrambi gli assi è un tocco', () => {
-    expect(gestoDellaGalleria(0, 0)).toBe('tocco');
-    expect(gestoDellaGalleria(9, -9)).toBe('tocco');
-  });
-
-  it('un trascinamento orizzontale oltre la soglia cambia foto', () => {
-    expect(gestoDellaGalleria(-41, 3)).toBe(1);
-    expect(gestoDellaGalleria(41, 3)).toBe(-1);
-  });
-
-  it('tra il tocco e la soglia, o in verticale, non è nulla', () => {
-    expect(gestoDellaGalleria(20, 0)).toBeNull();
-    expect(gestoDellaGalleria(5, 60)).toBeNull();
-    expect(gestoDellaGalleria(-50, -80)).toBeNull();
-  });
-
-  it('la soglia del tocco è di 10 px, e basta un asse oltre per non essere un tocco', () => {
-    expect(SOGLIA_TOCCO_PX).toBe(10);
-    expect(gestoDellaGalleria(10, 0)).toBeNull();
-    expect(gestoDellaGalleria(0, -10)).toBeNull();
   });
 });

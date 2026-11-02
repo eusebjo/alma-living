@@ -363,7 +363,7 @@ function incoerenzeProtocolli(html: string): string[] {
     if (!filtrabili.has(valore)) manca('data-limite', valore, 'data-filtrabile');
     if (!mostraTutti.has(valore)) manca('data-limite', valore, 'data-limite-mostra');
   }
-  // Galleria: pausa, foto saltate, didascalie, zona di sosta e annuncio valgono
+  // Galleria: pausa, foto saltate, didascalie e annuncio valgono
   // solo dentro una `[data-galleria]` (lo script la cerca con `closest`); e le
   // didascalie, quando ci sono, sono una per foto, nello stesso ordine.
   const gallerie = elementiCon(html, 'data-galleria');
@@ -371,7 +371,6 @@ function incoerenzeProtocolli(html: string): string[] {
     'data-galleria-pausa',
     'data-galleria-salta',
     'data-galleria-didascalia',
-    'data-galleria-sosta',
     'data-galleria-annuncio',
   ]) {
     const dentro = gallerie.reduce((somma, galleria) => somma + quanti(galleria, attributo), 0);
@@ -483,14 +482,13 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<div data-interruttore></div>',
     '<button data-interruttore>x</button>',
     '<li data-filtrabile="selezione" data-categorie="letto">Lenzuola</li>',
-    // pausa, foto saltate, didascalie, sosta e annuncio vogliono la loro galleria
+    // pausa, foto saltate, didascalie e annuncio vogliono la loro galleria
     '<button type="button" data-galleria-pausa>Pausa</button>',
     // la pausa è un button, e senza aria-pressed: il suo testo cambia
     '<div data-galleria><button type="button" data-galleria-pausa aria-pressed="false">Pausa</button></div>',
     '<div data-galleria><div data-galleria-pausa>Pausa</div></div>',
     '<ul><li data-galleria-foto data-galleria-salta="(width > 1023px)"></li></ul>',
     '<p data-galleria-annuncio><span data-galleria-didascalia>Coperta</span></p>',
-    '<div data-galleria-sosta><div data-galleria><div data-galleria-foto></div></div></div>',
     '<div data-galleria><div data-galleria-foto></div></div><p data-galleria-annuncio></p>',
     // una didascalia per foto, nella stessa galleria
     '<div data-galleria><div data-galleria-foto></div><div data-galleria-foto></div>' +
@@ -544,7 +542,7 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     // data-filtro (il pulsante) e data-post (il dialog) da soli non sono rimandi
     '<button data-filtro="letto">Letto</button><dialog data-post="x"></dialog>',
     // una galleria che gira da sola, con tutto dentro: un ">" in un valore non chiude il tag
-    '<section data-galleria data-galleria-auto="5000"><div data-galleria-sosta>' +
+    '<section data-galleria data-galleria-auto="5000"><div>' +
       '<button type="button" data-galleria-pausa>Pausa</button>' +
       '<ul><li data-galleria-foto></li><li data-galleria-foto data-galleria-salta="(width > 1023px)" hidden></li></ul>' +
       '<p data-galleria-annuncio><span data-galleria-didascalia>a</span><span data-galleria-didascalia hidden>b</span></p>' +
@@ -1189,13 +1187,21 @@ describe('Salvia social (/prova/salvia-social/)', () => {
 
   const nascosto = (tag: string) => /\shidden(?=[\s=>/])/.test(tag);
 
-  it("l'apertura è una galleria che si trascina: un'area sola, che contiene le foto", () => {
+  it("l'apertura è una scena: niente gesti, contatore, pillola della pausa né frecce", () => {
     const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
     expect(sezione).toMatch(/\sdata-galleria(?=[\s=>])/);
     const dentro = dentroApertura();
-    expect(dentro.match(/\sdata-galleria-trascina(?=[\s=>])/g) ?? []).toHaveLength(1);
-    const area = dentro.search(/\sdata-galleria-trascina(?=[\s=>])/);
-    expect(area).toBeLessThan(dentro.search(/\sdata-galleria-foto(?=[\s=>])/));
+    for (const attributo of [
+      'data-galleria-trascina',
+      'data-galleria-sosta',
+      'data-galleria-contatore',
+      'data-galleria-prec',
+      'data-galleria-succ',
+    ]) {
+      expect(quanti(dentro, attributo), attributo).toBe(0);
+    }
+    expect(dentro).not.toMatch(/\sclass="in-pausa[\s"]/);
+    expect(soloTesto(dentro)).not.toContain('In pausa');
   });
 
   it("claim e frase: l'h1 dell'apertura è il claim, e la pagina ha la frase lunga e la corta", () => {
@@ -1214,12 +1220,12 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
   });
 
-  it("l'apertura è una galleria che gira da sola: 12 foto, 7 solo sotto i 1024 px, 12 didascalie, 5 tacche, il contatore", () => {
+  it("l'apertura è una galleria che gira da sola: 12 foto, 7 solo sotto i 1024 px, 12 didascalie, 5 tacche che non si cliccano", () => {
     const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
     expect(valore(sezione, 'data-galleria-auto')).toBe('5000');
     // Lo stato lo scrive lo script: nell'HTML non c'è.
     expect(sezione + dentroApertura()).not.toMatch(
-      /\sdata-galleria-(?:ferma|avviata|in-sosta)(?=[\s=>])/,
+      /\sdata-galleria-(?:ferma|avviata)(?=[\s=>])/,
     );
 
     const foto = fotoCornice();
@@ -1241,15 +1247,16 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(didascalie.map((d) => soloTesto(d.contenuto))).toEqual(vetrina.map((p) => p.nome));
     expect(didascalie.map((d) => nascosto(d.apertura))).toEqual(vetrina.map((_, i) => i > 0));
 
-    const tacche = tagIn(dentroApertura(), 'button', 'data-galleria-punto');
+    // Le tacche segnano il giro e basta: `span` (lo script cambia foto solo da un
+    // `button[data-galleria-punto]`), in un gruppo nascosto ai lettori di schermo.
+    expect(quanti(dentroApertura(), 'data-galleria-punto')).toBe(5);
+    expect(tagIn(dentroApertura(), 'button', 'data-galleria-punto')).toEqual([]);
+    const tacche = tagIn(dentroApertura(), 'span', 'data-galleria-punto');
     expect(tacche.map((t) => valore(t, 'data-galleria-punto'))).toEqual(['0', '1', '6', '10', '11']);
-    expect(tacche.map((t) => valore(t, 'aria-label'))).toEqual(
-      [0, 1, 6, 10, 11].map((n, k) => `${vetrina[n]!.nome}, foto ${k + 1} di 5`),
-    );
-
-    const contatori = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-contatore') > 0);
-    expect(contatori).toHaveLength(1);
-    expect(soloTesto(contatori[0]!.contenuto)).toBe('1 di 12');
+    expect(tacche.map((t) => valore(t, 'aria-current'))).toEqual(['true', undefined, undefined, undefined, undefined]);
+    const gruppo = elementiDove(dentroApertura(), (a) => /\sclass="tacche[\s"]/.test(a));
+    expect(gruppo).toHaveLength(1);
+    expect(valore(gruppo[0]!.apertura, 'aria-hidden')).toBe('true');
   });
 
   it('le foto della cornice: misure, e posizione del computer e del telefono', () => {
@@ -1265,8 +1272,10 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     });
   });
 
-  it("il primo elemento attivabile dell'apertura è la pausa, con i suoi due testi", () => {
-    const primo = new RegExp(`<(?:a|button)\\b${ATTRIBUTI}>`, 'i').exec(dentroApertura())?.[0] ?? '';
+  it("l'unico elemento attivabile dell'apertura è la pausa da tastiera, con i suoi due testi", () => {
+    const attivabili = [...dentroApertura().matchAll(new RegExp(`<(?:a|button)\\b${ATTRIBUTI}>`, 'gi'))];
+    expect(attivabili).toHaveLength(1);
+    const primo = attivabili[0]?.[0] ?? '';
     expect(primo).toMatch(/^<button\b/);
     expect(quanti(primo, 'data-galleria-pausa')).toBe(1);
     // Come il controllo di rotazione del carosello W3C APG: cambia il testo, niente aria-pressed.
@@ -1278,13 +1287,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(testo).toContain('Riprendi le foto');
   });
 
-  it('la pillola della pausa ha i due testi, per il dito e per il mouse', () => {
-    const testo = soloTesto(dentroApertura());
-    expect(testo).toContain('In pausa · tocca per riprendere');
-    expect(testo).toContain('In pausa · clic per riprendere');
-  });
-
-  it('il testo della pausa segue data-galleria-ferma, e "clic" vale per il mouse a ogni larghezza', () => {
+  it('il testo della pausa segue data-galleria-ferma', () => {
     const css = cssDellaPagina();
     // Solo le regole dell'apertura: altri componenti (le storie) hanno classi con gli stessi nomi.
     const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
@@ -1299,14 +1302,6 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(css).toMatch(
       new RegExp(`:not\\(\\[data-galleria-ferma\\]\\)[^{},]*\\.se-ferma${mio}[^{}]*\\{display:none\\}`),
     );
-    // La pillola: "clic per riprendere" con il mouse, senza condizioni sulla larghezza.
-    const regola = new RegExp(`\\.per-mouse${mio}\\{display:inline\\}`).exec(css);
-    expect(regola).not.toBeNull();
-    const media = css.slice(css.lastIndexOf('@media', regola!.index), regola!.index);
-    const condizione = media.slice(0, media.indexOf('{'));
-    expect(condizione).toMatch(/\(hover:\s*hover\)/);
-    expect(condizione).toMatch(/\(pointer:\s*fine\)/);
-    expect(condizione).not.toMatch(/width/);
   });
 
   /** L'attributo `data-astro-cid-…` dell'apertura, come pezzo di espressione regolare. */
@@ -1373,20 +1368,20 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       const regola = regole(base).find((r) => new RegExp(`^\\.${nome}${mio}$`).test(r.selettore));
       expect(regola?.dichiarazioni, nome).toMatch(/(?:^|;)animation:[^;]*\bpaused\b/);
     }
-    // ...e corrono solo dentro una galleria avviata (dallo script), non ferma e non in sosta.
+    // ...e corrono solo dentro una galleria avviata (dallo script) e non ferma.
     const inCorsa = regole(css).filter(
       (r) => r.selettore.includes(`.binario[`) && /\brunning\b/.test(r.dichiarazioni),
     );
     expect(inCorsa.map((r) => r.selettore)).toHaveLength(1);
     expect(inCorsa[0]!.selettore).toMatch(
       new RegExp(
-        `^\\.apertura${mio}\\[data-galleria-avviata\\]:not\\(\\[data-galleria-ferma\\]\\):not\\(\\[data-galleria-in-sosta\\]\\) \\.binario${mio}$`,
+        `^\\.apertura${mio}\\[data-galleria-avviata\\]:not\\(\\[data-galleria-ferma\\]\\) \\.binario${mio}$`,
       ),
     );
     expect(inCorsa[0]!.dichiarazioni).toMatch(/(?:^|;)animation-play-state:running(?:;|$)/);
   });
 
-  it('senza JavaScript niente contatore, e la foto ha il cursore a mano solo con la galleria avviata', () => {
+  it('senza JavaScript niente pausa né tacche; la foto non ha il cursore a mano', () => {
     const css = cssDellaPagina();
     const mio = cidApertura();
     const senzaScript = regole(
@@ -1398,30 +1393,19 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const nascosti = senzaScript
       .filter((r) => /(?:^|;)display:none(?:;|$)/.test(r.dichiarazioni))
       .flatMap((r) => r.selettore.split(','));
-    for (const classe of ['pausa', 'tacche', 'contatore']) {
+    for (const classe of ['pausa', 'tacche']) {
       expect(nascosti, classe).toContainEqual(expect.stringMatching(new RegExp(`^\\.${classe}${mio}$`)));
     }
     const conMano = regole(css).filter(
-      (r) => r.selettore.includes(`.cornice[`) && /cursor:pointer/.test(r.dichiarazioni),
+      (r) => r.selettore.includes(`.cornice${mio.replaceAll('\\', '')}`) && /cursor:pointer/.test(r.dichiarazioni),
     );
-    expect(conMano.length).toBeGreaterThan(0);
-    for (const r of conMano) {
-      for (const selettore of r.selettore.split(',')) {
-        expect(selettore).toMatch(
-          new RegExp(`^\\.apertura${mio}\\[data-galleria-avviata\\] \\.cornice${mio}$`),
-        );
-      }
-    }
+    expect(conMano).toEqual([]);
   });
 
-  it("l'annuncio della foto nasce con aria-live=\"off\"; la pillola della pausa è nascosta ai lettori di schermo", () => {
+  it("l'annuncio della foto nasce con aria-live=\"off\"", () => {
     const annunci = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-annuncio') > 0);
     expect(annunci).toHaveLength(1);
     expect(valore(annunci[0]!.apertura, 'aria-live')).toBe('off');
-    const pillola = elementiDove(dentroApertura(), (a) => /\sclass="in-pausa[\s"]/.test(a));
-    expect(pillola).toHaveLength(1);
-    expect(valore(pillola[0]!.apertura, 'aria-hidden')).toBe('true');
-    expect(soloTesto(pillola[0]!.contenuto)).toContain('In pausa');
   });
 
   it('le miniature sono decorative: due colonne nascoste ai lettori di schermo, con le foto 3-6 e 8-10 due volte', () => {

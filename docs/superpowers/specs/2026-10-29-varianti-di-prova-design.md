@@ -9,7 +9,7 @@
 
 **Aggiornamento del 2026-11-01 (ciclo di prova, §11):** dopo la prova sull'anteprima, eusebjo ha rivisto Salvia social sulla tela (sesta, settima e ottava proposta) e ha scelto la versione 3, la tavola `DiarioFascia.dc.html` (con `DiarioFasciaTelefono.dc.html`). Da qui è il disegno di riferimento di Salvia social al posto di `SalviaSocial.dc.html`. Cambia rispetto alla versione in codice:
 - **Ordine:** il diario di Martina sta dopo la selezione ("Sugli scaffali adesso"), anche nel menu e nel footer.
-- **Apertura:** le foto scorrono anche trascinando con il dito o con il mouse (oltre 40 px in orizzontale, se il movimento è più orizzontale che verticale), oltre a frecce e pallini.
+- **Apertura:** le foto scorrono anche trascinando con il dito o con il mouse (oltre 40 px in orizzontale, se il movimento è più orizzontale che verticale), oltre a frecce e pallini. *(Superato il 2026-11-02: l'apertura è "La foto grande", e le sue foto girano da sole senza gesti.)*
 - **Storie:** un tocco a sinistra torna indietro, a destra va avanti; al centro mette in pausa o riprende; tenendo premuto si ferma e rilasciando riprende. Il pulsante di pausa resta.
 - **Selezione sul telefono:** griglia a due colonne con le prime 4 schede e "Mostra tutti gli 8"; sul tablet (768-1023 px) tre colonne con le prime 6; sul computer il carosello con le frecce di oggi. Il limite vale sulla lista filtrata.
 - **Storie e Instagram distinti:** le storie in alto sono del sito, raccolte per categoria, e non si sincronizzano con Instagram. Il pulsante del riquadro accanto alla fila diventa "Vedi i post". *(Superato il 2026-11-02: le storie sono solo sul telefono e il riquadro non c'è più.)*
@@ -88,15 +88,14 @@ Così l'ordine sullo schermo è anche quello di lettori di schermo e tastiera.
   - Ai lati, due colonne di miniature 3:4 con le altre sette foto. Scorrono lente in senso opposto: a sinistra verso l'alto, a destra verso il basso.
   - Sotto la cornice, a sinistra il nome del prodotto e a destra le tacche.
 - **Telefono e tablet (sotto i 1024 px).** Resta solo la cornice, che sfoglia da sola tutte e dodici le foto.
-  - Sul telefono la cornice è verticale (358 x 440 a 390 px), con il nome del prodotto in una pillola e il contatore.
+  - Sul telefono la cornice è verticale (358 x 440 a 390 px), con il nome del prodotto in una pillola.
   - Tra 768 e 1023 px la cornice è orizzontale (4:3). È una scelta di sviluppo, perché la tela non ha il tablet.
   - Niente miniature.
-- **Il movimento è sempre automatico e non c'è un pulsante pausa visibile.** Per l'accessibilità (WCAG 2.2.2) un modo per fermare le foto resta, nascosto:
-  - il mouse sopra la cornice o le miniature le ferma per il tempo in cui resta lì;
-  - un clic o un tocco sulla foto la ferma, e un altro la fa ripartire; da ferma compare la pillola "In pausa · tocca per riprendere" (sul computer "In pausa · clic per riprendere");
-  - trascinare la foto con il dito, o scegliere una tacca, cambia foto e ferma il giro;
+- **Le foto sono una scena: girano sempre da sole** (decisione di eusebjo del 2 novembre 2026, dopo la prova nell'anteprima). Nessun pulsante pausa visibile, nessuna pillola "In pausa", nessun contatore ("11 di 12"). Il mouse sopra le foto non le ferma; un clic, un tocco o un trascinamento non fanno nulla. Le tacche del computer segnano solo a che punto è il giro e non si cliccano.
+- **Per l'accessibilità (WCAG 2.2.2) restano due modi di fermare il movimento, che non si vedono:**
   - chi usa la tastiera trova per primo un pulsante "Metti in pausa le foto" / "Riprendi le foto", che si vede solo quando riceve il focus;
   - con "riduci movimento" non parte nulla.
+- *Superato il 2 novembre 2026:* la prima versione in codice fermava le foto anche con il mouse sopra, con un clic o un tocco sulla foto (con la pillola "In pausa · tocca per riprendere"), con il trascinamento e con le tacche, e sul telefono mostrava il contatore.
 - **Senza JavaScript** si vede la prima foto, ferma, e le miniature restano ferme.
 
 ## 1. Intento
