@@ -18,6 +18,15 @@ describe('passoDelGiro', () => {
   it('un intervallo negativo non toglie tempo', () => {
     expect(passoDelGiro(300, -50, true, 5000)).toEqual({ trascorso: 300, avanza: false });
   });
+
+  it('un intervallo che non è un numero finito vale 0: né tempo perso, né foto saltate', () => {
+    for (const dt of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(passoDelGiro(300, dt, true, 5000), String(dt)).toEqual({
+        trascorso: 300,
+        avanza: false,
+      });
+    }
+  });
 });
 
 describe('fotoDelGiro', () => {

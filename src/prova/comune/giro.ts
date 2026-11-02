@@ -7,9 +7,9 @@
  * foto attuale, `dt` quelli dall'ultimo fotogramma, `inCorsa` dice se il tempo
  * conta (non in pausa, non in sosta, pagina visibile), `durata` è quanto resta
  * ferma ogni foto. Fermo, non cambia nulla. In corsa, `dt` si somma (un `dt`
- * negativo non toglie tempo) e raggiunta la durata si avanza di una foto sola,
- * qualunque sia l'eccesso, e si riparte da zero: dopo una lunga assenza il giro
- * non salta più foto.
+ * negativo, o che non è un numero finito, vale 0) e raggiunta la durata si
+ * avanza di una foto sola, qualunque sia l'eccesso, e si riparte da zero: dopo
+ * una lunga assenza il giro non salta più foto.
  */
 export function passoDelGiro(
   trascorso: number,
@@ -18,7 +18,7 @@ export function passoDelGiro(
   durata: number,
 ): { trascorso: number; avanza: boolean } {
   if (!inCorsa) return { trascorso, avanza: false };
-  const t = trascorso + Math.max(0, dt);
+  const t = trascorso + (Number.isFinite(dt) ? Math.max(0, dt) : 0);
   return t >= durata ? { trascorso: 0, avanza: true } : { trascorso: t, avanza: false };
 }
 

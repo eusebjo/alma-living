@@ -50,41 +50,55 @@
 //   sopra (schede rapide, post e colori non cambiano).
 //   Foto attive. `[data-galleria-foto][data-galleria-salta="<media>"]`: finché la
 //   `matchMedia` è vera la foto non fa parte della galleria. Frecce, tacche, giro e
-//   contatore ("3 di 12") contano solo le foto attive e lo script non mostra mai
-//   una foto saltata. Quando una di queste media cambia, se la foto attuale non è
-//   più attiva si passa alla prima attiva dopo di lei (`fotoDelGiro`, in
-//   `giro.ts`): gli ascoltatori di `matchMedia` si registrano all'avvio e coprono
-//   solo le foto presenti allora. `data-galleria-punto="<n>"`, con un numero, è
-//   la foto n dell'elenco completo, contando da 0 (senza valore la tacca vale per
-//   la sua posizione). `[data-galleria-didascalia]`, nello stesso ordine delle
-//   foto, si vede solo per la foto attuale (le altre `hidden`). Una galleria con
-//   giro o con foto saltate, quando una foto diventa attuale, fa caricare
-//   subito le `img[loading="lazy"]` della foto attiva successiva.
+//   contatore ("3 di 12") contano solo le foto attive e lo script non mostra una
+//   foto saltata, a meno che lo siano tutte: allora mostra quella richiesta.
+//   Quando una di queste media cambia, se la foto attuale non è più attiva si
+//   passa alla prima attiva dopo di lei (`fotoDelGiro`, in `giro.ts`): gli
+//   ascoltatori di `matchMedia` si registrano all'avvio e coprono solo le foto
+//   presenti allora. `data-galleria-punto="<n>"`, con un numero, è la foto n
+//   dell'elenco completo, contando da 0 (senza valore la tacca vale per la sua
+//   posizione). `[data-galleria-didascalia]`, nello stesso ordine delle foto, si
+//   vede solo per la foto attuale (le altre `hidden`).
+//   Precarico. Una galleria con giro o con foto saltate, quando una foto diventa
+//   attuale, fa caricare subito le `img[loading="lazy"]` della foto attiva
+//   successiva, ma solo quando le `img` della foto attuale hanno finito di caricare
+//   (`complete`, o al loro `load` o `error`): all'avvio la foto dopo non ruba la
+//   rete alla prima, che ha la priorità alta. Un giro fuori dal riquadro della
+//   finestra non precarica; ci riprova quando ci torna.
 //   Giro. `[data-galleria][data-galleria-auto="<ms>"]` avanza da solo di una foto
-//   ogni `<ms>`, a giro. L'orologio è un `requestAnimationFrame` come quello delle
-//   storie (`passoDelGiro`, in `giro.ts`) e conta solo il tempo in corsa: la
-//   galleria non deve essere ferma né in sosta, e la pagina deve essere visibile
-//   (al ritorno non si recupera il tempo di assenza). Ogni foto resta ferma `<ms>`
-//   dopo ogni cambio. All'avvio lo script dà alla galleria `data-galleria-avviata`
-//   e scrive `--avanzamento` (da 0 a 1) sulla tacca della foto attuale. Un valore
-//   che non è un numero positivo: nessun giro.
+//   ogni `<ms>`, a giro. Il giro è in corsa quando è avviato, la galleria non è
+//   ferma né in sosta, la pagina è visibile e la galleria è nel riquadro della
+//   finestra (un `IntersectionObserver` per giro). Solo allora gira l'orologio,
+//   un `requestAnimationFrame` come quello delle storie (`passoDelGiro`, in
+//   `giro.ts`): fuori corsa non si chiede nessun fotogramma, il tempo non conta e
+//   non si avanza. Quando il giro torna in corsa l'orologio riparte dal tempo che
+//   la foto aveva già fatto e il tempo da fermo non si recupera: nessuna foto
+//   saltata. Ogni foto resta `<ms>` di tempo in corsa dopo ogni cambio. All'avvio
+//   lo script dà alla galleria `data-galleria-avviata` e scrive `--avanzamento`
+//   (da 0 a 1) sulla tacca della foto attuale. Il valore si legge con `Number`:
+//   se non è un numero finito e positivo ("5000ms", "0"), nessun giro.
 //   Pausa. `data-galleria-ferma`, scritto dallo script, vuol dire ferma per scelta
-//   o per "riduci movimento": all'avvio, e quando la preferenza cambia, segue
-//   `prefers-reduced-motion`. `data-galleria-in-sosta` vale mentre un puntatore
-//   `mouse` (non il dito) è sopra un `[data-galleria-sosta]` della galleria.
+//   o per "riduci movimento": all'avvio segue `prefers-reduced-motion`; se la
+//   preferenza passa a `reduce` a pagina aperta la galleria si ferma, e se torna a
+//   `no-preference` resta com'è (la fa ripartire chi guarda, con un tocco o un
+//   clic). `data-galleria-in-sosta` vale mentre un puntatore `mouse` (non il
+//   dito) è sopra un `[data-galleria-sosta]` della galleria.
 //   `button[data-galleria-pausa]` alterna con un clic. È il controllo di rotazione
 //   del carosello W3C APG: niente `aria-pressed`, cambia il testo ("Metti in
 //   pausa" / "Riprendi"); lo stato sta solo in `data-galleria-ferma` sulla
 //   galleria. Lo script non scrive testi: la variante mette nel pulsante i due
 //   testi e mostra con il CSS quello giusto secondo `data-galleria-ferma`
 //   (l'altro con `display: none`, perché non si legga). `[data-galleria-annuncio]`
-//   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira.
+//   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira; la variante
+//   lo scrive già nell'HTML con `aria-live="off"`, perché alcuni lettori di schermo
+//   registrano le regioni live solo al caricamento.
 //   Comandi e gesti, con il giro. `[data-galleria-prec|succ]` e
-//   `[data-galleria-punto]` cambiano foto e fermano il giro. Un gesto su
+//   `[data-galleria-punto]` fermano il giro e poi cambiano foto: l'annuncio è già
+//   `polite` quando la foto cambia, e il cambio si sente. Un gesto su
 //   `[data-galleria-trascina]`, che non comincia su un `button` o un `a`, si decide
 //   con `gestoDellaGalleria` (in `gesti.ts`): un tocco (meno di 10 px su entrambi
-//   gli assi) alterna la pausa; un trascinamento come sopra cambia foto e ferma il
-//   giro; ogni altro spostamento non fa nulla. `pointercancel` annulla, come sopra.
+//   gli assi) alterna la pausa; un trascinamento come sopra ferma il giro e cambia
+//   foto; ogni altro spostamento non fa nulla. `pointercancel` annulla, come sopra.
 // - Colori: un contenitore `[data-colori="<nome>"]` con i pulsanti
 //   `button[data-colore="<colore>"]` (`aria-pressed`): premerne uno lo sceglie, ed
 //   è l'unico premuto; ripremerlo non fa nulla. Ogni pulsante porta i testi del suo
@@ -185,9 +199,12 @@ type StatoGiro = {
   /** Millisecondi passati sulla foto attuale, contando solo il tempo in corsa. */
   trascorso: number;
   ultimoFrame: number;
+  /** Il fotogramma chiesto a `requestAnimationFrame` (0: nessuno, l'orologio è spento). */
   frame: number;
   /** Quanto resta ferma ogni foto, in ms. */
   durata: number;
+  /** Vero se la galleria è nel riquadro della finestra (lo dice l'`IntersectionObserver`). */
+  visibile: boolean;
 };
 
 type Contesto = {
@@ -470,8 +487,37 @@ function fotoCorrente(galleria: HTMLElement): number {
 }
 
 /**
+ * Fa caricare subito le `img[loading="lazy"]` della foto attiva dopo quella
+ * attuale, perché al cambio sia già pronta. Prima aspetta che la foto attuale abbia
+ * finito di caricare (all'avvio è la foto principale, ad alta priorità: la
+ * successiva non le ruba la rete). Un giro fuori dal riquadro della finestra non
+ * precarica: ci riprova quando ci torna.
+ */
+function precaricaProssima(c: Contesto, galleria: HTMLElement): void {
+  if (c.giri.get(galleria)?.visibile === false) return;
+  const foto = elementi(galleria, '[data-galleria-foto]');
+  const attuale = fotoCorrente(galleria);
+  const corrente = foto[attuale];
+  if (!corrente) return;
+  const inCarica = elementi<HTMLImageElement>(corrente, 'img').find((img) => !img.complete);
+  if (inCarica) {
+    // Riprova a caricamento finito (anche se non va a buon fine). Se intanto la foto
+    // è cambiata, conta quella del momento.
+    const riprova = () => precaricaProssima(c, galleria);
+    inCarica.addEventListener('load', riprova, { once: true });
+    inCarica.addEventListener('error', riprova, { once: true });
+    return;
+  }
+  const prossima = foto[fotoDelGiro(fotoAttive(foto), attuale, 1)];
+  if (!prossima) return;
+  for (const img of elementi(prossima, 'img[loading="lazy"]')) {
+    img.setAttribute('loading', 'eager');
+  }
+}
+
+/**
  * Mostra la foto `indice` (dell'elenco completo, a giro). Se è saltata si mostra la
- * prima attiva dopo di lei: una foto saltata non si vede mai. Aggiorna anche
+ * prima attiva dopo di lei; se sono saltate tutte, quella richiesta. Aggiorna anche
  * tacche, contatore (sulle foto attive) e didascalie, e fa caricare la foto dopo.
  */
 function mostraFoto(c: Contesto, galleria: HTMLElement, indice: number): void {
@@ -503,14 +549,7 @@ function mostraFoto(c: Contesto, galleria: HTMLElement, indice: number): void {
   elementi(galleria, '[data-galleria-didascalia]').forEach((didascalia, i) => {
     didascalia.hidden = i !== attuale;
   });
-  if (giro || conFotoSaltate(galleria)) {
-    const prossima = foto[fotoDelGiro(attive, attuale, 1)];
-    if (prossima) {
-      for (const img of elementi(prossima, 'img[loading="lazy"]')) {
-        img.setAttribute('loading', 'eager');
-      }
-    }
-  }
+  if (giro || conFotoSaltate(galleria)) precaricaProssima(c, galleria);
 }
 
 /** La foto attiva dopo (`1`) o prima (`-1`) di quella attuale, a giro. */
@@ -520,40 +559,77 @@ function cambiaFoto(c: Contesto, galleria: HTMLElement, passo: 1 | -1): void {
 }
 
 /**
+ * Vero se il giro è in corsa: avviato, non fermo, non in sosta, con la pagina
+ * visibile e la galleria nel riquadro della finestra.
+ */
+function giroInCorsa(galleria: HTMLElement, giro: StatoGiro): boolean {
+  return (
+    galleria.hasAttribute('data-galleria-avviata') &&
+    !galleria.hasAttribute('data-galleria-ferma') &&
+    !galleria.hasAttribute('data-galleria-in-sosta') &&
+    !document.hidden &&
+    giro.visibile
+  );
+}
+
+/**
+ * Accende o spegne l'orologio di un giro secondo `giroInCorsa`: il fotogramma si
+ * chiede solo mentre il giro corre. Va chiamata a ogni cambio di una delle
+ * condizioni. Quando l'orologio riparte, l'ultimo fotogramma si riallinea ad
+ * adesso: il tempo passato da fermo non conta e nessuna foto si salta.
+ */
+function aggiornaOrologio(c: Contesto, galleria: HTMLElement): void {
+  const giro = c.giri.get(galleria);
+  if (!giro) return;
+  if (!giroInCorsa(galleria, giro)) {
+    cancelAnimationFrame(giro.frame);
+    giro.frame = 0;
+  } else if (giro.frame === 0) {
+    giro.ultimoFrame = performance.now();
+    giro.frame = requestAnimationFrame((ora) => fotogrammaGiro(c, galleria, ora));
+  }
+}
+
+/**
  * Ferma (o fa ripartire) il giro di una galleria e lo scrive nella pagina: lo
  * stato (`data-galleria-ferma`, da cui la variante sceglie il testo della pausa) e
- * l'annuncio.
+ * l'annuncio. Poi spegne o riaccende l'orologio.
  */
-function impostaFerma(galleria: HTMLElement, ferma: boolean): void {
+function impostaFerma(c: Contesto, galleria: HTMLElement, ferma: boolean): void {
   galleria.toggleAttribute('data-galleria-ferma', ferma);
   for (const annuncio of elementi(galleria, '[data-galleria-annuncio]')) {
     annuncio.setAttribute('aria-live', ferma ? 'polite' : 'off');
   }
+  aggiornaOrologio(c, galleria);
 }
 
 /** Un clic sul pulsante della pausa, o un tocco sulla foto: ferma il giro, o lo fa ripartire. Senza giro non fa nulla. */
 function alternaGiro(c: Contesto, galleria: HTMLElement): void {
-  if (c.giri.has(galleria)) impostaFerma(galleria, !galleria.hasAttribute('data-galleria-ferma'));
+  if (!c.giri.has(galleria)) return;
+  impostaFerma(c, galleria, !galleria.hasAttribute('data-galleria-ferma'));
 }
 
-/** Dopo un comando dato a mano il giro si ferma: ora decide chi guarda. */
+/**
+ * Dopo un comando dato a mano il giro si ferma: ora decide chi guarda. Si chiama
+ * prima di cambiare foto: così l'annuncio è già `polite` e il cambio si sente.
+ */
 function fermaGiro(c: Contesto, galleria: HTMLElement): void {
-  if (c.giri.has(galleria)) impostaFerma(galleria, true);
+  if (c.giri.has(galleria)) impostaFerma(c, galleria, true);
 }
 
 function spostaGalleria(c: Contesto, bottone: HTMLElement, passo: 1 | -1): void {
   const galleria = bottone.closest<HTMLElement>('[data-galleria]');
   if (!galleria) return;
-  cambiaFoto(c, galleria, passo);
   fermaGiro(c, galleria);
+  cambiaFoto(c, galleria, passo);
 }
 
 function vaiAlPunto(c: Contesto, bottone: HTMLElement): void {
   const galleria = bottone.closest<HTMLElement>('[data-galleria]');
   if (!galleria) return;
   const posizione = elementi(galleria, '[data-galleria-punto]').indexOf(bottone);
-  mostraFoto(c, galleria, fotoDelPunto(bottone, posizione));
   fermaGiro(c, galleria);
+  mostraFoto(c, galleria, fotoDelPunto(bottone, posizione));
 }
 
 function alternaPausaGalleria(c: Contesto, bottone: HTMLElement): void {
@@ -563,33 +639,47 @@ function alternaPausaGalleria(c: Contesto, bottone: HTMLElement): void {
 
 /** Registra il giro di una galleria `data-galleria-auto`, ferma se il movimento è ridotto. */
 function registraGiro(c: Contesto, galleria: HTMLElement): void {
-  const durata = Number.parseInt(galleria.dataset.galleriaAuto ?? '', 10);
-  if (!(durata > 0)) return; // senza una durata valida la galleria resta a mano
-  c.giri.set(galleria, { trascorso: 0, ultimoFrame: 0, frame: 0, durata });
-  impostaFerma(galleria, movimentoRidotto());
+  // Solo un numero finito e positivo: "5e3" vale 5000; "5000ms", "" o "0" nessun giro.
+  const durata = Number(galleria.dataset.galleriaAuto ?? '');
+  if (!Number.isFinite(durata) || durata <= 0) return; // la galleria resta a mano
+  // Visibile solo dove manca l'`IntersectionObserver`: altrimenti lo dice lui, subito dopo l'avvio.
+  const visibile = typeof IntersectionObserver !== 'function';
+  c.giri.set(galleria, { trascorso: 0, ultimoFrame: 0, frame: 0, durata, visibile });
+  impostaFerma(c, galleria, movimentoRidotto());
 }
 
-/** Fa partire l'orologio di un giro già registrato (quando la galleria ha già la sua foto attuale). */
+/**
+ * Fa partire un giro già registrato (quando la galleria ha già la sua foto
+ * attuale): la segna avviata e ne segue la presenza nel riquadro della finestra.
+ * Quando torna visibile riprende anche il precarico.
+ */
 function avviaGiro(c: Contesto, galleria: HTMLElement, giro: StatoGiro): void {
   galleria.setAttribute('data-galleria-avviata', '');
-  giro.ultimoFrame = performance.now();
-  giro.frame = requestAnimationFrame((ora) => fotogrammaGiro(c, galleria, ora));
+  if (typeof IntersectionObserver === 'function') {
+    new IntersectionObserver((voci) => {
+      const ultima = voci[voci.length - 1];
+      if (!ultima) return;
+      giro.visibile = ultima.isIntersecting;
+      if (giro.visibile) precaricaProssima(c, galleria);
+      aggiornaOrologio(c, galleria);
+    }).observe(galleria);
+  }
+  aggiornaOrologio(c, galleria);
 }
 
-/** Un fotogramma dell'orologio: il tempo conta solo se la galleria non è ferma né in sosta e la pagina si vede. */
+/** Un fotogramma dell'orologio, chiesto solo mentre il giro è in corsa (vedi `aggiornaOrologio`). */
 function fotogrammaGiro(c: Contesto, galleria: HTMLElement, ora: number): void {
   const giro = c.giri.get(galleria);
   if (!giro) return;
-  const inCorsa =
-    !galleria.hasAttribute('data-galleria-ferma') &&
-    !galleria.hasAttribute('data-galleria-in-sosta') &&
-    !document.hidden;
-  const passo = passoDelGiro(giro.trascorso, ora - giro.ultimoFrame, inCorsa, giro.durata);
+  giro.frame = 0;
+  // Un fotogramma rimasto da prima che il giro si fermasse: l'orologio resta spento.
+  if (!giroInCorsa(galleria, giro)) return;
+  const passo = passoDelGiro(giro.trascorso, ora - giro.ultimoFrame, true, giro.durata);
   giro.trascorso = passo.trascorso;
   giro.ultimoFrame = ora;
   if (passo.avanza) {
     cambiaFoto(c, galleria, 1);
-  } else if (inCorsa) {
+  } else {
     const punto = galleria.querySelector<HTMLElement>('[data-galleria-punto][aria-current="true"]');
     if (punto) scriviAvanzamento(punto, giro);
   }
@@ -597,7 +687,7 @@ function fotogrammaGiro(c: Contesto, galleria: HTMLElement, ora: number): void {
 }
 
 /** Il mouse entra o esce da un `data-galleria-sosta` (il dito no): la galleria va in sosta, o ne esce. */
-function aggiornaSosta(evento: PointerEvent, dentro: boolean): void {
+function aggiornaSosta(c: Contesto, evento: PointerEvent, dentro: boolean): void {
   const bersaglio = evento.target;
   if (evento.pointerType !== 'mouse' || !(bersaglio instanceof Element)) return;
   const zona = bersaglio.closest<HTMLElement>('[data-galleria-sosta]');
@@ -607,6 +697,7 @@ function aggiornaSosta(evento: PointerEvent, dentro: boolean): void {
   const verso = evento.relatedTarget;
   if (!dentro && verso instanceof Node && zona.contains(verso)) return;
   galleria.toggleAttribute('data-galleria-in-sosta', dentro);
+  aggiornaOrologio(c, galleria);
 }
 
 /** Pressione su un'area `data-galleria-trascina`, non su un pulsante o un link: parte il trascinamento. */
@@ -650,8 +741,8 @@ function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
   if (gesto === 'tocco') {
     alternaGiro(c, t.galleria);
   } else if (gesto !== null) {
-    cambiaFoto(c, t.galleria, gesto);
     fermaGiro(c, t.galleria);
+    cambiaFoto(c, t.galleria, gesto);
   }
 }
 
@@ -1032,8 +1123,8 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     annullaTrascinamento(c, evento as PointerEvent);
   });
   // Il mouse sopra la zona di sosta di una galleria che gira da sola ne ferma l'orologio.
-  radice.addEventListener('pointerover', (evento) => aggiornaSosta(evento as PointerEvent, true));
-  radice.addEventListener('pointerout', (evento) => aggiornaSosta(evento as PointerEvent, false));
+  radice.addEventListener('pointerover', (evento) => aggiornaSosta(c, evento as PointerEvent, true));
+  radice.addEventListener('pointerout', (evento) => aggiornaSosta(c, evento as PointerEvent, false));
   // Un'immagine dell'area si trascinerebbe come file: qui trascinare vuol dire cambiare foto.
   radice.addEventListener('dragstart', (evento) => {
     const bersaglio = evento.target;
@@ -1060,11 +1151,11 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   });
 
   // Una scheda in secondo piano non avanza (il browser ferma i fotogrammi): al
-  // ritorno il tempo di assenza non conta, né per le storie né per i giri.
+  // ritorno il tempo di assenza non conta, né per le storie né per i giri. L'orologio
+  // dei giri si spegne quando la scheda si nasconde e si riaccende, riallineato, al ritorno.
   document.addEventListener('visibilitychange', () => {
-    const adesso = performance.now();
-    if (c.storia) c.storia.ultimoFrame = adesso;
-    for (const giro of c.giri.values()) giro.ultimoFrame = adesso;
+    if (c.storia) c.storia.ultimoFrame = performance.now();
+    for (const galleria of c.giri.keys()) aggiornaOrologio(c, galleria);
   });
 
   // `close` non risale: si ascolta in cattura.
@@ -1099,11 +1190,14 @@ export function avviaInterazioni(radice: ParentNode = document): void {
       }
     });
   }
-  // Con "riduci movimento" le gallerie che girano da sole stanno ferme; se la
-  // preferenza cambia a pagina aperta, si fermano o ripartono di conseguenza.
+  // Con "riduci movimento" le gallerie che girano da sole stanno ferme: se la
+  // preferenza passa a `reduce` a pagina aperta, si fermano. Se torna a
+  // `no-preference` non ripartono da sole (e una pausa scelta resta): le fa
+  // ripartire chi guarda, con un tocco o un clic.
   if (c.giri.size > 0) {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (evento) => {
-      for (const galleria of c.giri.keys()) impostaFerma(galleria, evento.matches);
+      if (!evento.matches) return;
+      for (const galleria of c.giri.keys()) impostaFerma(c, galleria, true);
     });
   }
 }
