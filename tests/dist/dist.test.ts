@@ -384,6 +384,17 @@ function incoerenzeProtocolli(html: string): string[] {
       problemi.add(`${didascalie} data-galleria-didascalia per ${foto} data-galleria-foto nella stessa galleria`);
     }
   }
+  // La pausa di una galleria è un `button` senza `aria-pressed` (come il controllo
+  // di rotazione del carosello W3C APG): cambia il testo, lo stato è
+  // `data-galleria-ferma` sulla galleria.
+  for (const [elemento] of html.matchAll(
+    new RegExp(`<[a-z][a-z0-9-]*\\b${ATTRIBUTI}>`, 'gi'),
+  )) {
+    if (quanti(elemento, 'data-galleria-pausa') === 0) continue;
+    if (!/^<button\b/i.test(elemento) || quanti(elemento, 'aria-pressed') > 0) {
+      problemi.add('data-galleria-pausa non è un button senza aria-pressed');
+    }
+  }
   // Un pulsante colore sta dentro un contenitore `data-colori`; e la foto che
   // sceglie (`data-colore-foto="n"`) esiste nella galleria di quel contenitore.
   const PULSANTE_COLORE = /<button\b[^>]*\sdata-colore(?=[\s=>/])[^>]*>/gi;
@@ -473,7 +484,10 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<button data-interruttore>x</button>',
     '<li data-filtrabile="selezione" data-categorie="letto">Lenzuola</li>',
     // pausa, foto saltate, didascalie, sosta e annuncio vogliono la loro galleria
-    '<button type="button" data-galleria-pausa aria-pressed="false">Pausa</button>',
+    '<button type="button" data-galleria-pausa>Pausa</button>',
+    // la pausa è un button, e senza aria-pressed: il suo testo cambia
+    '<div data-galleria><button type="button" data-galleria-pausa aria-pressed="false">Pausa</button></div>',
+    '<div data-galleria><div data-galleria-pausa>Pausa</div></div>',
     '<ul><li data-galleria-foto data-galleria-salta="(width > 1023px)"></li></ul>',
     '<p data-galleria-annuncio><span data-galleria-didascalia>Coperta</span></p>',
     '<div data-galleria-sosta><div data-galleria><div data-galleria-foto></div></div></div>',
@@ -531,7 +545,7 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     '<button data-filtro="letto">Letto</button><dialog data-post="x"></dialog>',
     // una galleria che gira da sola, con tutto dentro: un ">" in un valore non chiude il tag
     '<section data-galleria data-galleria-auto="5000"><div data-galleria-sosta>' +
-      '<button type="button" data-galleria-pausa aria-pressed="false">Pausa</button>' +
+      '<button type="button" data-galleria-pausa>Pausa</button>' +
       '<ul><li data-galleria-foto></li><li data-galleria-foto data-galleria-salta="(width > 1023px)" hidden></li></ul>' +
       '<p data-galleria-annuncio><span data-galleria-didascalia>a</span><span data-galleria-didascalia hidden>b</span></p>' +
       '</div></section>',
@@ -1260,7 +1274,8 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const primo = new RegExp(`<(?:a|button)\\b${ATTRIBUTI}>`, 'i').exec(dentroApertura())?.[0] ?? '';
     expect(primo).toMatch(/^<button\b/);
     expect(quanti(primo, 'data-galleria-pausa')).toBe(1);
-    expect(valore(primo, 'aria-pressed')).toBe('false');
+    // Come il controllo di rotazione del carosello W3C APG: cambia il testo, niente aria-pressed.
+    expect(quanti(primo, 'aria-pressed')).toBe(0);
     const pausa = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-pausa') > 0);
     expect(pausa).toHaveLength(1);
     const testo = soloTesto(pausa[0]!.contenuto);
@@ -1272,6 +1287,31 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const testo = soloTesto(dentroApertura());
     expect(testo).toContain('In pausa · tocca per riprendere');
     expect(testo).toContain('In pausa · clic per riprendere');
+  });
+
+  it('il testo della pausa segue data-galleria-ferma, e "clic" vale per il mouse a ogni larghezza', () => {
+    const css = cssDellaPagina();
+    // Solo le regole dell'apertura: altri componenti (le storie) hanno classi con gli stessi nomi.
+    const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
+    const cid = /\sdata-astro-cid-([a-z0-9]+)/.exec(sezione)?.[1];
+    expect(cid).toBeDefined();
+    const mio = `\\[data-astro-cid-${cid}\\]`;
+    // Il testo del pulsante si sceglie dallo stato della galleria (l'altro è display: none).
+    expect(css).not.toMatch(new RegExp(`\\[aria-pressed[^\\]]*\\][^{}]*\\.se-(?:gira|ferma)${mio}`));
+    expect(css).toMatch(
+      new RegExp(`\\[data-galleria-ferma\\][^{},]*\\.se-gira${mio}[^{}]*\\{display:none\\}`),
+    );
+    expect(css).toMatch(
+      new RegExp(`:not\\(\\[data-galleria-ferma\\]\\)[^{},]*\\.se-ferma${mio}[^{}]*\\{display:none\\}`),
+    );
+    // La pillola: "clic per riprendere" con il mouse, senza condizioni sulla larghezza.
+    const regola = new RegExp(`\\.per-mouse${mio}\\{display:inline\\}`).exec(css);
+    expect(regola).not.toBeNull();
+    const media = css.slice(css.lastIndexOf('@media', regola!.index), regola!.index);
+    const condizione = media.slice(0, media.indexOf('{'));
+    expect(condizione).toMatch(/\(hover:\s*hover\)/);
+    expect(condizione).toMatch(/\(pointer:\s*fine\)/);
+    expect(condizione).not.toMatch(/width/);
   });
 
   it('le miniature sono decorative: due colonne nascoste ai lettori di schermo, con le foto 3-6 e 8-10 due volte', () => {

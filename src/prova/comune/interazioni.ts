@@ -72,9 +72,12 @@
 //   o per "riduci movimento": all'avvio, e quando la preferenza cambia, segue
 //   `prefers-reduced-motion`. `data-galleria-in-sosta` vale mentre un puntatore
 //   `mouse` (non il dito) è sopra un `[data-galleria-sosta]` della galleria.
-//   `button[data-galleria-pausa]` (`aria-pressed`, `"true"` = ferma) alterna con
-//   un clic: lo script non scrive testi, la variante mette nel pulsante i due
-//   testi e li mostra con il CSS secondo `aria-pressed`. `[data-galleria-annuncio]`
+//   `button[data-galleria-pausa]` alterna con un clic. È il controllo di rotazione
+//   del carosello W3C APG: niente `aria-pressed`, cambia il testo ("Metti in
+//   pausa" / "Riprendi"); lo stato sta solo in `data-galleria-ferma` sulla
+//   galleria. Lo script non scrive testi: la variante mette nel pulsante i due
+//   testi e mostra con il CSS quello giusto secondo `data-galleria-ferma`
+//   (l'altro con `display: none`, perché non si legga). `[data-galleria-annuncio]`
 //   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira.
 //   Comandi e gesti, con il giro. `[data-galleria-prec|succ]` e
 //   `[data-galleria-punto]` cambiano foto e fermano il giro. Un gesto su
@@ -516,12 +519,13 @@ function cambiaFoto(c: Contesto, galleria: HTMLElement, passo: 1 | -1): void {
   mostraFoto(c, galleria, fotoDelGiro(fotoAttive(foto), fotoCorrente(galleria), passo));
 }
 
-/** Ferma (o fa ripartire) il giro di una galleria e lo scrive nella pagina: stato, pulsante, annuncio. */
+/**
+ * Ferma (o fa ripartire) il giro di una galleria e lo scrive nella pagina: lo
+ * stato (`data-galleria-ferma`, da cui la variante sceglie il testo della pausa) e
+ * l'annuncio.
+ */
 function impostaFerma(galleria: HTMLElement, ferma: boolean): void {
   galleria.toggleAttribute('data-galleria-ferma', ferma);
-  for (const pulsante of elementi(galleria, 'button[data-galleria-pausa]')) {
-    pulsante.setAttribute('aria-pressed', String(ferma));
-  }
   for (const annuncio of elementi(galleria, '[data-galleria-annuncio]')) {
     annuncio.setAttribute('aria-live', ferma ? 'polite' : 'off');
   }

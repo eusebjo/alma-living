@@ -69,7 +69,7 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
 
     <div class="centro">
       <div class="cornice" data-galleria-trascina>
-        <button type="button" class="pausa" data-galleria-pausa aria-pressed="false">
+        <button type="button" class="pausa" data-galleria-pausa>
           <span class="se-gira"><Icona nome="pausa" misura={18} />Metti in pausa le foto</span>
           <span class="se-ferma"><Icona nome="riproduci" misura={18} />Riprendi le foto</span>
         </button>
@@ -260,7 +260,9 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
 
   /* --- La pausa da tastiera: ritagliata (nell'ordine di Tab e per i lettori di
      schermo, ma invisibile e non toccabile) finché non riceve il focus; allora
-     una pillola bianca al centro della cornice. Il testo segue `aria-pressed`. --- */
+     una pillola bianca al centro della cornice. Come il controllo di rotazione
+     del carosello W3C APG non ha `aria-pressed`: cambia il testo, secondo
+     `data-galleria-ferma` sulla galleria. --- */
   .pausa {
     position: absolute;
     z-index: 3;
@@ -295,8 +297,9 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
     gap: 10px;
   }
 
-  .pausa[aria-pressed='true'] .se-gira,
-  .pausa:not([aria-pressed='true']) .se-ferma {
+  /* Un testo solo: l'altro con `display: none`, così non si legge nemmeno. */
+  .apertura[data-galleria-ferma] .se-gira,
+  .apertura:not([data-galleria-ferma]) .se-ferma {
     display: none;
   }
 
@@ -339,7 +342,7 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
   }
 
   /* La pillola della pausa: solo da ferma. Il testo dice come riprendere: il
-     dito, oppure il clic (computer con il mouse). */
+     tocco, oppure il clic con il mouse (vedi la media query in fondo). */
   .in-pausa {
     display: none;
     align-items: center;
@@ -611,7 +614,9 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
     }
   }
 
-  @media (width > 1023px) and (hover: hover) and (pointer: fine) {
+  /* Con il mouse, a qualunque larghezza, "clic per riprendere"; altrimenti
+     "tocca". Uno solo dei due testi si vede. */
+  @media (hover: hover) and (pointer: fine) {
     .per-dito {
       display: none;
     }
