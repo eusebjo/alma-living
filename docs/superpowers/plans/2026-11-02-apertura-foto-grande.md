@@ -108,7 +108,7 @@
   - **Giro.** `[data-galleria][data-galleria-auto="<ms>"]` avanza da solo di una foto ogni `<ms>`. Ha un orologio a `requestAnimationFrame` come quello delle storie, che conta solo il tempo in corsa. All'avvio lo script dà alla galleria `data-galleria-avviata`.
   - **Pausa.** `data-galleria-ferma` vuol dire ferma per scelta, o per "riduci movimento", all'avvio o quando la preferenza cambia. `data-galleria-in-sosta` vale mentre un puntatore `mouse` è sopra un `[data-galleria-sosta]` della galleria. L'orologio conta solo se la galleria non è ferma, non è in sosta e la pagina è visibile. Al ritorno visibile, l'ultimo fotogramma si riallinea.
   - **Avanzamento.** `--avanzamento` (da 0 a 1) va sul `[data-galleria-punto]` della foto attuale.
-  - **Pulsante.** `button[data-galleria-pausa]` (`aria-pressed`, `"true"` = ferma): un clic alterna. Lo script non scrive testi: la variante mette nel pulsante i due testi e li mostra con il CSS secondo `aria-pressed`.
+  - **Pulsante.** `button[data-galleria-pausa]`, senza `aria-pressed` (come il controllo di rotazione del carosello W3C APG: cambia l'etichetta): un clic alterna. Lo stato sta solo in `data-galleria-ferma` sulla galleria. Lo script non scrive testi: la variante mette nel pulsante i due testi e mostra con il CSS quello giusto secondo `data-galleria-ferma`; l'altro ha `display: none`, così non si legge.
   - **Tocco e trascinamento.** In una galleria con giro, un gesto su `[data-galleria-trascina]` che non comincia su `button` o `a` si decide con `gestoDellaGalleria`:
     - `'tocco'` alterna la pausa;
     - `1` o `-1` cambia foto e ferma;
@@ -246,7 +246,7 @@ export const vetrina: ProdottoInVetrina[]; // i 12 della tabella, in ordine
      - **La colonna sinistra** (`aria-hidden="true"`): un binario con le miniature 3, 4, 5, 6 e la loro copia.
      - **Il centro**, che contiene:
        - **la cornice** (`data-galleria-trascina`), con:
-         - per primo, `button[data-galleria-pausa][aria-pressed="false"]` con i due testi del pulsante;
+         - per primo, `button[data-galleria-pausa]` (senza `aria-pressed`) con i due testi del pulsante;
          - poi la pila delle 12 foto `[data-galleria-foto]` in ordine. Le non `grande` hanno `data-galleria-salta="(width > 1023px)"`. La prima è visibile e `principale`, le altre `hidden`.
        - Le 12 didascalie `[data-galleria-didascalia]`, dentro un contenitore `[data-galleria-annuncio]`: sono il nome. Sul telefono stanno nella pillola sulla foto, sul computer sotto la cornice.
        - La pillola della pausa, con i due testi, telefono e computer, scelti dal CSS con `(hover: hover) and (pointer: fine)`.
@@ -264,7 +264,7 @@ export const vetrina: ProdottoInVetrina[]; // i 12 della tabella, in ordine
   - Due `@keyframes` (sale: `translateY(0)` → `translateY(calc(-50% - 6px))`; scende: l'inverso), 80 s, lineari, infinite.
   - `animation-play-state: paused` di base, `running` solo dentro `[data-galleria-avviata]:not([data-galleria-ferma]):not([data-galleria-in-sosta])`.
 - **Riduci movimento.** Con `prefers-reduced-motion: reduce`: niente animazioni e niente transizioni.
-- **Il pulsante della pausa.** È ritagliato (`clip-path: inset(50%)`, `pointer-events: none`) finché non ha `:focus-visible`. Con il focus diventa una pillola bianca da 48 px al centro della cornice. Il testo giusto dipende da `aria-pressed`.
+- **Il pulsante della pausa.** È ritagliato (`clip-path: inset(50%)`, `pointer-events: none`) finché non ha `:focus-visible`. Con il focus diventa una pillola bianca da 48 px al centro della cornice. Il testo giusto dipende da `data-galleria-ferma` sulla galleria; l'altro ha `display: none`.
 - **La pillola della pausa** si vede solo dentro `[data-galleria-ferma]`.
 - **Le tacche.** La barretta interna si riempie con `transform: scaleX(var(--avanzamento, 0))`. Bersagli da 44 px.
 
@@ -300,7 +300,7 @@ it('la vetrina ha i 12 prodotti della sequenza, cinque grandi', () => {
       - 12 didascalie con i nomi;
       - 5 tacche con `data-galleria-punto` uguale a `0,1,6,10,11`;
       - un contatore che dice `1 di 12`.
-    - **Aggiungi** "il primo elemento attivabile dell'apertura è la pausa": il primo `button` o `a` dentro `#apertura` è `button[data-galleria-pausa]` con `aria-pressed="false"`, e contiene i testi `Metti in pausa le foto` e `Riprendi le foto`.
+    - **Aggiungi** "il primo elemento attivabile dell'apertura è la pausa": il primo `button` o `a` dentro `#apertura` è `button[data-galleria-pausa]` senza `aria-pressed`, e contiene i testi `Metti in pausa le foto` e `Riprendi le foto`.
     - **Aggiungi** "le miniature sono decorative": due contenitori `aria-hidden="true"` dentro `#apertura`, con 8 e 6 `img` (le foto 3-6 e 8-10 due volte), tutte con `alt=""` e `loading="lazy"`.
     - **Aggiorna** i due test di priorità: l'unica `fetchpriority="high"` è la prima foto della cornice; le altre 11 foto della cornice sono `loading="lazy"`; a parte i loghi, nessun'altra immagine si carica subito.
     - **Aggiungi** "claim e frase": l'`h1` dell'apertura è il claim; la pagina contiene le due frasi, lunga e corta, alla lettera.

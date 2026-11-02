@@ -12,7 +12,7 @@
 - **Apertura:** le foto scorrono anche trascinando con il dito o con il mouse (oltre 40 px in orizzontale, se il movimento è più orizzontale che verticale), oltre a frecce e pallini.
 - **Storie:** un tocco a sinistra torna indietro, a destra va avanti; al centro mette in pausa o riprende; tenendo premuto si ferma e rilasciando riprende. Il pulsante di pausa resta.
 - **Selezione sul telefono:** griglia a due colonne con le prime 4 schede e "Mostra tutti gli 8"; sul tablet (768-1023 px) tre colonne con le prime 6; sul computer il carosello con le frecce di oggi. Il limite vale sulla lista filtrata.
-- **Storie e Instagram distinti:** le storie in alto sono del sito, raccolte per categoria, e non si sincronizzano con Instagram. Il pulsante del riquadro accanto alla fila diventa "Vedi i post".
+- **Storie e Instagram distinti:** le storie in alto sono del sito, raccolte per categoria, e non si sincronizzano con Instagram. Il pulsante del riquadro accanto alla fila diventa "Vedi i post". *(Superato il 2026-11-02: le storie sono solo sul telefono e il riquadro non c'è più.)*
 - **Diario:**
   - senza il riquadro profilo (nome Instagram, bio, indirizzo e stato, "Segui su Instagram", "Scrivici") e senza storie in evidenza;
   - il riquadro bianco tiene l'intestazione "Post dal negozio" con la data dell'ultimo aggiornamento, la griglia 3 x 3 e "Mostra altri post";
@@ -27,7 +27,7 @@ Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime 
 **Aggiornamento del 2026-11-01, secondo:** dopo la prova della versione 3 in anteprima, eusebjo ha chiesto due cose. La prima: togliere "Martina" da tutta la pagina, perché il sito parla come Alma Living. La seconda: rifare "Sugli scaffali adesso", perché era incoerente tra telefono e computer e troppo piatto. Sulla tela (nona proposta) ha scelto la variante 9, "Il meglio insieme", tavola `ScaffaliInsieme.dc.html` con `ScaffaliInsiemeTelefono.dc.html`. Per gli scaffali e per i testi qui sotto è il nuovo riferimento; il resto della pagina resta quello della versione 3 già in codice, compresi i 13 post veri. I commenti in `renderVals()` della tavola, dalla riga 1102 circa, sono il dettaglio delle regole. La ricerca che ha portato alla variante è in `research_notes/Design UI/nona/ricerca_schede.md`.
 - **Niente "Martina":**
   - nell'apertura il biglietto ha solo la frase e il contatore, senza la firma;
-  - accanto alle storie, "Le storie del negozio" con sotto "Arrivi, vetrina e novità, per categoria";
+  - accanto alle storie, "Le storie del negozio" con sotto "Arrivi, vetrina e novità, per categoria" *(superato il 2026-11-02: le storie sono solo sul telefono e il riquadro non c'è più)*;
   - il diario diventa "Il diario del negozio", con il testo al plurale ("Fotografiamo quello che succede in Via Ricasoli: …");
   - il biglietto del diario resta senza firma;
   - l'`aria-label` del diario diventa "Dal negozio, il diario";
