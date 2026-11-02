@@ -36,17 +36,7 @@
 //   `button[data-galleria-punto]` (`aria-current`) e `[data-galleria-contatore]`
 //   ("1 di 3"). Un `[data-galleria-punto]` che non è un `button` è solo un
 //   indicatore: riceve `aria-current` (e `--avanzamento`, vedi Giro) ma un clic
-//   non fa nulla. Dentro la galleria, un'area `[data-galleria-trascina]` fa
-//   cambiare foto, a giro come le frecce, con un trascinamento del dito o del
-//   mouse (pulsante principale): verso sinistra la foto dopo, verso destra quella
-//   prima (`versoTrascinamento`, in `gesti.ts`). Non conta un trascinamento che
-//   comincia su un `button` o un `a`. Al `pointerdown` lo script cattura il
-//   puntatore (così anche un rilascio fuori dall'area conta) e decide al
-//   `pointerup`; un `pointercancel` (il browser ha preso lo scorrimento della
-//   pagina) annulla. Il trascinamento nativo delle immagini dell'area è bloccato.
-//   La variante dà all'area `touch-action: pan-y pinch-zoom`, perché la pagina
-//   scorra in verticale e resti ingrandibile con due dita (il pizzico fa partire
-//   un `pointercancel`, che annulla il trascinamento).
+//   non fa nulla.
 //   Una galleria può anche saltare foto, avere didascalie e girare da sola, con
 //   gli attributi qui sotto; una che non li usa fa solo quello che c'è scritto
 //   sopra (schede rapide, post e colori non cambiano).
@@ -92,10 +82,9 @@
 //   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira; la variante
 //   lo scrive già nell'HTML con `aria-live="off"`, perché alcuni lettori di schermo
 //   registrano le regioni live solo al caricamento.
-//   Comandi e gesti, con il giro. `[data-galleria-prec|succ]`,
-//   `button[data-galleria-punto]` e un trascinamento che conta su
-//   `[data-galleria-trascina]` fermano il giro e poi cambiano foto: l'annuncio è
-//   già `polite` quando la foto cambia, e il cambio si sente.
+//   Comandi, con il giro. `[data-galleria-prec|succ]` e
+//   `button[data-galleria-punto]` fermano il giro e poi cambiano foto: l'annuncio
+//   è già `polite` quando la foto cambia, e il cambio si sente.
 // - Colori: un contenitore `[data-colori="<nome>"]` con i pulsanti
 //   `button[data-colore="<colore>"]` (`aria-pressed`): premerne uno lo sceglie, ed
 //   è l'unico premuto; ripremerlo non fa nulla. Ogni pulsante porta i testi del suo
@@ -160,7 +149,7 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante, o al link, da cui si sono aperti.
 import { filtra } from './filtra';
-import { azioneDelTocco, versoTrascinamento } from './gesti';
+import { azioneDelTocco } from './gesti';
 import { fotoDelGiro, passoDelGiro } from './giro';
 import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
@@ -217,8 +206,6 @@ type Contesto = {
   giri: Map<HTMLElement, StatoGiro>;
   /** Dove è cominciata l'ultima pressione del puntatore (per il clic sullo sfondo). */
   inizioPressione: EventTarget | null;
-  /** Il trascinamento di una galleria in corso: il puntatore (`id`) e da dove è partito. */
-  trascinamento: { galleria: HTMLElement; id: number; x: number; y: number } | null;
   /** Quando è cominciata la pressione sulla zona dei tocchi della storia (`NaN`: nessuna). */
   inizioTocco: number;
   /** Quanto è durata l'ultima pressione sulla zona dei tocchi, finché il clic non la usa (`NaN`: nessuna). */
@@ -682,46 +669,6 @@ function fotogrammaGiro(c: Contesto, galleria: HTMLElement, ora: number): void {
   giro.frame = requestAnimationFrame((prossimo) => fotogrammaGiro(c, galleria, prossimo));
 }
 
-/** Pressione su un'area `data-galleria-trascina`, non su un pulsante o un link: parte il trascinamento. */
-function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
-  // Un puntatore solo (il primo dito) e, col mouse, il pulsante principale.
-  if (!evento.isPrimary) return;
-  c.trascinamento = null;
-  const bersaglio = evento.target;
-  if (!(bersaglio instanceof Element) || evento.button !== 0 || bersaglio.closest('button, a')) {
-    return;
-  }
-  const area = bersaglio.closest<HTMLElement>('[data-galleria-trascina]');
-  const galleria = area?.closest<HTMLElement>('[data-galleria]');
-  if (!area || !galleria) return;
-  try {
-    // Così il rilascio arriva a noi anche fuori dall'area.
-    area.setPointerCapture(evento.pointerId);
-  } catch {
-    // Puntatore non più attivo: il gesto si decide comunque al rilascio.
-  }
-  c.trascinamento = { galleria, id: evento.pointerId, x: evento.clientX, y: evento.clientY };
-}
-
-/**
- * Rilascio del puntatore che trascinava: se lo spostamento conta, ferma il giro
- * (se c'è) e cambia foto.
- */
-function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
-  const t = c.trascinamento;
-  if (!t || t.id !== evento.pointerId) return;
-  c.trascinamento = null;
-  const verso = versoTrascinamento(evento.clientX - t.x, evento.clientY - t.y);
-  if (verso === 0) return;
-  fermaGiro(c, t.galleria);
-  cambiaFoto(c, t.galleria, verso);
-}
-
-/** Il browser ha preso il gesto (scorrimento della pagina, trascinamento nativo): niente cambio. */
-function annullaTrascinamento(c: Contesto, evento: PointerEvent): void {
-  if (c.trascinamento?.id === evento.pointerId) c.trascinamento = null;
-}
-
 // --- Colori: un pulsante sceglie il colore, e i testi già scritti sul suo conto vanno al loro posto ---
 
 function scegliColore(c: Contesto, pulsante: HTMLElement): void {
@@ -997,7 +944,6 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     storia: null,
     giri: new Map(),
     inizioPressione: null,
-    trascinamento: null,
     inizioTocco: Number.NaN,
     durataTocco: Number.NaN,
   };
@@ -1063,9 +1009,8 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     }
   });
 
-  // Il puntatore (dito, penna, mouse): pressione, rilascio, annullamento. Ognuno
-  // dei tre fa le cose delle storie (tenere premuto, misurare un tocco) e quelle
-  // della galleria (trascinare), una dopo l'altra.
+  // Il puntatore (dito, penna, mouse): pressione, rilascio, annullamento, per le
+  // storie (tenere premuto, misurare un tocco).
   radice.addEventListener('pointerdown', (evento) => {
     c.inizioPressione = evento.target;
     const bersaglio = evento.target;
@@ -1079,7 +1024,6 @@ export function avviaInterazioni(radice: ParentNode = document): void {
       c.storia.premuto = true;
     }
     iniziaTocco(c, evento as PointerEvent);
-    iniziaTrascinamento(c, evento as PointerEvent);
   });
   const rilascia = () => {
     if (c.storia) c.storia.premuto = false;
@@ -1087,19 +1031,8 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   radice.addEventListener('pointerup', (evento) => {
     rilascia();
     finisciTocco(c, evento as PointerEvent);
-    finisciTrascinamento(c, evento as PointerEvent);
   });
-  radice.addEventListener('pointercancel', (evento) => {
-    rilascia();
-    annullaTrascinamento(c, evento as PointerEvent);
-  });
-  // Un'immagine dell'area si trascinerebbe come file: qui trascinare vuol dire cambiare foto.
-  radice.addEventListener('dragstart', (evento) => {
-    const bersaglio = evento.target;
-    if (bersaglio instanceof Element && bersaglio.closest('[data-galleria-trascina]')) {
-      evento.preventDefault();
-    }
-  });
+  radice.addEventListener('pointercancel', rilascia);
 
   // Un focus arrivato con la tastiera (`:focus-visible`: non un clic) su un
   // controllo della storia la ferma, perché si possa leggere e usare senza
