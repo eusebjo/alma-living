@@ -13,11 +13,14 @@
 // - Pausa senza pulsante visibile: il mouse sopra il palco ferma il tempo
 //   (`data-galleria-sosta`), un clic o un tocco sulla foto ferma e fa ripartire,
 //   da tastiera il primo elemento dell'apertura è un pulsante che si vede solo
-//   con il focus. Da ferma (`data-galleria-ferma`) compare la pillola "In pausa".
-//   Con "riduci movimento" lo script parte da fermo e qui nulla si muove.
-// - Senza JavaScript si vede la prima foto e le miniature stanno ferme.
+//   con il focus. Da ferma (`data-galleria-ferma`) compare la pillola "In pausa",
+//   nascosta ai lettori di schermo (dice cosa toccare; lo stato lo dice il
+//   pulsante). Con "riduci movimento" lo script parte da fermo e qui nulla si muove.
+// - Senza JavaScript si vede la prima foto, le miniature stanno ferme e non ci
+//   sono pausa, tacche, contatore né il cursore a mano sulla foto.
 // Gli stati `data-galleria-avviata`, `-ferma` e `-in-sosta` li scrive lo script:
-// nell'HTML non ci sono.
+// nell'HTML non ci sono. L'annuncio (`data-galleria-annuncio`) nasce con
+// `aria-live="off"` e lo script lo cambia.
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
 import { vetrina } from './dati';
@@ -97,7 +100,7 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
 
       <div class="sotto">
         <div class="etichette">
-          <p class="nome" data-galleria-annuncio>
+          <p class="nome" data-galleria-annuncio aria-live="off">
             {
               vetrina.map((prodotto, i) => (
                 <span data-galleria-didascalia hidden={i > 0}>
@@ -106,7 +109,7 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
               ))
             }
           </p>
-          <p class="in-pausa">
+          <p class="in-pausa" aria-hidden="true">
             <Icona nome="pausa" misura={12} />
             <span class="per-dito">In pausa · tocca per riprendere</span>
             <span class="per-mouse">In pausa · clic per riprendere</span>
@@ -210,6 +213,10 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
     touch-action: pan-y pinch-zoom;
     user-select: none;
     -webkit-user-select: none;
+  }
+
+  /* Un clic sulla foto ferma e fa ripartire: solo con lo script avviato. */
+  .apertura[data-galleria-avviata] .cornice {
     cursor: pointer;
   }
 
@@ -643,10 +650,12 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
     }
   }
 
-  /* Senza JavaScript la pausa e le tacche non farebbero nulla. */
+  /* Senza JavaScript la pausa e le tacche non farebbero nulla, e il contatore
+     resterebbe fermo a "1 di 12". */
   @media (scripting: none) {
     .pausa,
-    .tacche {
+    .tacche,
+    .contatore {
       display: none;
     }
   }

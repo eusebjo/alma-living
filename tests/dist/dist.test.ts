@@ -1309,6 +1309,121 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(condizione).not.toMatch(/width/);
   });
 
+  /** L'attributo `data-astro-cid-…` dell'apertura, come pezzo di espressione regolare. */
+  const cidApertura = () => {
+    const sezione = /<section\b[^>]*\sid="apertura"[^>]*>/.exec(html())?.[0] ?? '';
+    const cid = /\sdata-astro-cid-([a-z0-9]+)/.exec(sezione)?.[1];
+    expect(cid).toBeDefined();
+    return `\\[data-astro-cid-${cid}\\]`;
+  };
+
+  /** I blocchi `@media` del CSS: la condizione, il contenuto (graffe bilanciate) e dove stanno. */
+  const blocchiMedia = (css: string) => {
+    const blocchi: { condizione: string; contenuto: string; da: number; a: number }[] = [];
+    for (let da = css.indexOf('@media'); da !== -1; da = css.indexOf('@media', da + 1)) {
+      const apre = css.indexOf('{', da);
+      let a = apre + 1;
+      for (let profondita = 1; a < css.length && profondita > 0; a++) {
+        if (css[a] === '{') profondita++;
+        else if (css[a] === '}') profondita--;
+      }
+      const condizione = css.slice(da + '@media'.length, apre).trim();
+      blocchi.push({ condizione, contenuto: css.slice(apre + 1, a - 1), da, a });
+      da = a - 1;
+    }
+    return blocchi;
+  };
+
+  /** Le regole `selettore{dichiarazioni}` di un pezzo di CSS (senza `@media` dentro). */
+  const regole = (css: string) =>
+    [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+      selettore: m[1]!.trim(),
+      dichiarazioni: m[2]!,
+    }));
+
+  it('con "riduci movimento" nulla si muove; senza script, o ferme, le miniature restano in pausa', () => {
+    const css = cssDellaPagina();
+    const mio = cidApertura();
+    const blocchi = blocchiMedia(css);
+    // "Riduci movimento": le miniature senza animazione, le foto della cornice senza dissolvenza.
+    const ridotto = regole(
+      blocchi
+        .filter((b) => /^\(prefers-reduced-motion:\s*reduce\)$/.test(b.condizione))
+        .map((b) => b.contenuto)
+        .join('\n'),
+    );
+    const binario = new RegExp(`\\.binario${mio}$`);
+    expect(
+      ridotto.some(
+        (r) => binario.test(r.selettore) && /(?:^|;)animation:none(?:;|$)/.test(r.dichiarazioni),
+      ),
+    ).toBe(true);
+    expect(
+      ridotto.some(
+        (r) =>
+          new RegExp(`^\\.foto${mio}$`).test(r.selettore) &&
+          /(?:^|;)transition:none(?:;|$)/.test(r.dichiarazioni),
+      ),
+    ).toBe(true);
+
+    // Di base (fuori da ogni `@media`) i due binari hanno l'animazione in pausa...
+    let base = css;
+    for (const b of [...blocchi].reverse()) base = base.slice(0, b.da) + base.slice(b.a);
+    for (const nome of ['binario-sale', 'binario-scende']) {
+      const regola = regole(base).find((r) => new RegExp(`^\\.${nome}${mio}$`).test(r.selettore));
+      expect(regola?.dichiarazioni, nome).toMatch(/(?:^|;)animation:[^;]*\bpaused\b/);
+    }
+    // ...e corrono solo dentro una galleria avviata (dallo script), non ferma e non in sosta.
+    const inCorsa = regole(css).filter(
+      (r) => r.selettore.includes(`.binario[`) && /\brunning\b/.test(r.dichiarazioni),
+    );
+    expect(inCorsa.map((r) => r.selettore)).toHaveLength(1);
+    expect(inCorsa[0]!.selettore).toMatch(
+      new RegExp(
+        `^\\.apertura${mio}\\[data-galleria-avviata\\]:not\\(\\[data-galleria-ferma\\]\\):not\\(\\[data-galleria-in-sosta\\]\\) \\.binario${mio}$`,
+      ),
+    );
+    expect(inCorsa[0]!.dichiarazioni).toMatch(/(?:^|;)animation-play-state:running(?:;|$)/);
+  });
+
+  it('senza JavaScript niente contatore, e la foto ha il cursore a mano solo con la galleria avviata', () => {
+    const css = cssDellaPagina();
+    const mio = cidApertura();
+    const senzaScript = regole(
+      blocchiMedia(css)
+        .filter((b) => /^\(scripting:\s*none\)$/.test(b.condizione))
+        .map((b) => b.contenuto)
+        .join('\n'),
+    );
+    const nascosti = senzaScript
+      .filter((r) => /(?:^|;)display:none(?:;|$)/.test(r.dichiarazioni))
+      .flatMap((r) => r.selettore.split(','));
+    for (const classe of ['pausa', 'tacche', 'contatore']) {
+      expect(nascosti, classe).toContainEqual(expect.stringMatching(new RegExp(`^\\.${classe}${mio}$`)));
+    }
+    const conMano = regole(css).filter(
+      (r) => r.selettore.includes(`.cornice[`) && /cursor:pointer/.test(r.dichiarazioni),
+    );
+    expect(conMano.length).toBeGreaterThan(0);
+    for (const r of conMano) {
+      for (const selettore of r.selettore.split(',')) {
+        expect(selettore).toMatch(
+          new RegExp(`^\\.apertura${mio}\\[data-galleria-avviata\\] \\.cornice${mio}$`),
+        );
+      }
+    }
+  });
+
+  it("l'annuncio della foto nasce con aria-live=\"off\"; la pillola della pausa è nascosta ai lettori di schermo", () => {
+    const annunci = elementiDove(dentroApertura(), (a) => quanti(a, 'data-galleria-annuncio') > 0);
+    expect(annunci).toHaveLength(1);
+    expect(valore(annunci[0]!.apertura, 'aria-live')).toBe('off');
+    const pillola = elementiDove(dentroApertura(), (a) => /\sclass="in-pausa[\s"]/.test(a));
+    expect(pillola).toHaveLength(1);
+    expect(valore(pillola[0]!.apertura, 'aria-hidden')).toBe('true');
+    expect(soloTesto(pillola[0]!.contenuto)).toContain('In pausa');
+  });
+
   it('le miniature sono decorative: due colonne nascoste ai lettori di schermo, con le foto 3-6 e 8-10 due volte', () => {
     const colonne = elementiDove(dentroApertura(), (a) => valore(a, 'aria-hidden') === 'true').filter(
       (e) => /<img\b/i.test(e.contenuto),
