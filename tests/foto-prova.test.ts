@@ -488,9 +488,11 @@ describe('eseguitoComeComando', () => {
 describe('elenco.json', () => {
   const elenco: string[] = JSON.parse(readFileSync('scripts/foto-prova/elenco.json', 'utf8'));
 
-  it('elenco.json e la banca foto coincidono', () => {
-    expect(elenco).toHaveLength(46);
-    expect(new Set(elenco).size).toBe(46);
+  // Il bucket ne ha una in più, `letto-giardino.jpg`: dal 2026-11-02 la prova non la
+  // usa e non si prepara più, ma nel bucket resta.
+  it('elenco.json ha le 45 foto della prova, ognuna una volta', () => {
+    expect(elenco).toHaveLength(45);
+    expect(new Set(elenco).size).toBe(45);
     for (const nome of elenco) expect(nome).toMatch(/^[a-z0-9-]+\.jpg$/);
   });
 

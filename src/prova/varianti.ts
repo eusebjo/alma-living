@@ -16,6 +16,6 @@ export const VARIANTI: readonly Variante[] = [
     id: 'salvia-social',
     nome: 'Salvia social',
     descrizione:
-      'Bianco e verde salvia, titoli serif classici, storie tonde sotto l’header, selezione dal negozio e diario con la griglia dei post.',
+      'Bianco e verde salvia, titoli serif classici, apertura con le foto dei prodotti che scorrono da sole, storie tonde solo sul telefono, selezione dal negozio e diario con la griglia dei post.',
   },
 ];

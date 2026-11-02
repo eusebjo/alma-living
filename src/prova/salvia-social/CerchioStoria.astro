@@ -21,7 +21,7 @@ if (!copertina) throw new Error(`La storia "${storia.id}" non ha foto.`);
   aria-label={`Apri la storia ${storia.nome}`}
 >
   <span class="anello">
-    <Foto scatto={copertina} alt="" larghezze={[124, 144]} sizes="(min-width: 960px) 72px, 62px" />
+    <Foto scatto={copertina} alt="" larghezze={[124, 144]} sizes="62px" />
     {storia.etichetta && <span class="etichetta">{storia.etichetta}</span>}
   </span>
   <span class="nome">{storia.nome}</span>
@@ -96,21 +96,6 @@ if (!copertina) throw new Error(`La storia "${storia.id}" non ha foto.`);
   @media (hover: hover) {
     .cerchio:hover .anello {
       box-shadow: 0 0 0 2px var(--nero);
-    }
-  }
-
-  @media (min-width: 960px) {
-    .cerchio {
-      width: 84px;
-    }
-
-    .anello :global(img) {
-      width: 72px;
-      height: 72px;
-    }
-
-    .nome {
-      font-size: 13px;
     }
   }
 </style>

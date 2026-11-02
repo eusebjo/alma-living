@@ -17,7 +17,6 @@ const ALT = {
   'camera-rosa': 'Camera romantica con testiera capitonné e copriletto trapuntato rosa',
   bagno: 'Bagno luminoso con asciugamani piegati e un accappatoio appeso',
   'bagno-prodotti': 'Mobile di legno con saponi e profumi per la casa, alla luce del giorno',
-  'letto-giardino': 'Letto bianco allestito in giardino',
   'lenzuola-beige': 'Lenzuola color sabbia in primo piano',
   volant: 'Lenzuola bianche e color panna con il volant',
   trapunta: 'Primo piano di un trapuntato bianco',

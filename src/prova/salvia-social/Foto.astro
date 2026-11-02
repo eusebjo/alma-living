@@ -16,23 +16,12 @@ interface Props {
   sizes: string;
   /** La foto principale della pagina: subito e con priorità alta. */
   principale?: boolean;
-  /** Subito ma senza priorità: una foto nascosta che deve essere pronta al
-   *  primo cambio (per esempio le altre diapositive dell'apertura). */
-  subito?: boolean;
   /** Testo alternativo diverso da quello della foto (vuoto se decorativa). */
   alt?: string;
   class?: string;
 }
 
-const {
-  scatto,
-  larghezze,
-  sizes,
-  principale = false,
-  subito = false,
-  alt = scatto.alt,
-  class: classe,
-} = Astro.props;
+const { scatto, larghezze, sizes, principale = false, alt = scatto.alt, class: classe } = Astro.props;
 
 const ingrandimento = 'ingrandimento' in scatto ? scatto.ingrandimento : undefined;
 const stile =
@@ -48,7 +37,7 @@ const stile =
   widths={larghezze}
   sizes={sizes}
   alt={alt}
-  loading={principale || subito ? 'eager' : 'lazy'}
+  loading={principale ? 'eager' : 'lazy'}
   fetchpriority={principale ? 'high' : undefined}
   class={classe}
   style={stile}

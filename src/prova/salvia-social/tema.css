@@ -38,7 +38,6 @@
   --sfondo-post: rgb(24 28 22 / 0.8);
   /* Il velo dietro la scheda rapida "Chiedi disponibilità": 0,6 da 768 px. */
   --velo-scheda: rgb(24 28 22 / 0.55);
-  --velo-foto: rgb(28 33 26 / 0.5);
   --velo-post: rgb(28 33 26 / 0.62);
   --velo-post-alto: rgb(28 33 26 / 0.12);
   /* Sotto rubrica e data di un post: sopra il velo del riquadro (almeno 0,12)
