@@ -48,6 +48,43 @@
 //   La variante dà all'area `touch-action: pan-y pinch-zoom`, perché la pagina
 //   scorra in verticale e resti ingrandibile con due dita (il pizzico fa partire
 //   un `pointercancel`, che annulla il trascinamento).
+//   Una galleria può anche saltare foto, avere didascalie e girare da sola, con
+//   gli attributi qui sotto; una che non li usa fa solo quello che c'è scritto
+//   sopra (schede rapide, post e colori non cambiano).
+//   Foto attive. `[data-galleria-foto][data-galleria-salta="<media>"]`: finché la
+//   `matchMedia` è vera la foto non fa parte della galleria. Frecce, tacche, giro e
+//   contatore ("3 di 12") contano solo le foto attive e lo script non mostra mai
+//   una foto saltata. Quando una di queste media cambia, se la foto attuale non è
+//   più attiva si passa alla prima attiva dopo di lei (`fotoDelGiro`, in
+//   `giro.ts`): gli ascoltatori di `matchMedia` si registrano all'avvio e coprono
+//   solo le foto presenti allora. `data-galleria-punto="<n>"`, con un numero, è
+//   la foto n dell'elenco completo, contando da 0 (senza valore la tacca vale per
+//   la sua posizione). `[data-galleria-didascalia]`, nello stesso ordine delle
+//   foto, si vede solo per la foto attuale (le altre `hidden`). Una galleria con
+//   giro o con foto saltate, quando una foto diventa attuale, fa caricare
+//   subito le `img[loading="lazy"]` della foto attiva successiva.
+//   Giro. `[data-galleria][data-galleria-auto="<ms>"]` avanza da solo di una foto
+//   ogni `<ms>`, a giro. L'orologio è un `requestAnimationFrame` come quello delle
+//   storie (`passoDelGiro`, in `giro.ts`) e conta solo il tempo in corsa: la
+//   galleria non deve essere ferma né in sosta, e la pagina deve essere visibile
+//   (al ritorno non si recupera il tempo di assenza). Ogni foto resta ferma `<ms>`
+//   dopo ogni cambio. All'avvio lo script dà alla galleria `data-galleria-avviata`
+//   e scrive `--avanzamento` (da 0 a 1) sulla tacca della foto attuale. Un valore
+//   che non è un numero positivo: nessun giro.
+//   Pausa. `data-galleria-ferma`, scritto dallo script, vuol dire ferma per scelta
+//   o per "riduci movimento": all'avvio, e quando la preferenza cambia, segue
+//   `prefers-reduced-motion`. `data-galleria-in-sosta` vale mentre un puntatore
+//   `mouse` (non il dito) è sopra un `[data-galleria-sosta]` della galleria.
+//   `button[data-galleria-pausa]` (`aria-pressed`, `"true"` = ferma) alterna con
+//   un clic: lo script non scrive testi, la variante mette nel pulsante i due
+//   testi e li mostra con il CSS secondo `aria-pressed`. `[data-galleria-annuncio]`
+//   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira.
+//   Comandi e gesti, con il giro. `[data-galleria-prec|succ]` e
+//   `[data-galleria-punto]` cambiano foto e fermano il giro. Un gesto su
+//   `[data-galleria-trascina]`, che non comincia su un `button` o un `a`, si decide
+//   con `gestoDellaGalleria` (in `gesti.ts`): un tocco (meno di 10 px su entrambi
+//   gli assi) alterna la pausa; un trascinamento come sopra cambia foto e ferma il
+//   giro; ogni altro spostamento non fa nulla. `pointercancel` annulla, come sopra.
 // - Colori: un contenitore `[data-colori="<nome>"]` con i pulsanti
 //   `button[data-colore="<colore>"]` (`aria-pressed`): premerne uno lo sceglie, ed
 //   è l'unico premuto; ripremerlo non fa nulla. Ogni pulsante porta i testi del suo
@@ -112,7 +149,8 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante, o al link, da cui si sono aperti.
 import { filtra } from './filtra';
-import { azioneDelTocco, versoTrascinamento } from './gesti';
+import { azioneDelTocco, gestoDellaGalleria, versoTrascinamento } from './gesti';
+import { fotoDelGiro, passoDelGiro } from './giro';
 import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
 import { oraDiRoma, statoNegozio, testoStato, type Fascia } from './orari';
 import { avanti, indietro, type Posizione } from './sequenza';
@@ -142,6 +180,16 @@ type StatoStoria = {
   ultimoFrame: number;
 };
 
+/** L'orologio di una galleria che gira da sola (`data-galleria-auto`). */
+type StatoGiro = {
+  /** Millisecondi passati sulla foto attuale, contando solo il tempo in corsa. */
+  trascorso: number;
+  ultimoFrame: number;
+  frame: number;
+  /** Quanto resta ferma ogni foto, in ms. */
+  durata: number;
+};
+
 type Contesto = {
   radice: ParentNode;
   /** Nomi dei gruppi per cui è stato premuto "Mostra altri". */
@@ -151,6 +199,8 @@ type Contesto = {
   /** Da quale pulsante si è aperto ogni dialog, per restituirgli il focus. */
   apertoDa: WeakMap<HTMLDialogElement, HTMLElement>;
   storia: StatoStoria | null;
+  /** Le gallerie che girano da sole, con il loro orologio. */
+  giri: Map<HTMLElement, StatoGiro>;
   /** Dove è cominciata l'ultima pressione del puntatore (per il clic sullo sfondo). */
   inizioPressione: EventTarget | null;
   /** Il trascinamento di una galleria in corso: il puntatore (`id`) e da dove è partito. */
@@ -398,36 +448,178 @@ function mostraTutti(c: Contesto, bottone: HTMLElement): void {
 }
 
 // --- Galleria ---
+//
+// Le foto "attive" sono quelle che non hanno una `data-galleria-salta` con la
+// media vera: solo loro si mostrano, si contano e fanno parte del giro. Una
+// galleria senza foto saltate le ha tutte attive, e fa quello che ha sempre fatto.
+
+/** Vero se una media query di `data-galleria-salta` esclude la foto, adesso. */
+function saltata(foto: HTMLElement): boolean {
+  const media = foto.dataset.galleriaSalta;
+  return !!media && matchMedia(media).matches;
+}
+
+/** Gli indici, sull'elenco completo, delle foto attive. */
+function fotoAttive(foto: HTMLElement[]): number[] {
+  return foto.flatMap((una, i) => (saltata(una) ? [] : [i]));
+}
+
+function conFotoSaltate(galleria: HTMLElement): boolean {
+  return galleria.querySelector('[data-galleria-salta]') !== null;
+}
+
+/** L'indice del punto sull'elenco completo delle foto: il suo valore, se è un numero, o la posizione. */
+function fotoDelPunto(punto: HTMLElement, posizione: number): number {
+  const valore = punto.dataset.galleriaPunto ?? '';
+  return /^\d+$/.test(valore) ? Number(valore) : posizione;
+}
+
+/** Quanto della foto attuale è passato, da 0 a 1, scritto nella tacca che la rappresenta. */
+function scriviAvanzamento(punto: HTMLElement, giro: StatoGiro): void {
+  punto.style.setProperty('--avanzamento', String(Math.min(giro.trascorso / giro.durata, 1)));
+}
 
 function fotoCorrente(galleria: HTMLElement): number {
   return Math.max(0, elementi(galleria, '[data-galleria-foto]').findIndex((foto) => !foto.hidden));
 }
 
-function mostraFoto(galleria: HTMLElement, indice: number): void {
+/**
+ * Mostra la foto `indice` (dell'elenco completo, a giro). Se è saltata si mostra la
+ * prima attiva dopo di lei: una foto saltata non si vede mai. Aggiorna anche
+ * tacche, contatore (sulle foto attive) e didascalie, e fa caricare la foto dopo.
+ */
+function mostraFoto(c: Contesto, galleria: HTMLElement, indice: number): void {
   const foto = elementi(galleria, '[data-galleria-foto]');
   if (foto.length === 0) return;
-  const attuale = ((indice % foto.length) + foto.length) % foto.length;
+  const attive = fotoAttive(foto);
+  const richiesta = ((indice % foto.length) + foto.length) % foto.length;
+  const attuale = attive.includes(richiesta) ? richiesta : fotoDelGiro(attive, richiesta, 1);
+  const giro = c.giri.get(galleria);
+  // Ogni foto resta ferma la sua durata: con una foto nuova il tempo riparte da zero.
+  if (giro && fotoCorrente(galleria) !== attuale) giro.trascorso = 0;
   foto.forEach((una, i) => {
     una.hidden = i !== attuale;
   });
   elementi(galleria, '[data-galleria-punto]').forEach((punto, i) => {
-    if (i === attuale) punto.setAttribute('aria-current', 'true');
+    const corrente = fotoDelPunto(punto, i) === attuale;
+    if (corrente) punto.setAttribute('aria-current', 'true');
     else punto.removeAttribute('aria-current');
+    if (giro) {
+      if (corrente) scriviAvanzamento(punto, giro);
+      else punto.style.removeProperty('--avanzamento');
+    }
   });
+  const totale = attive.length > 0 ? attive.length : foto.length;
+  const posizione = attive.length > 0 ? attive.indexOf(attuale) : attuale;
   for (const contatore of elementi(galleria, '[data-galleria-contatore]')) {
-    contatore.textContent = `${attuale + 1} di ${foto.length}`;
+    contatore.textContent = `${posizione + 1} di ${totale}`;
+  }
+  elementi(galleria, '[data-galleria-didascalia]').forEach((didascalia, i) => {
+    didascalia.hidden = i !== attuale;
+  });
+  if (giro || conFotoSaltate(galleria)) {
+    const prossima = foto[fotoDelGiro(attive, attuale, 1)];
+    if (prossima) {
+      for (const img of elementi(prossima, 'img[loading="lazy"]')) {
+        img.setAttribute('loading', 'eager');
+      }
+    }
   }
 }
 
-function spostaGalleria(bottone: HTMLElement, passo: number): void {
-  const galleria = bottone.closest<HTMLElement>('[data-galleria]');
-  if (galleria) mostraFoto(galleria, fotoCorrente(galleria) + passo);
+/** La foto attiva dopo (`1`) o prima (`-1`) di quella attuale, a giro. */
+function cambiaFoto(c: Contesto, galleria: HTMLElement, passo: 1 | -1): void {
+  const foto = elementi(galleria, '[data-galleria-foto]');
+  mostraFoto(c, galleria, fotoDelGiro(fotoAttive(foto), fotoCorrente(galleria), passo));
 }
 
-function vaiAlPunto(bottone: HTMLElement): void {
+/** Ferma (o fa ripartire) il giro di una galleria e lo scrive nella pagina: stato, pulsante, annuncio. */
+function impostaFerma(galleria: HTMLElement, ferma: boolean): void {
+  galleria.toggleAttribute('data-galleria-ferma', ferma);
+  for (const pulsante of elementi(galleria, 'button[data-galleria-pausa]')) {
+    pulsante.setAttribute('aria-pressed', String(ferma));
+  }
+  for (const annuncio of elementi(galleria, '[data-galleria-annuncio]')) {
+    annuncio.setAttribute('aria-live', ferma ? 'polite' : 'off');
+  }
+}
+
+/** Un clic sul pulsante della pausa, o un tocco sulla foto: ferma il giro, o lo fa ripartire. Senza giro non fa nulla. */
+function alternaGiro(c: Contesto, galleria: HTMLElement): void {
+  if (c.giri.has(galleria)) impostaFerma(galleria, !galleria.hasAttribute('data-galleria-ferma'));
+}
+
+/** Dopo un comando dato a mano il giro si ferma: ora decide chi guarda. */
+function fermaGiro(c: Contesto, galleria: HTMLElement): void {
+  if (c.giri.has(galleria)) impostaFerma(galleria, true);
+}
+
+function spostaGalleria(c: Contesto, bottone: HTMLElement, passo: 1 | -1): void {
   const galleria = bottone.closest<HTMLElement>('[data-galleria]');
   if (!galleria) return;
-  mostraFoto(galleria, elementi(galleria, '[data-galleria-punto]').indexOf(bottone));
+  cambiaFoto(c, galleria, passo);
+  fermaGiro(c, galleria);
+}
+
+function vaiAlPunto(c: Contesto, bottone: HTMLElement): void {
+  const galleria = bottone.closest<HTMLElement>('[data-galleria]');
+  if (!galleria) return;
+  const posizione = elementi(galleria, '[data-galleria-punto]').indexOf(bottone);
+  mostraFoto(c, galleria, fotoDelPunto(bottone, posizione));
+  fermaGiro(c, galleria);
+}
+
+function alternaPausaGalleria(c: Contesto, bottone: HTMLElement): void {
+  const galleria = bottone.closest<HTMLElement>('[data-galleria]');
+  if (galleria) alternaGiro(c, galleria);
+}
+
+/** Registra il giro di una galleria `data-galleria-auto`, ferma se il movimento è ridotto. */
+function registraGiro(c: Contesto, galleria: HTMLElement): void {
+  const durata = Number.parseInt(galleria.dataset.galleriaAuto ?? '', 10);
+  if (!(durata > 0)) return; // senza una durata valida la galleria resta a mano
+  c.giri.set(galleria, { trascorso: 0, ultimoFrame: 0, frame: 0, durata });
+  impostaFerma(galleria, movimentoRidotto());
+}
+
+/** Fa partire l'orologio di un giro già registrato (quando la galleria ha già la sua foto attuale). */
+function avviaGiro(c: Contesto, galleria: HTMLElement, giro: StatoGiro): void {
+  galleria.setAttribute('data-galleria-avviata', '');
+  giro.ultimoFrame = performance.now();
+  giro.frame = requestAnimationFrame((ora) => fotogrammaGiro(c, galleria, ora));
+}
+
+/** Un fotogramma dell'orologio: il tempo conta solo se la galleria non è ferma né in sosta e la pagina si vede. */
+function fotogrammaGiro(c: Contesto, galleria: HTMLElement, ora: number): void {
+  const giro = c.giri.get(galleria);
+  if (!giro) return;
+  const inCorsa =
+    !galleria.hasAttribute('data-galleria-ferma') &&
+    !galleria.hasAttribute('data-galleria-in-sosta') &&
+    !document.hidden;
+  const passo = passoDelGiro(giro.trascorso, ora - giro.ultimoFrame, inCorsa, giro.durata);
+  giro.trascorso = passo.trascorso;
+  giro.ultimoFrame = ora;
+  if (passo.avanza) {
+    cambiaFoto(c, galleria, 1);
+  } else if (inCorsa) {
+    const punto = galleria.querySelector<HTMLElement>('[data-galleria-punto][aria-current="true"]');
+    if (punto) scriviAvanzamento(punto, giro);
+  }
+  giro.frame = requestAnimationFrame((prossimo) => fotogrammaGiro(c, galleria, prossimo));
+}
+
+/** Il mouse entra o esce da un `data-galleria-sosta` (il dito no): la galleria va in sosta, o ne esce. */
+function aggiornaSosta(evento: PointerEvent, dentro: boolean): void {
+  const bersaglio = evento.target;
+  if (evento.pointerType !== 'mouse' || !(bersaglio instanceof Element)) return;
+  const zona = bersaglio.closest<HTMLElement>('[data-galleria-sosta]');
+  const galleria = zona?.closest<HTMLElement>('[data-galleria]');
+  if (!zona || !galleria) return;
+  // Passare da un elemento all'altro della stessa zona non è uscirne.
+  const verso = evento.relatedTarget;
+  if (!dentro && verso instanceof Node && zona.contains(verso)) return;
+  galleria.toggleAttribute('data-galleria-in-sosta', dentro);
 }
 
 /** Pressione su un'area `data-galleria-trascina`, non su un pulsante o un link: parte il trascinamento. */
@@ -451,13 +643,29 @@ function iniziaTrascinamento(c: Contesto, evento: PointerEvent): void {
   c.trascinamento = { galleria, id: evento.pointerId, x: evento.clientX, y: evento.clientY };
 }
 
-/** Rilascio del puntatore che trascinava: cambia foto se lo spostamento conta. */
+/**
+ * Rilascio del puntatore che trascinava: cambia foto se lo spostamento conta. In
+ * una galleria che gira da sola un tocco alterna la pausa, e un trascinamento che
+ * conta cambia foto e ferma il giro.
+ */
 function finisciTrascinamento(c: Contesto, evento: PointerEvent): void {
   const t = c.trascinamento;
   if (!t || t.id !== evento.pointerId) return;
   c.trascinamento = null;
-  const verso = versoTrascinamento(evento.clientX - t.x, evento.clientY - t.y);
-  if (verso !== 0) mostraFoto(t.galleria, fotoCorrente(t.galleria) + verso);
+  const dx = evento.clientX - t.x;
+  const dy = evento.clientY - t.y;
+  if (!c.giri.has(t.galleria)) {
+    const verso = versoTrascinamento(dx, dy);
+    if (verso !== 0) cambiaFoto(c, t.galleria, verso);
+    return;
+  }
+  const gesto = gestoDellaGalleria(dx, dy);
+  if (gesto === 'tocco') {
+    alternaGiro(c, t.galleria);
+  } else if (gesto !== null) {
+    cambiaFoto(c, t.galleria, gesto);
+    fermaGiro(c, t.galleria);
+  }
 }
 
 /** Il browser ha preso il gesto (scorrimento della pagina, trascinamento nativo): niente cambio. */
@@ -467,7 +675,7 @@ function annullaTrascinamento(c: Contesto, evento: PointerEvent): void {
 
 // --- Colori: un pulsante sceglie il colore, e i testi già scritti sul suo conto vanno al loro posto ---
 
-function scegliColore(_c: Contesto, pulsante: HTMLElement): void {
+function scegliColore(c: Contesto, pulsante: HTMLElement): void {
   const contenitore = pulsante.closest<HTMLElement>('[data-colori]');
   // Un colore già scelto non fa nulla.
   if (!contenitore || pulsante.getAttribute('aria-pressed') === 'true') return;
@@ -493,7 +701,7 @@ function scegliColore(_c: Contesto, pulsante: HTMLElement): void {
   }
   const galleria = contenitore.querySelector<HTMLElement>('[data-galleria]');
   const foto = Number.parseInt(pulsante.dataset.coloreFoto ?? '', 10);
-  if (galleria && Number.isFinite(foto)) mostraFoto(galleria, foto);
+  if (galleria && Number.isFinite(foto)) mostraFoto(c, galleria, foto);
 }
 
 // --- Dialog (storie e post) ---
@@ -711,9 +919,10 @@ const AZIONI: [
   ['[data-filtro-scegli]', scegliFiltroDaLink],
   ['[data-mostra-altri]', mostraAltri],
   ['[data-limite-mostra]', mostraTutti],
-  ['[data-galleria-prec]', (_c, el) => spostaGalleria(el, -1)],
-  ['[data-galleria-succ]', (_c, el) => spostaGalleria(el, 1)],
-  ['[data-galleria-punto]', (_c, el) => vaiAlPunto(el)],
+  ['[data-galleria-prec]', (c, el) => spostaGalleria(c, el, -1)],
+  ['[data-galleria-succ]', (c, el) => spostaGalleria(c, el, 1)],
+  ['[data-galleria-punto]', vaiAlPunto],
+  ['button[data-galleria-pausa]', alternaPausaGalleria],
   ['button[data-colore]', scegliColore],
   ['[data-storia-apri]', apriStoria],
   ['[data-storia-tocchi]', toccoSullaStoria],
@@ -739,6 +948,7 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     limiteAperto: new Set(),
     apertoDa: new WeakMap(),
     storia: null,
+    giri: new Map(),
     inizioPressione: null,
     trascinamento: null,
     inizioTocco: Number.NaN,
@@ -758,9 +968,14 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     }
   }
   applicaFiltri(c);
-  for (const galleria of elementi(radice, '[data-galleria]')) {
-    mostraFoto(galleria, fotoCorrente(galleria));
+  // I giri si registrano prima di disegnare la foto attuale (che ne scrive l'avanzamento) e partono dopo.
+  for (const galleria of elementi(radice, '[data-galleria][data-galleria-auto]')) {
+    registraGiro(c, galleria);
   }
+  for (const galleria of elementi(radice, '[data-galleria]')) {
+    mostraFoto(c, galleria, fotoCorrente(galleria));
+  }
+  for (const [galleria, giro] of c.giri) avviaGiro(c, galleria, giro);
   // Un link che apre un post: con lo script apre un dialog, e i lettori di schermo lo sanno.
   for (const link of elementi(radice, 'a[data-post-apri]')) {
     if (dialogDelPost(c, link)) link.setAttribute('aria-haspopup', 'dialog');
@@ -831,6 +1046,9 @@ export function avviaInterazioni(radice: ParentNode = document): void {
     rilascia();
     annullaTrascinamento(c, evento as PointerEvent);
   });
+  // Il mouse sopra la zona di sosta di una galleria che gira da sola ne ferma l'orologio.
+  radice.addEventListener('pointerover', (evento) => aggiornaSosta(evento as PointerEvent, true));
+  radice.addEventListener('pointerout', (evento) => aggiornaSosta(evento as PointerEvent, false));
   // Un'immagine dell'area si trascinerebbe come file: qui trascinare vuol dire cambiare foto.
   radice.addEventListener('dragstart', (evento) => {
     const bersaglio = evento.target;
@@ -857,9 +1075,11 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   });
 
   // Una scheda in secondo piano non avanza (il browser ferma i fotogrammi): al
-  // ritorno il tempo di assenza non conta.
+  // ritorno il tempo di assenza non conta, né per le storie né per i giri.
   document.addEventListener('visibilitychange', () => {
-    if (c.storia) c.storia.ultimoFrame = performance.now();
+    const adesso = performance.now();
+    if (c.storia) c.storia.ultimoFrame = adesso;
+    for (const giro of c.giri.values()) giro.ultimoFrame = adesso;
   });
 
   // `close` non risale: si ascolta in cattura.
@@ -879,5 +1099,26 @@ export function avviaInterazioni(radice: ParentNode = document): void {
   );
   for (const media of medie) {
     matchMedia(media).addEventListener('change', () => applicaFiltri(c));
+  }
+  // Le foto saltate dipendono dalla misura dello schermo, come il limite: quando
+  // cambia una loro media query, se la foto attuale non è più attiva si passa a
+  // un'altra, e il contatore si ricalcola. Solo le gallerie presenti all'avvio.
+  const medieSalta = new Set(
+    elementi(radice, '[data-galleria-salta]').map((foto) => foto.dataset.galleriaSalta ?? ''),
+  );
+  medieSalta.delete('');
+  for (const media of medieSalta) {
+    matchMedia(media).addEventListener('change', () => {
+      for (const galleria of elementi(radice, '[data-galleria]').filter(conFotoSaltate)) {
+        mostraFoto(c, galleria, fotoCorrente(galleria));
+      }
+    });
+  }
+  // Con "riduci movimento" le gallerie che girano da sole stanno ferme; se la
+  // preferenza cambia a pagina aperta, si fermano o ripartono di conseguenza.
+  if (c.giri.size > 0) {
+    matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (evento) => {
+      for (const galleria of c.giri.keys()) impostaFerma(galleria, evento.matches);
+    });
   }
 }

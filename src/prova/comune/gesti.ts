@@ -15,6 +15,23 @@ export function versoTrascinamento(dx: number, dy: number): -1 | 0 | 1 {
   return dx < 0 ? 1 : -1;
 }
 
+/** Sotto questo spostamento (in px, su entrambi gli assi) un gesto su una galleria è un tocco. */
+export const SOGLIA_TOCCO_PX = 10;
+
+/**
+ * Cosa vuol dire un gesto di `dx` e `dy` pixel su una galleria che gira da sola:
+ * `'tocco'` se lo spostamento resta sotto `SOGLIA_TOCCO_PX` su entrambi gli assi
+ * (alterna la pausa), `1` o `-1` se è un trascinamento che conta (la foto dopo o
+ * quella prima, come `versoTrascinamento`), `null` in ogni altro caso: tra il
+ * tocco e la soglia del trascinamento, o più verticale che orizzontale (è lo
+ * scorrimento della pagina).
+ */
+export function gestoDellaGalleria(dx: number, dy: number): 'tocco' | -1 | 1 | null {
+  if (Math.abs(dx) < SOGLIA_TOCCO_PX && Math.abs(dy) < SOGLIA_TOCCO_PX) return 'tocco';
+  const verso = versoTrascinamento(dx, dy);
+  return verso === 0 ? null : verso;
+}
+
 /** Oltre questa durata (in ms) una pressione è "lunga": ferma la storia e basta, non è un tocco. */
 export const PRESSIONE_LUNGA_MS = 300;
 
