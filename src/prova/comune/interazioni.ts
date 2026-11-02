@@ -130,9 +130,12 @@
 //   `display: none`). La chiudono anche `[data-storia-invito-chiudi]`, Esc
 //   (l'evento `cancel` del dialog: a scheda aperta Esc chiude solo lei, non il
 //   lettore) e un trascinamento in giù (qui sotto); il focus torna alla pillola
-//   del gruppo. Al cambio di foto la scheda si richiude senza spostare il focus,
-//   se non era nella scheda: allora va alla pillola del gruppo attuale. Se la foto
-//   attuale non ha la sua scheda, né la pillola né il trascinamento aprono nulla.
+//   del gruppo. Al cambio di foto la scheda si richiude. Se la foto attuale non
+//   ha la sua scheda, né la pillola né il trascinamento aprono nulla.
+//   Focus al cambio di foto. Resta dov'è, a meno che sia su un elemento che si
+//   nasconde: nel gruppo che si lascia (la pillola, "altro"; per esempio con le
+//   frecce della tastiera), nella foto che si lascia ("altro") o nella scheda che
+//   si chiude. Allora va alla pillola del gruppo attuale.
 //   Tocchi. Un elemento `[data-storia-tocchi]` per dialog, sopra le foto e sotto i
 //   controlli, con `aria-hidden="true"` e non focalizzabile (da tastiera e con i
 //   lettori di schermo restano i pulsanti e le frecce), raccoglie i tocchi: un
@@ -960,9 +963,17 @@ function mostraStoria(c: Contesto, posizione: Posizione): void {
   const s = c.storia;
   const corrente = s?.gruppi[posizione.gruppo];
   if (!s || !corrente) return;
-  // Il focus nella scheda che si lascia andrebbe perso su un elemento nascosto.
-  const lasciata = s.gruppi[s.posizione.gruppo]?.inviti[s.posizione.foto];
-  const focusNellaScheda = s.invitoAperto && !!lasciata?.contains(document.activeElement);
+  // Il focus su un elemento che qui si nasconde andrebbe perso: nel gruppo che si
+  // lascia (la pillola, "altro"), nella foto che si lascia ("altro") o nella
+  // scheda che si chiude.
+  const lasciato = s.gruppi[s.posizione.gruppo];
+  const attivo = document.activeElement;
+  const altroGruppo = posizione.gruppo !== s.posizione.gruppo;
+  const altraFoto = altroGruppo || posizione.foto !== s.posizione.foto;
+  const focusDaSpostare =
+    (altroGruppo && !!lasciato?.gruppo.contains(attivo)) ||
+    (altraFoto && !!lasciato?.foto[s.posizione.foto]?.contains(attivo)) ||
+    (s.invitoAperto && !!lasciato?.inviti[s.posizione.foto]?.contains(attivo));
   s.posizione = posizione;
   s.trascorso = 0;
   s.durata = durataDi(corrente.foto[posizione.foto]);
@@ -983,8 +994,8 @@ function mostraStoria(c: Contesto, posizione: Posizione): void {
   const frase = foto?.querySelector<HTMLElement>('[data-storia-frase]');
   const altro = foto?.querySelector<HTMLElement>('[data-storia-altro]');
   if (frase && altro) altro.hidden = !(frase.scrollHeight > frase.clientHeight + 1);
-  // Il focus resta dov'è, se non era nella scheda chiusa: allora va alla pillola.
-  if (focusNellaScheda) pillolaAttuale(s)?.focus();
+  // Il focus resta dov'è, se non era su qualcosa che si è nascosto: allora va alla pillola.
+  if (focusDaSpostare) pillolaAttuale(s)?.focus();
   // Barre: le foto già viste piene, la corrente da riempire (o piena, se il
   // movimento è ridotto: allora non c'è avanzamento e si passa a mano).
   corrente.barre.forEach((barra, i) => {

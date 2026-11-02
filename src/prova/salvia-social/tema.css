@@ -32,9 +32,6 @@
   --vetro: rgb(255 255 255 / 0.94);
   --vetro-chiaro: rgb(255 255 255 / 0.5);
   --vetro-sopra: rgb(255 255 255 / 0.4);
-  --vetro-poi: rgb(255 255 255 / 0.12);
-  --bordo-poi: rgb(255 255 255 / 0.3);
-  --sfondo-storie: rgb(24 28 22 / 0.88);
   --sfondo-post: rgb(24 28 22 / 0.8);
   /* Il velo dietro la scheda rapida "Chiedi disponibilità": 0,6 da 768 px. */
   --velo-scheda: rgb(24 28 22 / 0.55);
@@ -43,15 +40,25 @@
   /* Sotto rubrica e data di un post: sopra il velo del riquadro (almeno 0,12)
      arriva ad almeno 0,62, cioè 4,6:1 per il bianco anche su una foto bianca. */
   --velo-post-testo: rgb(28 33 26 / 0.57);
-  /* Veli delle storie: con 0,65 di nero il bianco fa circa 7:1 anche su una foto
-     bianca (serve almeno 0,54 per 4,5:1, 0,58 per la data in grigio chiaro). */
-  --velo-storia: rgb(0 0 0 / 0.8);
-  --velo-storia-alto: rgb(0 0 0 / 0.65);
-  --velo-storia-testo: rgb(0 0 0 / 0.65);
+  /* Il lettore delle storie (tavola StorieRichiesta): un fondo pieno, i veli a
+     gradiente sulla foto e la scheda degli inviti. Su una foto bianca il bianco
+     arriva a 4,5:1 con 0,58 di velo, il grigio chiaro della data con 0,63: in
+     alto 0,66 fa 6,1:1 per il bianco e 5,1:1 per la data, in basso 0,72 fa 7,6:1.
+     Sulla scheda (0,72 sopra la foto sfocata) il bianco fa almeno 7,2:1, il
+     soggetto 5,6:1. */
+  --fondo-storie: #141712;
+  --velo-storia-alto: rgb(16 18 14 / 0.66);
+  --velo-storia: rgb(16 18 14 / 0.72);
+  --velo-storia-fondo: rgb(16 18 14 / 0.82);
+  --velo-invito: rgb(20 23 18 / 0.72);
+  /* Le pillole sul fondo scuro: il bordo al 70% fa 9,9:1 (al 30% della tavola
+     sarebbe 3,5:1, appena sopra il minimo di WCAG 1.4.11). */
+  --vetro-pillola: rgb(255 255 255 / 0.1);
+  --bordo-pillola: rgb(255 255 255 / 0.7);
+  --barra-storia: rgb(255 255 255 / 0.32);
+  --bordo-storia: rgb(255 255 255 / 0.85);
   --contatore-foto: rgb(28 33 26 / 0.72);
   --linea-chiara: rgb(255 255 255 / 0.2);
-  --barra-storia: rgb(255 255 255 / 0.38);
-  --bordo-storia: rgb(255 255 255 / 0.85);
   --punto-spento: rgb(255 255 255 / 0.6);
   /* Il bordo dei pallini colore della scheda rapida: più scuro della tavola (0,2),
      perché il pallino bianco sul fondo bianco arrivi a 3:1 (WCAG 1.4.11). */
@@ -77,6 +84,7 @@
   --linea-orari: rgb(28 28 26 / 0.14);
   --ombra-punto: 0 1px 3px rgb(0 0 0 / 0.3);
   --ombra-icona: 0 1px 2px rgb(0 0 0 / 0.5);
+  --ombra-invito: 0 14px 32px -16px rgb(0 0 0 / 0.7);
 
   /* Raggi */
   --raggio: 20px;
@@ -87,6 +95,8 @@
   --raggio-piccolo: 12px;
   /* La foto della scheda rapida sul telefono. */
   --raggio-foto-rapida: 14px;
+  /* Gli angoli in basso della foto di una storia, sopra la fascia della pillola. */
+  --raggio-storia: 14px;
   /* Le miniature ai lati della cornice dell'apertura. */
   --raggio-miniatura: 14px;
   /* Sul telefono la tavola arrotonda un po' meno. */
@@ -151,13 +161,14 @@ html:has(> body[data-variante='salvia-social']) {
 /* Con una storia, un post o una scheda rapida aperti la pagina non scorre, ma
    dove la barra di scorrimento occupa spazio (Windows) la sua striscia resta
    riservata e mostra lo sfondo della radice: senza queste regole sarebbe una
-   striscia bianca accanto al velo scuro. Le tinte sono i veli del dialog
-   (`--sfondo-storie`, `--sfondo-post`, `--velo-scheda`) sopra il bianco della
-   pagina; il `body` continua a dipingere il suo bianco, quindi la pagina non
-   cambia. La scheda rapida è anche un `dialog[data-post]`: la sua regola viene
-   dopo, con la stessa specificità, e vince. */
+   striscia bianca accanto al velo scuro. Le tinte sono i fondi dei dialog: per
+   le storie il fondo pieno (`--fondo-storie`, che qui fuori dalla variante non
+   si legge), per post e schede rapide i veli (`--sfondo-post`, `--velo-scheda`)
+   sopra il bianco della pagina; il `body` continua a dipingere il suo bianco,
+   quindi la pagina non cambia. La scheda rapida è anche un `dialog[data-post]`:
+   la sua regola viene dopo, con la stessa specificità, e vince. */
 html:has(> body[data-variante='salvia-social']):has(dialog[data-storie][open]) {
-  background-color: color-mix(in srgb, rgb(24 28 22) 88%, #ffffff);
+  background-color: #141712;
 }
 
 html:has(> body[data-variante='salvia-social']):has(dialog[data-post][open]) {

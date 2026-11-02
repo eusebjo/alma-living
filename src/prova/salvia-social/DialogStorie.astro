@@ -1,16 +1,33 @@
 ---
-// Il lettore delle storie (protocollo "Storie" dello script comune): un dialog
-// con un gruppo per storia, in ognuno le foto con la loro frase e una barra
-// d'avanzamento per foto. Sul computer una scheda verticale con le frecce ai
-// lati e, sull'ultima foto, l'anteprima della storia dopo; sul telefono la
-// scheda occupa lo schermo e le frecce stanno sopra la foto. Sopra le foto sta
-// la zona dei tocchi (indietro, pausa, avanti), un `div` trasparente fuori dal
-// tab e dai lettori di schermo: per loro restano i pulsanti.
+// Il lettore delle storie, "Scheda a richiesta" (tavola StorieRichiesta.dc.html,
+// senza titolo, riga dell'invito e stato del negozio): un dialog a tutto schermo
+// che il protocollo "Storie" dello script comune fa funzionare (vedi
+// `interazioni.ts`, che scrive gli stati e ne dice gli obblighi per il CSS).
+// - La scena è una colonna alta quanto lo schermo e larga al più 9:16 (ma non
+//   sotto i 360 px, né oltre lo schermo): sul telefono lo riempie, su uno schermo
+//   largo resta al centro sul fondo pieno.
+// - Un gruppo per storia. In alto le barre d'avanzamento (una per foto) e una
+//   riga di testata (cerchio, nome, "Alma Living · data"). La foto riempie la
+//   scena sopra una fascia scura e porta solo la frase: due righe al massimo e,
+//   se non ci sta, "altro". Nella fascia la pillola "Chiedi, chiama, vieni".
+// - La pillola, o un trascinamento in su, apre sul posto la scheda degli inviti
+//   della foto attuale, su un velo che sfoca la foto: miniatura, soggetto, i tre
+//   link (per primo, pieno, quello della storia) e "Torna alla storia".
+// - Sopra le foto la zona dei tocchi, un `div` trasparente fuori dal tab e dai
+//   lettori di schermo: il quarto di sinistra torna indietro, il resto va avanti;
+//   tenendo premuto la storia si ferma e poi l'interfaccia sparisce, resta la
+//   foto; trascinando in giù il lettore si chiude, in su si apre la scheda. Per
+//   la tastiera e i lettori di schermo restano i pulsanti: pausa e X nella
+//   testata, le frecce "Indietro" e "Avanti", che si vedono solo con il focus.
+// Nell'HTML sono `hidden` i gruppi e le foto dopo i primi, le schede dopo la prima
+// e "altro"; gli altri stati (`data-aperta`, `data-storia-invito-aperto`,
+// `data-storia-nascosta`, `aria-expanded="true"`) li scrive lo script.
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
+import { durataFoto } from '../comune/sequenza';
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
-import { messaggioStoria, type Storia } from './dati';
+import { messaggioStoria, type FotoStoria, type InvitoStoria, type Storia } from './dati';
 
 interface Props {
   storie: Storia[];
@@ -20,105 +37,128 @@ interface Props {
 }
 
 const { storie, etichetta, negozio } = Astro.props;
+
+/** Dopo l'invito scelto per la storia, gli altri due in quest'ordine. */
+const ORDINE_INVITI: InvitoStoria[] = ['indicazioni', 'whatsapp', 'chiama'];
+
+/** I tre link della scheda di una foto: per primo quello della storia. */
+function invitiDi(storia: Storia, foto: FotoStoria) {
+  const link = {
+    indicazioni: {
+      href: negozio.mappeUrl,
+      icona: 'luogo',
+      testo: `Indicazioni per ${negozio.via}`,
+    },
+    whatsapp: {
+      href: linkWhatsApp(negozio.whatsapp, messaggioStoria(storia, foto)),
+      icona: 'whatsapp',
+      testo: 'Scrivici su WhatsApp',
+    },
+    chiama: { href: negozio.telefonoHref, icona: 'telefono', testo: 'Chiama il negozio' },
+  } as const;
+  return [storia.invito, ...ORDINE_INVITI.filter((k) => k !== storia.invito)].map((k) => link[k]);
+}
 ---
 
 <dialog class="storie" data-storie aria-label={etichetta}>
   <div class="scena">
+    {
+      storie.map((storia, g) => (
+        <div
+          class="gruppo"
+          role="group"
+          aria-label={`Storia ${storia.nome}, ${storia.data}`}
+          data-storia-gruppo={storia.id}
+          hidden={g > 0}
+        >
+          <div class="barre" aria-hidden="true">
+            {storia.foto.map(() => (
+              <span class="barra" data-storia-barra />
+            ))}
+          </div>
+          <div class="testa">
+            <Foto scatto={storia.foto[0]!} alt="" larghezze={[64]} sizes="32px" />
+            <div class="chi">
+              <p class="nome">{storia.nome}</p>
+              <p class="data">Alma Living · {storia.data}</p>
+            </div>
+          </div>
+
+          <ul class="pila" role="list">
+            {storia.foto.map((foto, i) => (
+              <li class="foto" data-storia-foto data-storia-durata={durataFoto(foto.testo)} hidden={i > 0}>
+                <Foto
+                  scatto={foto}
+                  larghezze={[420, 640, 840, 1080]}
+                  sizes="(orientation: portrait) and (max-width: 600px) 100vw, (min-aspect-ratio: 9/16) and (min-height: 640px) 56.25vh, (min-aspect-ratio: 9/16) 360px, 100vw"
+                />
+                <p class="frase" data-storia-frase>{foto.testo}</p>
+                <button type="button" class="altro" data-storia-altro aria-expanded="false" hidden>
+                  <span class="se-chiusa">altro</span>
+                  <span class="se-aperta">meno</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div class="fascia">
+            <button type="button" class="pillola" data-storia-invito-apri aria-expanded="false">
+              Chiedi, chiama, vieni <Icona nome="su" misura={16} />
+            </button>
+          </div>
+
+          <div class="inviti">
+            {storia.foto.map((foto, i) => (
+              <div
+                class="invito"
+                data-storia-invito
+                role="group"
+                aria-label={`Chiedi, chiama, vieni: ${foto.soggetto}`}
+                hidden={i > 0}
+              >
+                <div class="centro">
+                  <Foto scatto={foto} alt="" larghezze={[112]} sizes="56px" />
+                  <p class="soggetto">{foto.soggetto}</p>
+                  <div class="link">
+                    {invitiDi(storia, foto).map((invito, k) => (
+                      <a class={k === 0 ? 'pieno' : 'bordato'} href={invito.href}>
+                        <Icona nome={invito.icona} misura={18} />
+                        {invito.testo}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                <button type="button" class="pillola" data-storia-invito-chiudi>
+                  Torna alla storia <Icona nome="giu" misura={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+
+    <div class="tocchi" data-storia-tocchi aria-hidden="true"></div>
+
+    <div class="comandi">
+      <button
+        type="button"
+        class="comando pausa"
+        data-storia-pausa
+        aria-pressed="false"
+        aria-label="Metti in pausa la storia"
+      >
+        <Icona nome="pausa" misura={20} class="se-avanza" />
+        <Icona nome="riproduci" misura={20} class="se-ferma" />
+      </button>
+      <button type="button" class="comando" data-storia-chiudi aria-label="Chiudi la storia" autofocus>
+        <Icona nome="chiudi" misura={22} />
+      </button>
+    </div>
+
     <button type="button" class="freccia prec" data-storia-prec aria-label="Indietro">
       <Icona nome="prec" misura={22} />
     </button>
-
-    <div class="scheda">
-      {
-        storie.map((storia, g) => {
-          const copertina = storia.foto[0]!;
-          const prossima = storie[g + 1];
-          return (
-            <div
-              class="gruppo"
-              role="group"
-              aria-label={`Storia ${storia.nome}, ${storia.data}`}
-              data-storia-gruppo={storia.id}
-              hidden={g > 0}
-            >
-              <ul class="pila" role="list">
-                {storia.foto.map((foto, i) => (
-                  <li class="foto" data-storia-foto hidden={i > 0}>
-                    <Foto
-                      scatto={foto}
-                      larghezze={[420, 640, 840]}
-                      sizes="(min-width: 960px) 420px, 100vw"
-                    />
-                    <p class="frase">{foto.testo}</p>
-                  </li>
-                ))}
-              </ul>
-              <div class="barre" aria-hidden="true">
-                {storia.foto.map(() => (
-                  <span class="barra" data-storia-barra />
-                ))}
-              </div>
-              <div class="testa">
-                <Foto scatto={copertina} alt="" larghezze={[72]} sizes="36px" />
-                <div class="chi">
-                  <p class="nome">{storia.nome}</p>
-                  <p class="data">Alma Living · {storia.data}</p>
-                </div>
-              </div>
-              <div class="azioni">
-                <a class="chiedi" href={linkWhatsApp(negozio.whatsapp, messaggioStoria(storia, copertina))}>
-                  <Icona nome="whatsapp" misura={18} />
-                  <span><span class="lungo">Chiedi su </span>WhatsApp</span>
-                </a>
-                <a class="chiama" href={negozio.telefonoHref}>
-                  <Icona nome="telefono" misura={18} />
-                  <span>Chiama<span class="lungo"> il negozio</span></span>
-                </a>
-              </div>
-              {prossima && (
-                <button
-                  type="button"
-                  class="poi"
-                  data-storia-succ
-                  aria-label={`Poi: ${prossima.nome}`}
-                >
-                  <Foto scatto={prossima.foto[0]!} alt="" larghezze={[88]} sizes="44px" />
-                  <span class="poi-testo">
-                    <span class="poi-occhiello">Poi</span>
-                    <span class="poi-nome">{prossima.nome}</span>
-                  </span>
-                </button>
-              )}
-            </div>
-          );
-        })
-      }
-
-      <div class="tocchi" data-storia-tocchi aria-hidden="true"></div>
-
-      <div class="comandi">
-        <button
-          type="button"
-          class="comando pausa"
-          data-storia-pausa
-          aria-pressed="false"
-          aria-label="Metti in pausa la storia"
-        >
-          <Icona nome="pausa" misura={20} class="se-avanza" />
-          <Icona nome="riproduci" misura={20} class="se-ferma" />
-        </button>
-        <button
-          type="button"
-          class="comando"
-          data-storia-chiudi
-          aria-label="Chiudi la storia"
-          autofocus
-        >
-          <Icona nome="chiudi" misura={22} />
-        </button>
-      </div>
-    </div>
-
     <button type="button" class="freccia succ" data-storia-succ aria-label="Avanti">
       <Icona nome="succ" misura={22} />
     </button>
@@ -126,25 +166,21 @@ const { storie, etichetta, negozio } = Astro.props;
 </dialog>
 
 <style>
-  /* Il dialog copre lo schermo e non ha riempimento: un clic fuori dalla
-     scheda cade sul dialog stesso e lo chiude (vedi lo script comune). */
+  /* --- Il dialog: copre lo schermo con il fondo pieno e non ha riempimento. Su
+     uno schermo largo un clic ai lati della scena cade sul dialog stesso e lo
+     chiude (vedi lo script comune). --- */
   .storie {
     width: 100%;
     max-width: none;
-    height: 100%;
+    height: 100dvh;
     max-height: none;
     margin: 0;
     padding: 0;
     border: 0;
-    background: var(--sfondo-storie);
+    background: var(--fondo-storie);
     color: var(--bianco);
     overflow: hidden;
-  }
-
-  .storie[open] {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    overscroll-behavior: contain;
   }
 
   .storie::backdrop {
@@ -155,52 +191,84 @@ const { storie, etichetta, negozio } = Astro.props;
     outline-color: var(--bianco);
   }
 
+  /* Le foto non prendono il puntatore: tenendo premuto, il browser non apre il
+     menu dell'immagine né la trascina (su iPhone basta questo, altrove lo script
+     annulla anche `contextmenu`). */
+  .storie :global(img) {
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* --- La scena: alta quanto lo schermo, larga al più 9:16, ma non sotto i
+     360 px (con il telefono ruotato resta leggibile). Il limite è il 100% del
+     dialog e non 100vw: dove la barra di scorrimento della pagina occupa spazio
+     (Windows) il dialog è più stretto della finestra. In basso la fascia della
+     pillola. Gli strati, dal basso: la foto; i veli e la zona dei tocchi (1, i
+     veli prima nel markup); frase, "altro" e pillola (2); frecce (3); scheda
+     degli inviti (4); barre e testata (5); pausa e X (6). --- */
   .scena {
+    --fascia-storie: calc(76px + env(safe-area-inset-bottom, 0px));
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* --- La scheda: 9:16, a tutto schermo sul telefono --- */
-  .scheda {
-    position: relative;
-    flex: none;
-    width: min(100vw, calc(100dvh * 9 / 16));
-    aspect-ratio: 9 / 16;
+    isolation: isolate;
+    width: min(100%, max(56.25dvh, 360px));
+    height: 100dvh;
+    margin: 0 auto;
     overflow: hidden;
-    background: var(--verde-notte);
   }
 
-  .gruppo,
-  .pila,
-  .foto {
+  /* Sul telefono in verticale la scena riempie sempre lo schermo, anche quando
+     le barre del browser lo accorciano (390 x 640: con la regola sopra sarebbe
+     larga 360 px, con due strisce scure ai lati). */
+  @media (orientation: portrait) and (max-width: 600px) {
+    .scena {
+      width: 100%;
+    }
+  }
+
+  .gruppo {
     position: absolute;
     inset: 0;
   }
 
   .pila {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: var(--fascia-storie);
     margin: 0;
     padding: 0;
     list-style: none;
+    overflow: hidden;
+    border-radius: 0 0 var(--raggio-storia) var(--raggio-storia);
+    background: var(--verde-notte);
   }
 
-  /* Ogni foto è un livello a sé: sopra l'immagine i veli, sopra i veli la frase. */
+  /* Niente `isolation` sulla foto: "altro", che sta dentro, deve stare sopra la
+     zona dei tocchi. */
   .foto {
-    isolation: isolate;
+    position: absolute;
+    inset: 0;
   }
 
   .foto :global(img) {
     position: absolute;
     inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  /* Velature in alto (per la testata) e in basso (per la frase e le azioni).
-     Il velo in alto viene prima dell'immagine nel markup: senza z-index
-     finirebbe sotto la foto. */
+  /* --- I veli, sopra la foto e sotto la zona dei tocchi (che viene dopo nel
+     markup): in alto sotto barre e testata, in basso sotto la frase, e più alto
+     quando la frase è aperta. Il velo della frase è della foto, non della
+     frase: dalla frase non deve uscire nulla di posizionato, perché lo script
+     ne misura lo `scrollHeight` per decidere se mostrare "altro". --- */
+  .gruppo::before,
   .foto::before,
   .foto::after {
     content: '';
@@ -211,71 +279,136 @@ const { storie, etichetta, negozio } = Astro.props;
     pointer-events: none;
   }
 
-  /* In alto il velo è pieno sotto la testata (nome, data e comandi stanno nei
-     primi 68 px) e sfuma dopo: il testo resta leggibile (almeno 4,5:1) anche
-     su una foto bianca. */
-  .foto::before {
+  /* In alto: pieno fin sotto la testata (12 px dal bordo, 2 di barre, 4, 44 di
+     testata), poi sfuma. Resta anche tenendo premuto: le barre restano. */
+  .gruppo::before {
     top: 0;
-    height: 180px;
+    height: 150px;
     background: linear-gradient(
       to bottom,
       var(--velo-storia-alto) 0,
-      var(--velo-storia-alto) 80px,
+      var(--velo-storia-alto) 68px,
       transparent
     );
   }
 
+  /* In basso, sotto la frase chiusa (due righe, fino a circa 66 px dal bordo
+     della foto): almeno 0,72 fino a 80 px, poi sfuma. */
   .foto::after {
     bottom: 0;
-    height: 60%;
-    background: linear-gradient(to top, var(--velo-storia), transparent);
+    height: 170px;
+    background: linear-gradient(
+      to top,
+      var(--velo-storia-fondo) 0,
+      var(--velo-storia) 80px,
+      transparent
+    );
+    transition: opacity 200ms ease;
   }
 
+  /* La frase aperta sale fino a metà foto (più i 16 px da cui parte): il velo
+     resta almeno a 0,72 fin lassù, poi sfuma in 90 px. */
+  .foto::before {
+    bottom: 0;
+    height: calc(50% + 106px);
+    background: linear-gradient(
+      to top,
+      var(--velo-storia-fondo) 0,
+      var(--velo-storia) calc(100% - 90px),
+      transparent
+    );
+    opacity: 0;
+    transition: opacity 220ms ease;
+  }
+
+  .foto:has(.frase[data-aperta])::before {
+    opacity: 1;
+  }
+
+  /* --- La frase: due righe al massimo, con a destra il posto per "altro". Aperta
+     è intera, alta al più metà foto, e scorre. --- */
   .frase {
     position: absolute;
     z-index: 2;
     left: 20px;
-    right: 20px;
-    bottom: 146px;
+    right: 72px;
+    bottom: 16px;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     margin: 0;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 500;
     line-height: 1.45;
     text-wrap: pretty;
     overflow-wrap: anywhere;
-  }
-
-  /* Sotto la frase, qualunque sia la sua lunghezza, un velo pieno che sfuma
-     verso l'alto: con il velo in basso fa almeno 4,5:1 anche su una foto bianca. */
-  .frase::before {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    inset: -96px -20px -18px;
-    background: linear-gradient(to bottom, transparent, var(--velo-storia-testo) 96px);
+    text-shadow: var(--ombra-icona);
     pointer-events: none;
+    transition: opacity 200ms ease;
   }
 
-  /* --- Zona dei tocchi: un livello trasparente sopra le foto e sotto barre,
-     testata, azioni (2), comandi (3) e frecce (4). Lo script la divide in tre
-     terzi: indietro, pausa, avanti. I tocchi passano attraverso ciò che le sta
-     sopra e non si usa (barre, testata e il contenitore delle azioni); i link
-     delle azioni restano cliccabili. --- */
+  .frase[data-aperta] {
+    display: block;
+    -webkit-line-clamp: none;
+    line-clamp: none;
+    max-height: 50%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: auto;
+  }
+
+  /* "altro" in fondo a destra, centrato sull'ultima riga della frase. Il testo
+     segue `aria-expanded` (l'altro con `display: none`, perché non si legga). */
+  .altro {
+    position: absolute;
+    z-index: 2;
+    right: 12px;
+    bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--bianco);
+    font-size: 17px;
+    font-weight: 600;
+    text-shadow: var(--ombra-icona);
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 200ms ease;
+  }
+
+  .altro[aria-expanded='true'] .se-chiusa,
+  .altro:not([aria-expanded='true']) .se-aperta {
+    display: none;
+  }
+
+  /* --- La zona dei tocchi: un livello trasparente su tutta la scena. Lo script
+     la divide in due: il quarto di sinistra torna indietro, il resto va avanti.
+     Nessun gesto del browser (scorrere, ingrandire): i trascinamenti arrivano
+     allo script. I tocchi passano attraverso ciò che le sta sopra e non si usa
+     (barre, testata, frase chiusa, fascia). --- */
   .tocchi {
     position: absolute;
-    inset: 0;
     z-index: 1;
-    touch-action: manipulation;
+    inset: 0;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
     cursor: pointer;
   }
 
-  /* --- Barre d'avanzamento: lo script scrive --avanzamento (da 0 a 1) --- */
+  /* --- Le barre d'avanzamento: lo script scrive --avanzamento (da 0 a 1) --- */
   .barre {
     position: absolute;
-    z-index: 2;
+    z-index: 5;
     top: 12px;
     left: 12px;
     right: 12px;
@@ -287,8 +420,8 @@ const { storie, etichetta, negozio } = Astro.props;
   .barra {
     position: relative;
     flex: 1 1 0;
-    height: 3px;
-    border-radius: 2px;
+    height: 2px;
+    border-radius: 1px;
     background: var(--barra-storia);
     overflow: hidden;
   }
@@ -302,54 +435,62 @@ const { storie, etichetta, negozio } = Astro.props;
     transform-origin: left center;
   }
 
-  /* --- Testata: copertina, nome e data; a destra pausa e chiudi --- */
+  /* --- La testata: una riga sotto le barre (da 18 a 62 px), con il cerchio, il
+     nome e la data; a destra lascia il posto a pausa e X --- */
   .testa {
     position: absolute;
-    z-index: 2;
-    top: 24px;
+    z-index: 5;
+    top: 18px;
     left: 12px;
-    right: 104px;
+    right: 100px;
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    height: 44px;
     pointer-events: none;
+    transition: opacity 200ms ease;
   }
 
   .testa :global(img) {
     display: block;
     flex: none;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
-    box-shadow: 0 0 0 2px var(--bordo-storia);
+    box-shadow: 0 0 0 1.5px var(--bordo-storia);
   }
 
   .chi {
     min-width: 0;
-    line-height: 1.3;
+    line-height: 1.25;
+  }
+
+  .nome,
+  .data {
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .nome {
-    margin: 0;
     font-size: 14px;
     font-weight: 600;
   }
 
   .data {
-    margin: 0;
     font-size: 12.5px;
     color: var(--grigio-chiaro);
   }
 
   .comandi {
     position: absolute;
-    z-index: 3;
-    top: 24px;
-    right: 6px;
+    z-index: 6;
+    top: 18px;
+    right: 4px;
     display: flex;
-    gap: 4px;
+    transition: opacity 200ms ease;
   }
 
   .comando {
@@ -371,57 +512,56 @@ const { storie, etichetta, negozio } = Astro.props;
     display: none;
   }
 
-  /* Con il movimento ridotto le storie non avanzano da sole: niente pausa. */
-  @media (prefers-reduced-motion: reduce) {
-    .pausa {
-      display: none;
-    }
-  }
-
-  /* --- Azioni in basso --- */
-  .azioni {
+  /* --- La fascia sotto la foto, sul fondo: la pillola "Chiedi, chiama, vieni" --- */
+  .fascia {
     position: absolute;
     z-index: 2;
-    left: 20px;
-    right: 20px;
-    bottom: 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    pointer-events: none;
-  }
-
-  .azioni a {
-    pointer-events: auto;
-    flex: 1 1 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    height: var(--fascia-storie);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+
+  /* Le due pillole, "Chiedi, chiama, vieni" e "Torna alla storia", stanno nello
+     stesso punto: una apre la scheda, l'altra la chiude. */
+  .pillola {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
-    min-height: 48px;
-    padding: 0 12px;
+    height: 44px;
+    padding: 0 16px 0 20px;
+    border: 0;
     border-radius: var(--pillola);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .chiedi {
-    background: var(--bianco);
-    color: var(--nero);
-  }
-
-  .chiama {
-    box-shadow: inset 0 0 0 1.5px var(--bordo-storia);
+    background: var(--vetro-pillola);
+    box-shadow: inset 0 0 0 1px var(--bordo-pillola);
     color: var(--bianco);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* --- Frecce: sopra la foto sul telefono, ai lati della scheda sul computer --- */
+  /* La fascia lascia passare i tocchi, la sua pillola no. "Torna alla storia"
+     segue la scheda: mentre sfuma chiudendosi non prende il puntatore. */
+  .fascia .pillola {
+    pointer-events: auto;
+  }
+
+  /* --- Le frecce, per la tastiera e i lettori di schermo: ritagliate
+     (nell'ordine di Tab, ma invisibili e non toccabili) finché non ricevono il
+     focus da tastiera; allora pulsanti tondi bianchi a metà della foto. Con il
+     dito si tocca la foto. --- */
   .freccia {
     position: absolute;
-    z-index: 4;
-    top: 44%;
+    z-index: 3;
+    top: calc((100% - var(--fascia-storie)) / 2 - 22px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -432,162 +572,198 @@ const { storie, etichetta, negozio } = Astro.props;
     border-radius: 50%;
     background: var(--vetro);
     color: var(--nero);
+    clip-path: inset(50%);
+    pointer-events: none;
+  }
+
+  .freccia:focus-visible {
+    clip-path: none;
+    pointer-events: auto;
   }
 
   .prec {
-    left: 8px;
+    left: 12px;
   }
 
   .succ {
-    right: 8px;
+    right: 12px;
   }
 
-  .freccia :focus-visible,
-  .freccia:focus-visible {
-    outline-color: var(--bianco);
-  }
-
-  .poi {
+  /* --- La scheda degli inviti: copre la scena sotto barre, testata e comandi,
+     su un velo che sfoca la foto. Chiusa non c'è (`display: none`: fuori dal tab
+     e dai lettori di schermo); con `data-storia-invito-aperto` sul dialog c'è
+     subito, e il focus ci entra, mentre compare in dissolvenza (250 ms, opacità
+     e un ingrandimento da 0,98 a 1). Chiudendosi sfuma allo stesso modo, ma non
+     prende più il puntatore. Il browser non usa i trascinamenti per scorrerla:
+     un trascinamento in giù arriva allo script, che la chiude. Se il contenuto
+     non ci sta (testo ingrandito) scorre almeno con la rotella e con il focus. --- */
+  .inviti {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
     display: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--velo-invito);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    touch-action: none;
+    opacity: 0;
+    transform: scale(0.98);
+    pointer-events: none;
+    transition:
+      opacity 250ms ease,
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      display 250ms allow-discrete;
   }
 
-  @media (min-width: 960px) {
-    .scena {
-      gap: 28px;
-      padding: 28px 56px;
-    }
+  .storie[data-storia-invito-aperto] .inviti {
+    display: block;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
 
-    .scheda {
-      width: min(420px, calc((100dvh - 56px) * 9 / 16));
-      border-radius: var(--raggio-scheda);
-      box-shadow: var(--ombra-dialog);
-    }
-
-    .frase {
-      bottom: 88px;
-    }
-
-    .azioni {
-      flex-direction: row;
-    }
-
-    .freccia {
-      position: static;
-      flex: none;
-      width: 52px;
-      height: 52px;
-      background: var(--bianco);
-    }
-
-    /* Sull'ultima foto di una storia, in basso a destra, quella che viene dopo. */
-    .gruppo:has(.foto:last-child:not([hidden])) .poi {
-      position: fixed;
-      right: 56px;
-      bottom: 32px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-height: 60px;
-      padding: 8px 22px 8px 8px;
-      border: 0;
-      border-radius: var(--pillola);
-      background: var(--vetro-poi);
-      box-shadow: inset 0 0 0 1px var(--bordo-poi);
-      color: var(--bianco);
-      text-align: left;
-    }
-
-    .poi :global(img) {
-      display: block;
-      flex: none;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      object-fit: cover;
-      box-shadow: 0 0 0 2px var(--bianco);
-    }
-
-    .poi-testo {
-      display: block;
-      line-height: 1.3;
-    }
-
-    .poi-occhiello {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--salvia-chiara);
-    }
-
-    .poi-nome {
-      display: block;
-      font-size: 15px;
-      font-weight: 600;
+  @starting-style {
+    .storie[data-storia-invito-aperto] .inviti {
+      opacity: 0;
+      transform: scale(0.98);
     }
   }
 
-  /* --- Telefono ruotato (e finestre basse) --- */
-  /* Alta 300-390 px, la scheda 9:16 sarebbe larga meno di 220 px e la frase,
-     a capo su sei o sette righe, salirebbe sopra nome e data. Qui la scheda è
-     più larga (4:5), la frase più piccola, le azioni su una riga con il solo
-     nome del servizio (il nome completo resta per i lettori di schermo) e le
-     frecce ai lati, come sul computer. Dopo il blocco del computer: vale
-     anche per una sua finestra bassa. */
-  @media (orientation: landscape) and (max-height: 500px) {
-    .scena {
-      gap: 16px;
-      padding: 0 16px;
+  /* Una scheda per foto (lo script mostra quella della foto attuale), alta
+     quanto la scena: un trascinamento che parte ovunque sulla scheda la chiude.
+     In alto il posto per barre e testata; in basso "Torna alla storia", dove
+     stava la pillola; in mezzo, centrati, miniatura, soggetto e link. */
+  .invito {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100%;
+    padding: 76px 24px calc(16px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+  }
+
+  /* Né il centro né "Torna alla storia" si stringono: quando la scheda scorre
+     (vedi sotto) è il riquadro a scorrere. */
+  .invito > * {
+    flex: none;
+  }
+
+  .centro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(100%, 320px);
+    margin: auto 0;
+    padding-bottom: 24px;
+  }
+
+  .centro :global(img) {
+    display: block;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px var(--bianco);
+  }
+
+  .soggetto {
+    margin: 10px 0 0;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--linea-testata);
+    text-wrap: balance;
+  }
+
+  .link {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 24px;
+  }
+
+  .link a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 16px;
+    border-radius: var(--pillola);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .link :global(svg) {
+    flex: none;
+  }
+
+  .pieno {
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow: var(--ombra-invito);
+  }
+
+  .bordato {
+    box-shadow: inset 0 0 0 1.5px var(--bordo-storia);
+    color: var(--bianco);
+  }
+
+  /* --- A scheda aperta, sotto di lei frase, "altro", pillola, frecce e pausa non
+     ci sono, né per il tab né per i lettori di schermo: la storia è già ferma e
+     si torna con "Torna alla storia" (o Esc). Restano barre, testata e X. --- */
+  .storie[data-storia-invito-aperto] :is(.frase, .altro, .fascia, .freccia, .pausa) {
+    visibility: hidden;
+  }
+
+  /* --- Tenendo premuto: testata, comandi, frase, "altro", pillola e il velo
+     della frase spariscono in dissolvenza; restano la foto e le barre (con il
+     loro velo). Dopo la regola della frase aperta, che ha lo stesso peso. --- */
+  .storie[data-storia-nascosta] :is(.testa, .comandi, .frase, .altro, .fascia),
+  .storie[data-storia-nascosta] .foto::before,
+  .storie[data-storia-nascosta] .foto::after {
+    opacity: 0;
+  }
+
+  /* --- Telefono ruotato (o finestra bassa): la scheda può non starci, quindi
+     scorre, dentro un riquadro che comincia sotto la testata (così nulla le
+     passa sotto). Qui un trascinamento sulla scheda la fa scorrere e non la
+     chiude: restano "Torna alla storia", Esc e la X. --- */
+  @media (max-height: 500px) {
+    .inviti {
+      touch-action: pan-y;
     }
 
-    /* 168 px: due frecce (fino a 52 px), due spazi e i margini della scena. */
-    .scheda {
-      width: min(calc(100vw - 168px), calc(100dvh * 4 / 5));
-      aspect-ratio: 4 / 5;
-    }
-
-    .freccia {
-      position: static;
-      flex: none;
-    }
-
-    .frase {
-      left: 16px;
-      right: 16px;
-      bottom: 74px;
-      font-size: 16px;
-      line-height: 1.4;
-    }
-
-    .frase::before {
-      inset: -72px -16px -16px;
-      background: linear-gradient(to bottom, transparent, var(--velo-storia-testo) 72px);
-    }
-
-    .azioni {
-      left: 16px;
-      right: 16px;
-      bottom: 14px;
-      flex-direction: row;
-      gap: 8px;
-    }
-
-    .azioni a {
-      min-width: 0;
-      min-height: 44px;
-      padding: 0 10px;
-      gap: 6px;
-      font-size: 13px;
-    }
-
-    .lungo {
+    .invito {
       position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
+      inset: 62px 0 0;
+      min-height: 0;
+      padding-top: 8px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+  }
+
+  /* --- Con il movimento ridotto le storie non avanzano da sole (niente pausa) e
+     nulla si muove: niente dissolvenze. --- */
+  @media (prefers-reduced-motion: reduce) {
+    .pausa {
+      display: none;
+    }
+
+    .inviti,
+    .testa,
+    .comandi,
+    .frase,
+    .altro,
+    .fascia,
+    .foto::before,
+    .foto::after {
+      transition: none;
     }
   }
 </style>

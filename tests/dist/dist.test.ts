@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
 import { messaggioDisponibilita } from '../../src/prova/comune/contatti';
 import { ORARI_PROVA } from '../../src/prova/comune/orari';
+import { durataFoto } from '../../src/prova/comune/sequenza';
 import {
   articoli,
   categorie,
@@ -12,6 +13,7 @@ import {
   LIMITI_SELEZIONE,
   messaggi,
   messaggioPost,
+  messaggioStoria,
   nomeConColore,
   occhielloArticolo,
   post,
@@ -761,6 +763,116 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
+  /** I gruppi del lettore delle storie, per id: il tag di apertura e il contenuto. */
+  const gruppiStorie = () =>
+    new Map(
+      elementiDove(dialogCon('data-storie')[0]?.contenuto ?? '', (a) => quanti(a, 'data-storia-gruppo') > 0).map(
+        (g) => [valore(g.apertura, 'data-storia-gruppo'), g],
+      ),
+    );
+
+  const MAPPE =
+    'https://www.google.com/maps/search/?api=1&query=Alma%20Living%20Via%20Ricasoli%2051%20Livorno';
+
+  it('ogni foto delle storie resta il tempo della sua frase (data-storia-durata)', () => {
+    const contenuto = dialogCon('data-storie')[0]?.contenuto ?? '';
+    const durate = tagIn(contenuto, '[a-z]+', 'data-storia-foto').map((t) => valore(t, 'data-storia-durata'));
+    expect(durate).toEqual(storie.flatMap((s) => s.foto.map((f) => String(durataFoto(f.testo)))));
+  });
+
+  it('in ogni storia una sola pillola "Chiedi, chiama, vieni", chiusa', () => {
+    const gruppi = gruppiStorie();
+    for (const storia of storie) {
+      const { contenuto } = gruppi.get(storia.id) ?? { contenuto: '' };
+      const pillole = elementiDove(contenuto, (a) => quanti(a, 'data-storia-invito-apri') > 0);
+      expect(pillole, storia.id).toHaveLength(1);
+      expect(pillole[0]!.apertura).toMatch(/^<button\b/);
+      expect(valore(pillole[0]!.apertura, 'aria-expanded')).toBe('false');
+      expect(soloTesto(pillole[0]!.contenuto)).toBe('Chiedi, chiama, vieni');
+    }
+  });
+
+  it('in ogni storia una scheda degli inviti per foto: i tre link, il primo quello della storia, e "Torna alla storia"', () => {
+    const gruppi = gruppiStorie();
+    const resto = ['indicazioni', 'whatsapp', 'chiama'] as const;
+    const WHATSAPP = 'https://wa.me/393345205451?text=';
+    for (const storia of storie) {
+      const { contenuto } = gruppi.get(storia.id) ?? { contenuto: '' };
+      const schede = elementiDove(contenuto, (a) => quanti(a, 'data-storia-invito') > 0);
+      expect(schede, storia.id).toHaveLength(storia.foto.length);
+      // Senza script si vede la scheda della prima foto; lo script mostra quella della foto attuale.
+      expect(schede.map((s) => nascosto(s.apertura)), storia.id).toEqual(storia.foto.map((_, i) => i > 0));
+      const attesi = [storia.invito, ...resto.filter((k) => k !== storia.invito)];
+      storia.foto.forEach((foto, i) => {
+        const dove = `${storia.id}, foto ${i + 1}`;
+        const link = tagIn(schede[i]!.contenuto, 'a', 'href');
+        const indirizzi = link.map((t) => valore(t, 'href') ?? '');
+        const tipi = indirizzi.map((href) =>
+          href.startsWith(WHATSAPP) ? 'whatsapp' : href.startsWith('tel:') ? 'chiama' : 'indicazioni',
+        );
+        expect(tipi, dove).toEqual(attesi);
+        expect(decodeURIComponent(indirizzi[tipi.indexOf('whatsapp')]!.slice(WHATSAPP.length)), dove).toBe(
+          messaggioStoria(storia, foto),
+        );
+        expect(indirizzi[tipi.indexOf('chiama')], dove).toBe('tel:+393345205451');
+        expect(indirizzi[tipi.indexOf('indicazioni')], dove).toBe(MAPPE);
+        // Il primo è pieno, gli altri bordati.
+        expect(link.map((t) => /\sclass="pieno[\s"]/.test(t)), dove).toEqual([true, false, false]);
+        const chiudi = elementiDove(schede[i]!.contenuto, (a) => quanti(a, 'data-storia-invito-chiudi') > 0);
+        expect(chiudi, dove).toHaveLength(1);
+        expect(chiudi[0]!.apertura).toMatch(/^<button\b/);
+        expect(soloTesto(chiudi[0]!.contenuto)).toBe('Torna alla storia');
+      });
+    }
+  });
+
+  it('nel lettore delle storie niente titolo, stato del negozio, "Poi" né azioni fisse', () => {
+    const { contenuto } = dialogCon('data-storie')[0] ?? { contenuto: '' };
+    const testo = soloTesto(contenuto);
+    for (const frase of ['In negozio c’è molto di più', 'Aperto ora', 'Chiuso']) {
+      expect(testo).not.toContain(frase);
+    }
+    expect(testo).not.toMatch(/\bPoi\b/);
+    expect(contenuto).not.toContain('class="azioni"');
+  });
+
+  it('le frecce per la tastiera ci sono ancora: un pulsante "Indietro" e uno "Avanti"', () => {
+    const { contenuto } = dialogCon('data-storie')[0] ?? { contenuto: '' };
+    for (const [attributo, nome] of [
+      ['data-storia-prec', 'Indietro'],
+      ['data-storia-succ', 'Avanti'],
+    ] as const) {
+      const tag = tagIn(contenuto, '[a-z]+', attributo);
+      expect(tag, attributo).toHaveLength(1);
+      expect(tag[0]).toMatch(/^<button\b/);
+      expect(valore(tag[0]!, 'aria-label')).toBe(nome);
+    }
+  });
+
+  it('il CSS del lettore: le foto non prendono il puntatore, i tocchi non lasciano gesti al browser, il fondo è opaco', () => {
+    const css = cssDellaPagina();
+    const { apertura } = dialogCon('data-storie')[0] ?? { apertura: '' };
+    const cid = /\sdata-astro-cid-([a-z0-9]+)/.exec(apertura)?.[1];
+    expect(cid).toBeDefined();
+    const mio = `[data-astro-cid-${cid}]`;
+    /** Le dichiarazioni delle regole che hanno `selettore` nel loro elenco di selettori. */
+    const dichiarazioni = (selettore: string) =>
+      regole(css)
+        .filter((r) => r.selettore.split(',').map((s) => s.trim()).includes(selettore))
+        .map((r) => r.dichiarazioni);
+    expect(dichiarazioni(`.storie${mio} img`)).toContainEqual(
+      expect.stringMatching(/(?:^|;)pointer-events:none(?:;|$)/),
+    );
+    expect(dichiarazioni(`.tocchi${mio}`)).toContainEqual(
+      expect.stringMatching(/(?:^|;)touch-action:none(?:;|$)/),
+    );
+    expect(dichiarazioni(`.storie${mio}`)).toContainEqual(
+      expect.stringMatching(/(?:^|;)background:var\(--fondo-storie\)(?:;|$)/),
+    );
+    // Il fondo è un colore pieno: niente trasparenza, la pagina sotto non si vede.
+    expect(css).toMatch(/--fondo-storie:#[0-9a-f]{6}(?=[;}])/i);
+  });
+
   it('le sezioni si susseguono: apertura, selezione, diario, negozio; "Per ogni stanza" non c’è più', () => {
     const posizioni = ['apertura', 'selezione', 'diario', 'negozio'].map((id) =>
       html().indexOf(`id="${id}"`),
@@ -861,7 +973,9 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const chiama = [...html().matchAll(/<a\b[^>]*\shref="tel:\+393345205451"[^>]*>([\s\S]*?)<\/a>/g)]
       .map((m) => testo(m[1]!))
       .filter((t) => t === 'Chiama il negozio');
-    expect(chiama).toHaveLength(storie.length + post.length);
+    // Nelle storie un link per foto (nella scheda degli inviti), nei post uno per post.
+    const fotoDelleStorie = storie.reduce((somma, storia) => somma + storia.foto.length, 0);
+    expect(chiama).toHaveLength(fotoDelleStorie + post.length);
     for (const { contenuto } of [...dialogCon('data-storie'), ...dialogCon('data-post')]) {
       expect(contenuto).not.toContain('almaliving.viaricasoli');
     }
