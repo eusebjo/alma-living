@@ -1,8 +1,9 @@
 ---
-// La fila delle storie sotto l'header; sui computer larghi, a destra, l'invito ai
-// post del diario del negozio (il link da 1150 px, anche la frase da 1400 px).
+// La fila delle storie sotto l'header: si vede solo sul telefono, fino a 767 px.
+// Da 768 px in su la sezione è nascosta (`display: none`), quindi non c'è
+// nemmeno per i lettori di schermo. Sul computer e sul tablet le foto stanno
+// nell'apertura e nel diario.
 import CerchioStoria from './CerchioStoria.astro';
-import Icona from './Icona.astro';
 import { storie } from './dati';
 ---
 
@@ -17,10 +18,6 @@ import { storie } from './dati';
         ))
       }
     </ul>
-    <div class="invito">
-      <p><span>Le storie del negozio</span>Arrivi, vetrina e novità, per categoria</p>
-      <a href="#diario">Vedi i post<Icona nome="freccia" misura={18} /></a>
-    </div>
   </div>
 </section>
 
@@ -30,10 +27,15 @@ import { storie } from './dati';
     box-shadow: 0 1px 0 var(--linea);
   }
 
+  @media (width > 767px) {
+    .storie {
+      display: none;
+    }
+  }
+
   .dentro {
     display: flex;
     align-items: center;
-    gap: 32px;
     max-width: var(--larghezza);
     margin: 0 auto;
     padding: 6px 0;
@@ -54,86 +56,5 @@ import { storie } from './dati';
 
   .fila::-webkit-scrollbar {
     display: none;
-  }
-
-  .invito {
-    display: none;
-  }
-
-  @media (min-width: 960px) {
-    .dentro {
-      padding: 8px var(--margine) 4px;
-    }
-
-    .fila {
-      gap: 18px;
-      padding: 8px 6px 10px;
-    }
-
-    .invito {
-      flex: none;
-      align-items: center;
-      gap: 20px;
-      padding-left: 32px;
-      box-shadow: inset 1px 0 0 var(--linea);
-    }
-
-    .invito p {
-      margin: 0;
-      font-size: 14px;
-      line-height: 1.45;
-      color: var(--grigio-testo);
-    }
-
-    .invito p span {
-      display: block;
-      font-weight: 600;
-      color: var(--nero);
-    }
-
-    .invito a {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 46px;
-      padding: 0 18px 0 20px;
-      border-radius: var(--pillola);
-      background: var(--bianco);
-      box-shadow: inset 0 0 0 1px var(--nero);
-      color: var(--nero);
-      text-decoration: none;
-      font-size: 15px;
-      font-weight: 600;
-      white-space: nowrap;
-      transition:
-        background-color 200ms ease,
-        color 200ms ease;
-    }
-
-    .invito a:hover {
-      background: var(--nero);
-      color: var(--bianco);
-    }
-  }
-
-  /*
-   * Gli otto cerchi misurano 810 px e non devono mai scorrere di lato. L'invito
-   * compare solo dove ci sta accanto, con almeno 13 px di margine anche con la barra
-   * di scorrimento da 15 px: il solo link da 1150 px, anche la frase da 1400 px.
-   */
-  @media (min-width: 1150px) {
-    .invito {
-      display: flex;
-    }
-
-    .invito p {
-      display: none;
-    }
-  }
-
-  @media (min-width: 1400px) {
-    .invito p {
-      display: block;
-    }
   }
 </style>

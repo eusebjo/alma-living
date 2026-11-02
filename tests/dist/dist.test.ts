@@ -820,13 +820,6 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
   });
 
-  it('accanto alle storie, "Le storie del negozio"', () => {
-    // Astro aggiunge gli attributi `data-astro-cid-…`: il tag si cerca con un'espressione.
-    expect(normalizza(html())).toMatch(
-      /<span\b[^>]*>Le storie del negozio<\/span>Arrivi, vetrina e novità, per categoria/,
-    );
-  });
-
   it('un solo lettore di storie', () => {
     expect(dialogCon('data-storie')).toHaveLength(1);
   });
@@ -862,11 +855,6 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       .replace(/<span\b[^>]*\saria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, '')
       .replace(/<[^>]*>/g, '');
     expect(letto).toMatch(/@almaliving\.viaricasoli\s+Le foto/);
-  });
-
-  it('accanto alla fila delle storie "Vedi i post" porta al diario', () => {
-    expect(html()).toMatch(/<a\b[^>]*\shref="#diario"[^>]*>Vedi i post/);
-    expect(html()).not.toContain('Vedi il profilo');
   });
 
   it('storie e post propongono di chiamare il negozio, non Instagram', () => {
@@ -1027,6 +1015,13 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const inPagina = [...pagina.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]!);
     return [...collegati, ...inPagina].join('\n');
   };
+
+  it('la fila delle storie si vede solo sul telefono, senza invito ai post', () => {
+    const css = cssDellaPagina();
+    expect(css).toMatch(/@media \(width ?> ?767px\)\{[^}]*\.storie\[[^\]]*\]\{display:none\}/);
+    expect(decodifica(html())).not.toContain('Vedi i post');
+    expect(decodifica(html())).not.toContain('Le storie del negozio');
+  });
 
   it("la griglia non riordina nulla a vista: la finestra resta in fondo, come nel DOM", () => {
     const css = cssDellaPagina();
