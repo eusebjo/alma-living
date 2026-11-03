@@ -109,7 +109,7 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
                     hidden
                   >
                     <span class="se-chiusa">altro</span>
-                    <span class="se-aperta">meno</span>
+                    <span class="se-aperta">Mostra meno <Icona nome="su" misura={14} /></span>
                   </button>
                 </p>
               </li>
@@ -377,7 +377,9 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
     -webkit-touch-callout: none;
   }
 
-  /* "altro" in fondo alla frase, sulla sua stessa riga. Il testo segue
+  /* Frase chiusa: "altro" in fondo, sulla sua stessa riga, dopo i puntini.
+     Frase aperta: "Mostra meno" con la freccina, su una riga sua sotto il testo,
+     più piccolo, perché non sembri l'ultima parola della frase. Il testo segue
      `aria-expanded` (l'altro con `display: none`, perché non si legga). */
   .altro {
     position: relative;
@@ -405,6 +407,25 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
   .altro[aria-expanded='true'] .se-chiusa,
   .altro:not([aria-expanded='true']) .se-aperta {
     display: none;
+  }
+
+  .altro[aria-expanded='true'] {
+    display: block;
+    width: fit-content;
+    margin: 6px auto 0;
+    font-size: 14px;
+  }
+
+  .se-aperta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Su una riga sua lo spazio da toccare cresce in alto e ai lati, non sotto:
+     la frase aperta scorre, e sotto farebbe comparire la barra di scorrimento. */
+  .altro[aria-expanded='true']::before {
+    inset: -8px -12px 0;
   }
 
   /* --- La zona dei tocchi: un livello trasparente sulla scena, fino alla fascia

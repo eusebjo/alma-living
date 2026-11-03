@@ -811,6 +811,12 @@ describe('Salvia social (/prova/salvia-social/)', () => {
         const altro = tagIn(frase, 'button', 'data-storia-altro');
         expect(altro, dove).toHaveLength(1);
         expect(nascosto(altro[0]!), dove).toBe(true);
+        // Chiusa "altro"; aperta "Mostra meno", che non si confonde con l'ultima parola della frase.
+        const bottone = elementiDove(frase, (a) => quanti(a, 'data-storia-altro') > 0)[0]!;
+        const testi = elementiDove(bottone.contenuto, (a) => /\sclass="se-(?:chiusa|aperta)[\s"]/.test(a)).map(
+          (e) => soloTesto(e.contenuto),
+        );
+        expect(testi, dove).toEqual(['altro', 'Mostra meno']);
         expect(frase.indexOf('data-storia-altro'), dove).toBeGreaterThan(frase.indexOf('data-storia-frase-testo'));
       });
     }
