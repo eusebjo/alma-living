@@ -5,9 +5,11 @@
 // dell'apertura è la sequenza fissa della tavola `FotoGrande2.dc.html` ("La foto
 // grande", 2 novembre 2026). I post del diario sono invece i 13 post veri del
 // profilo Instagram di Alma Living (didascalie senza emoji né promozioni scadute).
-// Le foto sono indicate per nome (`src/sito/foto/<nome>.jpg`, vedi
-// `scripts/foto-prova/elenco.json`); i componenti le passano a `foto()`.
+// Le foto sono indicate per nome (`prova/<nome>.jpg` nel bucket delle foto) e
+// ogni scatto porta l'indirizzo completo (`src`, vedi `src/content/foto.ts`): i
+// componenti lo passano a `<Picture>`, che lo scarica e lo ottimizza alla build.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
+import { indirizzoFoto } from '../../content/foto';
 import type { RegolaLimite } from '../comune/limite';
 
 /** Testo alternativo di ogni foto di prova, come sulla tavola. */
@@ -70,14 +72,15 @@ export type NomeFoto = keyof typeof ALT;
 
 /** Una foto con il suo testo alternativo e il punto da tenere al centro del taglio. */
 export interface Scatto {
-  foto: NomeFoto;
+  /** Indirizzo della foto su foto.almalivingviaricasoli.it (vedi `src/content/foto.ts`). */
+  src: string;
   alt: string;
   /** `object-position` CSS, per esempio `50% 40%`. */
   posizione: string;
 }
 
-function scatto(foto: NomeFoto, posizione = '50% 50%'): Scatto {
-  return { foto, alt: ALT[foto], posizione };
+function scatto(nome: NomeFoto, posizione = '50% 50%'): Scatto {
+  return { src: indirizzoFoto('prova', `${nome}.jpg`), alt: ALT[nome], posizione };
 }
 
 /**

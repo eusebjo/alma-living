@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
 import sitemap from '@astrojs/sitemap';
 import { getSiteConfig } from './src/config/site';
+import { FOTO_BASE } from './src/content/foto';
 import { rehypePlugins } from './src/lib/markdown';
 import { includiInSitemap } from './src/lib/sitemap';
 import { CARATTERI_PROVA } from './src/sito/comune/caratteri-config';
@@ -27,4 +28,9 @@ export default defineConfig({
   // Caratteri delle varianti di prova: Astro li scarica alla build e li serve
   // da /_astro/fonts/ (nessuna richiesta a Google a pagina aperta).
   fonts: CARATTERI_PROVA,
+  // Le foto stanno nel bucket R2 servito da foto.almalivingviaricasoli.it: Astro
+  // le scarica alla build (solo da quell'host) e le serve ottimizzate da /_astro/.
+  image: {
+    remotePatterns: [{ protocol: 'https', hostname: new URL(FOTO_BASE).hostname }],
+  },
 });

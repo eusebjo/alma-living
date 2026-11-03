@@ -144,6 +144,20 @@ describe('build statica: tutte le pagine', () => {
     expect(risorseEsterne(html)).toEqual([]);
     expect(html).not.toContain('fonts.googleapis');
   });
+
+  // Le foto stanno sul bucket (foto.almalivingviaricasoli.it), ma la build le
+  // scarica e le serve da /_astro/: a pagina aperta nessuna richiesta parte
+  // verso quell'host (né verso l'indirizzo r2.dev di prima), nemmeno da `srcset`.
+  it.each(pagine)('%s: le foto non puntano al bucket, e ogni srcset è di /_astro/', (file) => {
+    const html = readFileSync(file, 'utf8');
+    expect(html).not.toContain('foto.almalivingviaricasoli.it');
+    expect(html).not.toContain('r2.dev');
+    for (const [, valore] of html.matchAll(/\ssrcset=["']([^"']*)["']/gi)) {
+      for (const candidato of valore!.split(',')) {
+        expect(candidato.trim(), candidato).toMatch(/^\/_astro\//);
+      }
+    }
+  });
 });
 
 describe('build locale: non indicizzabile', () => {
@@ -661,6 +675,22 @@ describe('caratteri: nessun indirizzo esterno, in nessuna pagina', () => {
 describe('Salvia social (/prova/salvia-social/)', () => {
   const FILE = join('dist', 'prova', 'salvia-social', 'index.html');
   const html = () => readFileSync(FILE, 'utf8');
+
+  it('nessuna foto dichiara una larghezza che l’originale non ha', () => {
+    // Come per le foto importate, Astro non deve offrire `1000w` di una foto
+    // larga 896 px: la larghezza dell'`<img>` è quella dell'originale.
+    const gruppi = [...html().matchAll(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi)];
+    expect(gruppi.length).toBeGreaterThan(100);
+    for (const [, dentro] of gruppi) {
+      const originale = Number(/\swidth="(\d+)"/.exec(dentro!)?.[1]);
+      expect(originale, dentro).toBeGreaterThan(0);
+      for (const [, srcset] of dentro!.matchAll(/\ssrcset="([^"]*)"/g)) {
+        for (const [, larghezza] of srcset!.matchAll(/\s(\d+)w(?:,|$)/g)) {
+          expect(Number(larghezza), dentro).toBeLessThanOrEqual(originale);
+        }
+      }
+    }
+  });
 
   // Il testo come lo legge il browser: Astro scrive alcune entità nei valori.
   const decodifica = (testo: string) =>
@@ -1681,11 +1711,15 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
     const immagini = colonne.map((c) => [...c.contenuto.matchAll(tagRe('img'))].map((m) => m[0]));
     expect(immagini.map((lista) => lista.length)).toEqual([8, 6]);
-    const sinistra = [2, 3, 4, 5].map((i) => vetrina[i]!.scatto.foto);
-    const destra = [7, 8, 9].map((i) => vetrina[i]!.scatto.foto);
+    // La foto sta sul bucket (`…/prova/righe-rosa.jpg`) e la build la serve da
+    // /_astro/ con il nome del file e un hash (`righe-rosa_Z1H1FSp.jpg`).
+    const sinistra = [2, 3, 4, 5].map((i) => /\/([a-z0-9-]+)\.jpg$/.exec(vetrina[i]!.scatto.src)?.[1]);
+    const destra = [7, 8, 9].map((i) => /\/([a-z0-9-]+)\.jpg$/.exec(vetrina[i]!.scatto.src)?.[1]);
     const nomi = immagini.map((lista) =>
-      lista.map((t) => /^\/_astro\/([a-z0-9-]+)\./.exec(valore(t, 'src') ?? '')?.[1]),
+      lista.map((t) => /^\/_astro\/([a-z0-9-]+)_[A-Za-z0-9]+\./.exec(valore(t, 'src') ?? '')?.[1]),
     );
+    // Senza questo due elenchi di `undefined` risulterebbero uguali.
+    for (const nome of [...sinistra, ...destra, ...nomi.flat()]) expect(nome).toEqual(expect.any(String));
     expect(nomi).toEqual([
       [...sinistra, ...sinistra],
       [...destra, ...destra],

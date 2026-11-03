@@ -1,11 +1,14 @@
 ---
-// Una foto di prova con `<Picture>`: AVIF e WebP alle larghezze indicate (Astro
-// scarta da sé quelle oltre l'originale), taglio centrato su `scatto.posizione`.
+// Una foto con `<Picture>`: AVIF e WebP alle larghezze indicate (senza quelle oltre
+// l'originale), taglio centrato su `scatto.posizione`. La foto sta su
+// foto.almalivingviaricasoli.it (`scatto.src`): la build la scarica, ne legge le
+// misure (`inferRemoteSize`, la stessa lettura di `inferSize`) e serve le versioni
+// ottimizzate da /_astro/.
 // Le misure e il taglio (`object-fit`) li decide il contenitore. Uno scatto con
 // `ingrandimento` (il secondo scatto di una scheda, un dettaglio) porta anche il
 // punto di ingrandimento e la scala (`--scala`): chi lo mostra le usa nel suo CSS.
-import { Picture } from 'astro:assets';
-import { foto } from '../comune/foto';
+import { inferRemoteSize, Picture } from 'astro:assets';
+import { limitaLarghezze } from '../comune/larghezze';
 import type { Scatto, ScattoArticolo } from './dati';
 
 interface Props {
@@ -23,6 +26,18 @@ interface Props {
 
 const { scatto, larghezze, sizes, principale = false, alt = scatto.alt, class: classe } = Astro.props;
 
+// Le misure le legge Astro dall'inizio del file originale, alla build.
+// `inferSize` direttamente su `<Picture>` non basta: per le foto remote non toglie
+// le larghezze oltre l'originale (per le importate sì), e il `srcset` direbbe
+// `1000w` di una foto larga 896 px. Qui le togliamo noi, come per le importate.
+const originale = await inferRemoteSize(scatto.src);
+const larghezzeFoto = limitaLarghezze(larghezze, originale.width);
+
+// Il ripiego (l'`<img>` dentro `<picture>`) tiene il formato della foto: per le
+// immagini importate lo fa Astro da sé, per quelle remote ripiegherebbe su PNG, che
+// per una foto pesa molte volte un JPEG.
+const ripiego = /\.jpe?g$/i.test(scatto.src) ? 'jpg' : undefined;
+
 const ingrandimento = 'ingrandimento' in scatto ? scatto.ingrandimento : undefined;
 const stile =
   `object-position: ${scatto.posizione}` +
@@ -32,9 +47,12 @@ const stile =
 ---
 
 <Picture
-  src={foto(scatto.foto)}
+  src={scatto.src}
+  width={originale.width}
+  height={originale.height}
   formats={['avif', 'webp']}
-  widths={larghezze}
+  fallbackFormat={ripiego}
+  widths={larghezzeFoto}
   sizes={sizes}
   alt={alt}
   loading={principale ? 'eager' : 'lazy'}

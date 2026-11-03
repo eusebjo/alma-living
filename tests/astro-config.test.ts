@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FOTO_BASE } from '../src/content/foto';
 import { CARATTERI_PER_VARIANTE } from '../src/sito/comune/caratteri';
 import { VARIANTI } from '../src/sito/varianti';
 
@@ -102,5 +103,22 @@ describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
     for (const variabile of dichiarati) {
       expect(usati, variabile).toContain(variabile);
     }
+  });
+});
+
+describe('astro.config: foto remote', { timeout: 30_000 }, () => {
+  it('Astro scarica e ottimizza le immagini solo da foto.almalivingviaricasoli.it', async () => {
+    const config = await caricaConfig({});
+    expect(config.image?.remotePatterns).toEqual([
+      { protocol: 'https', hostname: 'foto.almalivingviaricasoli.it' },
+    ]);
+  });
+
+  it('i remotePatterns sono quelli dell’host di FOTO_BASE', async () => {
+    const config = await caricaConfig({});
+    expect(new URL(FOTO_BASE).hostname).toBe('foto.almalivingviaricasoli.it');
+    expect(config.image?.remotePatterns?.map((p: { hostname?: string }) => p.hostname)).toEqual([
+      new URL(FOTO_BASE).hostname,
+    ]);
   });
 });

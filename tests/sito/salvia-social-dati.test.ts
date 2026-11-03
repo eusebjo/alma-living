@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { eIndirizzoFoto, FOTO_BASE, indirizzoFoto } from '../../src/content/foto';
 import {
   articoli,
   categorie,
@@ -23,12 +24,15 @@ import {
   vetrina,
 } from '../../src/sito/componenti/dati';
 
-// I contenuti di esempio di Salvia social: le foto devono esistere tra quelle
-// della prova e gli id usati dai protocolli dello script comune devono essere
-// unici nella pagina (un id ripetuto aprirebbe la storia o il post sbagliato).
-const elenco = (JSON.parse(readFileSync('scripts/foto-prova/elenco.json', 'utf8')) as string[]).map(
-  (file) => file.replace(/\.jpg$/, ''),
-);
+// I contenuti di esempio di Salvia social: le foto devono essere indirizzi di
+// foto.almalivingviaricasoli.it (cartella `prova`) e gli id usati dai protocolli
+// dello script comune devono essere unici nella pagina (un id ripetuto
+// aprirebbe la storia o il post sbagliato).
+
+/** Il nome della foto (senza cartella né estensione), per esempio `righe-rosa`. */
+function nome(scatto: Scatto): string {
+  return scatto.src.slice(indirizzoFoto('prova', '').length).replace(/\.jpg$/, '');
+}
 
 const scatti: Scatto[] = [
   fotoDelNegozio,
@@ -72,10 +76,23 @@ const ALT_POST_VERI: Record<string, string> = {
 };
 
 describe('dati di Salvia social', () => {
-  it('ogni foto è tra quelle della prova e ha un testo alternativo', () => {
+  it('ogni foto è un indirizzo della cartella prova di foto.almalivingviaricasoli.it e ha un testo alternativo', () => {
     for (const scatto of scatti) {
-      expect(elenco, scatto.foto).toContain(scatto.foto);
-      expect(scatto.alt.length, scatto.foto).toBeGreaterThan(10);
+      expect(eIndirizzoFoto(scatto.src), scatto.src).toBe(true);
+      expect(scatto.src.startsWith(`${FOTO_BASE}/prova/`), scatto.src).toBe(true);
+      expect(scatto.src, scatto.src).toMatch(/\.jpg$/);
+      expect(scatto.alt.length, scatto.src).toBeGreaterThan(10);
+    }
+  });
+
+  it('gli scatti hanno src, alt e posizione, e nessun campo foto', () => {
+    for (const scatto of scatti) {
+      expect(scatto, scatto.src).toMatchObject({
+        src: expect.any(String),
+        alt: expect.any(String),
+        posizione: expect.any(String),
+      });
+      expect(scatto, scatto.src).not.toHaveProperty('foto');
     }
   });
 
@@ -94,7 +111,7 @@ describe('dati di Salvia social', () => {
   it('ogni foto di ogni storia ha il suo soggetto: minuscolo all’inizio, senza punto finale', () => {
     for (const storia of storie) {
       for (const foto of storia.foto) {
-        const dove = `${storia.id} ${foto.foto}`;
+        const dove = `${storia.id} ${nome(foto)}`;
         expect(foto.soggetto.trim(), dove).not.toBe('');
         expect(foto.soggetto, dove).toBe(foto.soggetto.trim());
         expect(foto.soggetto[0], dove).toBe(foto.soggetto[0]!.toLowerCase());
@@ -153,22 +170,21 @@ describe('dati di Salvia social', () => {
   it('ogni foto dei post ha la sua voce tra i testi alternativi', () => {
     for (const voce of post) {
       for (const scatto of voce.foto) {
-        expect(typeof scatto.alt, `${voce.id} ${scatto.foto}`).toBe('string');
-        expect(scatto.alt.trim(), `${voce.id} ${scatto.foto}`).not.toBe('');
+        expect(typeof scatto.alt, `${voce.id} ${nome(scatto)}`).toBe('string');
+        expect(scatto.alt.trim(), `${voce.id} ${nome(scatto)}`).not.toBe('');
       }
     }
   });
 
   it('le 19 foto nuove dei post hanno il testo alternativo previsto, e ognuna è usata da un post', () => {
     const usate = new Map<string, string>(
-      post.flatMap((voce) => voce.foto).map((scatto) => [scatto.foto, scatto.alt]),
+      post.flatMap((voce) => voce.foto).map((scatto) => [nome(scatto), scatto.alt]),
     );
-    for (const [nome, alt] of Object.entries(ALT_POST_VERI)) {
-      expect(usate.get(nome), nome).toBe(alt);
-      expect(elenco, nome).toContain(nome);
+    for (const [fotoPost, alt] of Object.entries(ALT_POST_VERI)) {
+      expect(usate.get(fotoPost), fotoPost).toBe(alt);
     }
-    // Nessuna foto `ig-*` dell'elenco resta fuori dai post.
-    expect(elenco.filter((nome) => nome.startsWith('ig-')).sort()).toEqual(
+    // Nessuna foto `ig-*` della pagina sta fuori dai post veri.
+    expect([...new Set(scatti.map(nome).filter((n) => n.startsWith('ig-')))].sort()).toEqual(
       Object.keys(ALT_POST_VERI).sort(),
     );
   });
@@ -194,7 +210,7 @@ describe('dati di Salvia social', () => {
     expect(Object.keys(fotoDeiFiltri).sort()).toEqual(['tutti', ...categorie.map((c) => c.id)].sort());
     expect(
       Object.fromEntries(
-        Object.entries(fotoDeiFiltri).map(([id, s]) => [id, [s.foto, s.posizione]]),
+        Object.entries(fotoDeiFiltri).map(([id, s]) => [id, [nome(s), s.posizione]]),
       ),
     ).toEqual({
       tutti: ['scaffale', '50% 45%'],
@@ -209,7 +225,7 @@ describe('dati di Salvia social', () => {
   });
 
   it('le coppie di scatti sono quelle della tavola', () => {
-    expect(Object.fromEntries(articoli.map((a) => [a.id, a.scatti.map((s) => s.foto)]))).toEqual({
+    expect(Object.fromEntries(articoli.map((a) => [a.id, a.scatti.map(nome)]))).toEqual({
       sabbia: ['lenzuola-beige', 'lenzuola-beige'],
       abbracciami: ['abbracciami-verde', 'abbracciami-rosso'],
       orsetto: ['neonato', 'accappatoi-appesi'],
@@ -228,7 +244,7 @@ describe('dati di Salvia social', () => {
       scatti: [primo, secondo],
     } of articoli) {
       expect(secondo.alt, id).not.toBe(primo.alt);
-      if (secondo.foto === primo.foto) {
+      if (secondo.src === primo.src) {
         // Un dettaglio ingrandito tiene la posizione del primo scatto.
         expect(secondo.posizione, id).toBe(primo.posizione);
         expect(secondo.ingrandimento?.scala, id).toBe(SCALA_DETTAGLIO);
@@ -243,7 +259,7 @@ describe('dati di Salvia social', () => {
     const colori = Object.fromEntries(
       articoli
         .filter((a) => a.colori)
-        .map((a) => [a.id, a.colori!.map((c) => [c.nome, c.tinta, c.foto?.foto])]),
+        .map((a) => [a.id, a.colori!.map((c) => [c.nome, c.tinta, c.foto ? nome(c.foto) : undefined])]),
     );
     expect(colori).toEqual({
       abbracciami: [
@@ -327,7 +343,7 @@ describe('dati di Salvia social', () => {
   });
 
   it('la vetrina: foto e posizioni, computer e telefono, della sequenza fissa', () => {
-    expect(vetrina.map((p) => [p.scatto.foto, p.scatto.posizione, p.posizioneTelefono])).toEqual([
+    expect(vetrina.map((p) => [nome(p.scatto), p.scatto.posizione, p.posizioneTelefono])).toEqual([
       ['righe-rosa', '50% 24%', '50% 40%'],
       ['coperta', '50% 52%', '50% 50%'],
       ['abbracciami-verde', '50% 50%', '50% 50%'],
