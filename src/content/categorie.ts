@@ -1,6 +1,7 @@
 // Le sette categorie dei prodotti, nell'ordine dei filtri degli scaffali. Fonte
-// unica: la leggono gli schemi dei contenuti (`schemas.ts`), la pagina (`dati.ts`
-// la riesporta come `categorie`) e, più avanti, la configurazione del pannello.
+// unica: la leggono gli schemi dei contenuti (`schemas.ts`) e la pagina (`dati.ts`
+// la riesporta come `categorie`); il pannello (`public/admin/config.yml`) ne
+// ripete id e nomi tra le scelte, e tests/sveltia-config.test.ts li tiene uguali.
 //
 // Nessun import da Astro: questo file lo leggono anche i test e gli script.
 export const CATEGORIE = [

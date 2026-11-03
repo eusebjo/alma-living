@@ -14,13 +14,29 @@ contenuti:
     formato: json
     azioni: { crea: 0, modifica: 1, elimina: 0 }
     campi: { nome: 0, indirizzo: 0, descrizione: 1, telefono: 1, email: 1, orari: 1 }
-  pagine:
-    file: src/content/pagine/*.md
-    formato: markdown
+  # Prodotti degli scaffali e post: la redazione li crea, li modifica e li toglie,
+  # sempre con l'approvazione (livello 1).
+  prodotti:
+    file: src/content/prodotti/*.json
+    formato: json
+    azioni: { crea: 1, modifica: 1, elimina: 1 }
+    campi: { nome: 1, dettaglio: 1, categorie: 1, novita: 1, data: 1, foto: 1, secondaFoto: 1, colori: 1 }
+  post:
+    file: src/content/post/*.json
+    formato: json
+    azioni: { crea: 1, modifica: 1, elimina: 1 }
+    campi: { data: 1, testo: 1, foto: 1, soggetto: 1 }
+  # Le otto storie sono fisse (src/sito/contenuti.ts, ORDINE_STORIE): se ne
+  # cambia il contenuto, non il nome, e non se ne creano né se ne tolgono.
+  storie:
+    file: src/content/storie/*.json
+    formato: json
     azioni: { crea: 0, modifica: 1, elimina: 0 }
-    campi: { titolo: 1, descrizione: 1, immagine: 1, immagine_alt: 1, corpo: 1 }
+    campi: { nome: 0, data: 1, etichetta: 1, invito: 1, foto: 1 }
 media:
-  percorsi: [src/content/pagine/immagini/**]
+  # Le foto stanno su Cloudflare R2 (public/admin/config.yml): nessun file si
+  # carica nel repository, e un file che non è di una collection è fuori perimetro.
+  percorsi: []
   estensioni: [webp, jpg, jpeg, png, avif]  # niente svg né html: possono contenere codice
   dimensione_massima_kb: 1500
-  azioni: { carica: 1, elimina: 0 }
+  azioni: { carica: 0, elimina: 0 }

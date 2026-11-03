@@ -188,7 +188,7 @@ export function creaOctokitFinto(scenario: ScenarioFinto = {}): {
             base: { sha: scenario.baseSha ?? BASE_SHA, repo: { full_name: repoBase } },
             head: {
               sha: scenario.headSha ?? HEAD_SHA,
-              ref: scenario.ramo ?? 'cms/pagine/home',
+              ref: scenario.ramo ?? 'cms/post/p1',
               repo:
                 scenario.repoTestata === null
                   ? null

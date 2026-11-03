@@ -62,6 +62,20 @@ Il login a `/admin/` passa da GitHub tramite il Worker Cloudflare [`sveltia-cms-
 - **Deploy del Worker:** il repository `eusebjo/sveltia-cms-auth` (importato, non un fork) si pubblica con Workers Builds a ogni push. Il suo `wrangler.toml` ha `keep_vars = true`: senza, un deploy cancellerebbe le variabili di testo del dashboard (`ALLOWED_DOMAINS`, `GITHUB_CLIENT_ID`) e nessuno entrerebbe più nel pannello. Dopo un deploy si controlla che `https://sveltia-cms-auth.sebjomuho.workers.dev/auth?provider=github&site_id=almalivingviaricasoli.it` risponda con un redirect (302) verso GitHub.
 - **Chi entra:** serve un account GitHub con accesso al repository `eusebjo/alma-living`; i permessi sul repository decidono chi può salvare. La redazione entra da https://almalivingviaricasoli.it/admin/ (provato da eusebjo il 2026-11-03); il pannello funziona anche su `workers.dev` e nelle anteprime.
 
+## Foto del sito
+
+Le foto di prodotti, post e storie stanno nel bucket R2 `alma-living-prova`, servito da `https://foto.almalivingviaricasoli.it` (`FOTO_BASE` in `src/content/foto.ts`): `prova/` per quelle di oggi, `cms/` per quelle caricate dal pannello (`media_libraries.cloudflare_r2` in `public/admin/config.yml`, senza `media_folder`; `autonomia.yml` non lascia caricare file nel repository). Nel repository ci sono solo Access Key ID e Account ID del token R2, che non sono segreti; la chiave segreta la inserisce ogni persona nel pannello e resta nel suo browser. Per caricare, il pannello contatta anche l'API di R2 (`<account_id>.r2.cloudflarestorage.com`) e l'indirizzo delle foto.
+
+CORS del bucket (dashboard Cloudflare, a cura di eusebjo, salvato il 2026-11-03):
+
+```json
+[{ "AllowedOrigins": ["https://almalivingviaricasoli.it", "https://alma-living.sebjomuho.workers.dev", "https://fase2-2-produzione-alma-living.sebjomuho.workers.dev", "http://localhost:4321"],
+   "AllowedMethods": ["GET", "PUT", "DELETE", "HEAD"], "AllowedHeaders": ["*"],
+   "ExposeHeaders": ["ETag"], "MaxAgeSeconds": 3000 }]
+```
+
+L'anteprima del ramo `fase2/2-produzione` e `localhost` ci sono per provare il pannello prima dell'unione.
+
 ## Stato di lancio
 
 Fino al lancio vero il sito è escluso dai motori di ricerca, anche sul dominio `almalivingviaricasoli.it`, che è già collegato ma da solo non rende il sito indicizzabile. Lo decide `getSiteConfig` in `src/config/site.ts`, unica fonte per `astro.config.mjs`, `SeoHead`, `robots.txt` e `llms.txt`.

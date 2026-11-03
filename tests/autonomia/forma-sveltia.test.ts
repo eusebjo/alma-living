@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Document } from 'yaml';
 import { evaluate } from '../../scripts/autonomia/evaluate';
-import { parseContent } from '../../scripts/autonomia/parse';
 import { validaConSchemi } from '../../scripts/autonomia/schemi';
 import { eseguiVerifica } from '../../scripts/autonomia/verifica';
 import type { ChangedFile } from '../../scripts/autonomia/types';
+import { FOTO_BASE } from '../../src/content/foto';
 import {
   ETICHETTA_INVIATA,
-  HOME,
   NEGOZIO,
-  immagine,
-  kb,
+  aggiunto,
   modificato,
   proposta,
   rules,
@@ -21,27 +18,70 @@ import { BASE_SHA, HEAD_SHA, chiave, creaOctokitFinto } from './octokitFinto';
 // pacchetto), non come li scriverebbe una persona: il controllo e lo schema
 // devono accettarli. Ogni caso passa da `evaluate`, dallo schema e, per i più
 // importanti, dall'intera verifica con GitHub finto.
+//
+// Il JSON del pannello: due spazi, una riga finale, le chiavi nell'ordine dei
+// campi di `public/admin/config.yml`, i campi facoltativi vuoti omessi
+// (`omit_empty_optional_fields`). Ogni foto ha l'inquadratura (il pannello la
+// scrive sempre, "Al centro" se non si sceglie altro); un oggetto facoltativo
+// mai aggiunto, come la seconda foto, non c'è proprio.
 
-const FOTO_NUOVA = 'src/content/pagine/immagini/nuova.webp';
+/** JSON come lo scrive Sveltia: due spazi e riga finale. */
+const comeSveltia = (dati: Record<string, unknown>): string => `${JSON.stringify(dati, null, 2)}\n`;
 
-/**
- * Frontmatter come lo scrive Sveltia: YAML con `lineWidth: 0` (mai a capo
- * automatici), stringhe senza virgolette salvo dove servono (allora apici
- * singoli), poi una riga vuota e il testo. Senza testo il file finisce con
- * la riga `---`, senza riga vuota.
- */
-function paginaSveltia(campi: Record<string, string>, corpo = ''): string {
-  const intestazione = new Document(campi)
-    .toString({
-      indent: 2,
-      indentSeq: true,
-      lineWidth: 0,
-      defaultKeyType: 'PLAIN',
-      defaultStringType: 'PLAIN',
-      singleQuote: true,
-    })
-    .trim();
-  return `---\n${intestazione}\n---\n${corpo === '' ? '' : `\n${corpo}\n`}`;
+/** Una foto caricata dal pannello, con il nome che le dà (minuscole, trattini, `.webp`). */
+const fotoCaricata = (nome: string, alt: string, inquadratura = 'centro') => ({
+  src: `${FOTO_BASE}/cms/${nome}.webp`,
+  alt,
+  inquadratura,
+});
+
+/** Un prodotto nuovo: senza seconda foto, senza colori. */
+function prodottoSveltia(modifica: (p: Record<string, unknown>) => void = () => {}): string {
+  const dati: Record<string, unknown> = {
+    nome: 'Plaid Abbracciami',
+    dettaglio: 'Pile ricamato con frange, verde o rosso',
+    categorie: ['natale', 'letto'],
+    novita: true,
+    data: '2026-11-03',
+    foto: fotoCaricata(
+      'whatsapp-image-2026-11-03-at-10-10-10',
+      'Plaid verde con la scritta Abbracciami ricamata',
+    ),
+  };
+  modifica(dati);
+  return comeSveltia(dati);
+}
+
+/** Un post nuovo: senza "Di cosa parla". */
+function postSveltia(modifica: (p: Record<string, unknown>) => void = () => {}): string {
+  const dati: Record<string, unknown> = {
+    data: '2026-11-03',
+    testo: 'Sono arrivati i cuscini di Natale.',
+    foto: [
+      fotoCaricata('img_1234', 'Divano con cuscini natalizi rossi e verdi'),
+      fotoCaricata('img_1235', 'Cuscini con baite innevate', 'centro-alto'),
+    ],
+  };
+  modifica(dati);
+  return comeSveltia(dati);
+}
+
+/** Una storia: senza etichetta (nessuna scelta nel pannello). */
+function storiaSveltia(modifica: (s: Record<string, unknown>) => void = () => {}): string {
+  const dati: Record<string, unknown> = {
+    nome: 'Arrivi',
+    data: '2026-11-03',
+    invito: 'whatsapp',
+    foto: [
+      {
+        ...fotoCaricata('scaffale', 'Uno scaffale con i plaid nuovi'),
+        frase: 'Sono arrivati i plaid delle feste.',
+        soggetto: 'i plaid delle feste',
+      },
+    ],
+  };
+  modifica(dati);
+  return comeSveltia(dati);
 }
 
 /** `negozio.json` come lo scrive Sveltia: JSON a due spazi, riga finale, campi vuoti omessi. */
@@ -59,143 +99,112 @@ function negozioSveltia(modifica: (n: Record<string, unknown>) => void = () => {
     telefono: '334 520 5451',
   };
   modifica(dati);
-  return `${JSON.stringify(dati, null, 2)}\n`;
+  return comeSveltia(dati);
 }
-
-const CAMPI_HOME = {
-  titolo: 'Alma Living, biancheria per la casa a Livorno',
-  descrizione:
-    'Alma Living è un negozio di biancheria per la casa in Via Ricasoli, a Livorno. Sito in costruzione.',
-  immagine: 'immagini/home.webp',
-  immagine_alt: 'Immagine segnaposto, sarà sostituita da una foto del negozio',
-};
 
 const valuta = (...files: ChangedFile[]) => evaluate(proposta(files), rules);
 
-/** Intera verifica di una modifica a un solo file, con GitHub finto. */
-async function verificaCompleta(path: string, prima: string, dopo: string) {
+/**
+ * Intera verifica, con GitHub finto, di un solo file: nuovo se `prima` è
+ * `null`, altrimenti modificato.
+ */
+async function verificaCompleta(path: string, prima: string | null, dopo: string) {
   const { octokit } = creaOctokitFinto({
     autore: 'lei',
     etichette: [ETICHETTA_INVIATA],
-    files: [{ filename: path, status: 'modified' }],
+    files: [{ filename: path, status: prima === null ? 'added' : 'modified' }],
     contenuti: {
-      [chiave(BASE_SHA, path)]: { testo: prima },
+      ...(prima === null ? {} : { [chiave(BASE_SHA, path)]: { testo: prima } }),
       [chiave(HEAD_SHA, path)]: { testo: dopo },
     },
   });
   return eseguiVerifica(octokit, { owner: 'eusebjo', repo: 'alma-living', pullNumber: 7 }, rules);
 }
 
-describe('pagina scritta da Sveltia', () => {
-  it('controllo: la forma scritta da Sveltia è quella attesa (frontmatter, riga vuota, testo)', () => {
-    const testo = paginaSveltia(CAMPI_HOME, 'Un testo.');
-    expect(testo).toBe(
-      [
-        '---',
-        'titolo: Alma Living, biancheria per la casa a Livorno',
-        `descrizione: ${CAMPI_HOME.descrizione}`,
-        'immagine: immagini/home.webp',
-        `immagine_alt: ${CAMPI_HOME.immagine_alt}`,
-        '---',
-        '',
-        'Un testo.',
-        '',
-      ].join('\n'),
-    );
-  });
+describe('prodotto scritto da Sveltia', () => {
+  const NUOVO = 'src/content/prodotti/2026-11-03.json';
 
-  it('l’immagine come percorso senza ./ (immagini/x.webp) è accettata dalla regola e dallo schema', async () => {
-    const prima = paginaSveltia({ ...CAMPI_HOME, immagine: './immagini/home.webp' }, 'Testo.');
-    const dopo = paginaSveltia({ ...CAMPI_HOME, immagine: 'immagini/nuova.webp' }, 'Testo.');
+  it('un prodotto nuovo, senza seconda foto né colori, passa la regola, lo schema e la verifica', async () => {
+    const testo = prodottoSveltia();
+    expect(JSON.parse(testo)).not.toHaveProperty('secondaFoto');
+    expect(JSON.parse(testo)).not.toHaveProperty('colori');
 
-    expect(valuta(modificato(HOME, prima, dopo), immagine(FOTO_NUOVA, kb(300)))).toMatchObject({
-      esito: 'consentito',
-      livello: 1,
-    });
-    expect(validaConSchemi([modificato(HOME, prima, dopo)], rules)).toEqual([]);
-    expect(parseContent(dopo, 'markdown').immagine).toBe('immagini/nuova.webp');
-    const esito = await verificaCompleta(HOME, prima, dopo);
+    expect(valuta(aggiunto(NUOVO, testo))).toMatchObject({ esito: 'consentito', livello: 1 });
+    expect(validaConSchemi([aggiunto(NUOVO, testo)], rules)).toEqual([]);
+    const esito = await verificaCompleta(NUOVO, null, testo);
     expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
   });
 
-  it('cambiare solo il titolo di una pagina con il percorso senza ./ cambia solo il titolo', () => {
-    const prima = paginaSveltia(CAMPI_HOME, 'Testo.');
-    const dopo = paginaSveltia({ ...CAMPI_HOME, titolo: 'Un altro titolo' }, 'Testo.');
+  it('aggiungere la seconda foto e i colori con le loro foto è una modifica consentita', async () => {
+    const prima = prodottoSveltia();
+    const dopo = prodottoSveltia((p) => {
+      const seconda = fotoCaricata('plaid-rosso', 'Plaid rosso appeso', 'centro-alto');
+      p.secondaFoto = seconda;
+      p.colori = [
+        { nome: 'verde', tinta: '#5e654f', foto: p.foto },
+        { nome: 'rosso', tinta: '#b8263a', foto: seconda },
+      ];
+    });
 
-    expect(valuta(modificato(HOME, prima, dopo))).toMatchObject({ esito: 'consentito', livello: 1 });
-    expect(validaConSchemi([modificato(HOME, prima, dopo)], rules)).toEqual([]);
+    expect(valuta(modificato(NUOVO, prima, dopo))).toMatchObject({ esito: 'consentito', livello: 1 });
+    expect(validaConSchemi([modificato(NUOVO, prima, dopo)], rules)).toEqual([]);
+    const esito = await verificaCompleta(NUOVO, prima, dopo);
+    expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
   });
 
-  it('un titolo con i due punti viene scritto tra apici e si legge uguale', async () => {
-    const titolo = 'Chi siamo: la storia di Alma Living';
-    const dopo = paginaSveltia({ ...CAMPI_HOME, titolo }, 'Testo.');
+  it('i colori senza foto, e senza «Novità» (false), sono validi', () => {
+    const dopo = prodottoSveltia((p) => {
+      p.novita = false;
+      p.colori = [{ nome: 'sabbia', tinta: '#d8c3a5' }];
+    });
+    expect(validaConSchemi([modificato(NUOVO, prodottoSveltia(), dopo)], rules)).toEqual([]);
+  });
+});
 
-    expect(dopo).toContain("titolo: 'Chi siamo: la storia di Alma Living'");
-    expect(parseContent(dopo, 'markdown').titolo).toBe(titolo);
-    const esito = await verificaCompleta(HOME, paginaSveltia(CAMPI_HOME, 'Testo.'), dopo);
-    expect(esito.verdict).toMatchObject({ esito: 'consentito' });
+describe('post scritto da Sveltia', () => {
+  const NUOVO = 'src/content/post/2026-11-03.json';
+
+  it('un post nuovo con due foto e senza «Di cosa parla» passa la regola, lo schema e la verifica', async () => {
+    const testo = postSveltia();
+    expect(JSON.parse(testo)).not.toHaveProperty('soggetto');
+
+    expect(valuta(aggiunto(NUOVO, testo))).toMatchObject({ esito: 'consentito', livello: 1 });
+    expect(validaConSchemi([aggiunto(NUOVO, testo)], rules)).toEqual([]);
+    const esito = await verificaCompleta(NUOVO, null, testo);
+    expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
   });
 
-  describe('testo vuoto', () => {
-    it('il file finisce con la riga --- e il testo è vuoto', () => {
-      const vuota = paginaSveltia(CAMPI_HOME);
-      expect(vuota.endsWith('\n---\n')).toBe(true);
-      expect(parseContent(vuota, 'markdown').corpo).toBe('');
+  it('aggiungere «Di cosa parla» e una foto è una modifica consentita', () => {
+    const prima = postSveltia();
+    const dopo = postSveltia((p) => {
+      p.soggetto = 'sui cuscini di Natale';
+      (p.foto as unknown[]).push(fotoCaricata('img_1236', 'Cuscini con i gattini'));
     });
+    expect(valuta(modificato(NUOVO, prima, dopo))).toMatchObject({ esito: 'consentito', livello: 1 });
+    expect(validaConSchemi([modificato(NUOVO, prima, dopo)], rules)).toEqual([]);
+  });
+});
 
-    it('si può cambiare un campo di una pagina senza testo', async () => {
-      const prima = paginaSveltia(CAMPI_HOME);
-      const dopo = paginaSveltia({ ...CAMPI_HOME, titolo: 'Un altro titolo' });
+describe('storia scritta da Sveltia', () => {
+  const ARRIVI = 'src/content/storie/arrivi.json';
 
-      expect(valuta(modificato(HOME, prima, dopo))).toMatchObject({ esito: 'consentito', livello: 1 });
-      expect(validaConSchemi([modificato(HOME, prima, dopo)], rules)).toEqual([]);
-      const esito = await verificaCompleta(HOME, prima, dopo);
-      expect(esito.verdict).toMatchObject({ esito: 'consentito' });
+  it('togliere l’etichetta (campo omesso, mai "") è una modifica consentita', async () => {
+    const prima = storiaSveltia((s) => {
+      s.etichetta = 'Nuovo';
     });
+    const dopo = storiaSveltia();
+    expect(JSON.parse(dopo)).not.toHaveProperty('etichetta');
 
-    it('svuotare il testo è una modifica del solo corpo, consentita', async () => {
-      const prima = paginaSveltia(CAMPI_HOME, 'Testo da cancellare.');
-      const dopo = paginaSveltia(CAMPI_HOME);
-
-      const verdetto = valuta(modificato(HOME, prima, dopo));
-
-      expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1 });
-      expect(validaConSchemi([modificato(HOME, prima, dopo)], rules)).toEqual([]);
-      const esito = await verificaCompleta(HOME, prima, dopo);
-      expect(esito.verdict).toMatchObject({ esito: 'consentito' });
-    });
+    expect(valuta(modificato(ARRIVI, prima, dopo))).toMatchObject({ esito: 'consentito', livello: 1 });
+    expect(validaConSchemi([modificato(ARRIVI, prima, dopo)], rules)).toEqual([]);
+    const esito = await verificaCompleta(ARRIVI, prima, dopo);
+    expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
   });
 
-  describe('testo con --- (linea orizzontale)', () => {
-    it.each([
-      ['in mezzo al testo', 'Prima.\n\n---\n\nDopo.'],
-      ['all’inizio del testo', '---\n\nDopo la linea.'],
-      ['alla fine del testo', 'Prima.\n\n---'],
-      ['con più linee', 'Uno.\n\n---\n\nDue.\n\n---\n\nTre.'],
-      ['un blocco che sembra un frontmatter', 'Prima.\n\n---\ntitolo: finto\n---\n\nDopo.'],
-    ])('%s: il testo si legge intero e il frontmatter resta quello vero', async (_nome, corpo) => {
-      const prima = paginaSveltia(CAMPI_HOME, 'Testo vecchio.');
-      const dopo = paginaSveltia(CAMPI_HOME, corpo);
-
-      const dati = parseContent(dopo, 'markdown');
-      expect(dati.corpo).toBe(corpo);
-      expect(dati.titolo).toBe(CAMPI_HOME.titolo);
-      expect(valuta(modificato(HOME, prima, dopo))).toMatchObject({
-        esito: 'consentito',
-        livello: 1,
-      });
-      expect(validaConSchemi([modificato(HOME, prima, dopo)], rules)).toEqual([]);
-      const esito = await verificaCompleta(HOME, prima, dopo);
-      expect(esito.verdict).toMatchObject({ esito: 'consentito' });
-    });
-
-    it('un testo che contiene --- non nasconde un cambio di titolo: i campi si guardano comunque', () => {
-      const prima = paginaSveltia(CAMPI_HOME, 'Prima.\n\n---\n\nDopo.');
-      const dopo = paginaSveltia({ ...CAMPI_HOME, titolo: 'Nuovo' }, 'Prima.\n\n---\n\nDopo.');
-      const dati = parseContent(dopo, 'markdown');
-      expect(dati.titolo).toBe('Nuovo');
-      expect(valuta(modificato(HOME, prima, dopo)).esito).toBe('consentito');
-    });
+  it('una storia nuova è respinta anche se scritta dal pannello', () => {
+    const verdetto = valuta(aggiunto('src/content/storie/saldi.json', storiaSveltia()));
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni.map((v) => v.messaggio)).toEqual(['Non puoi creare nuovi contenuti.']);
   });
 });
 

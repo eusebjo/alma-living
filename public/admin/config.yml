@@ -28,14 +28,28 @@ publish_mode: editorial_workflow
 
 output:
   # Senza questa opzione un campo opzionale lasciato vuoto viene salvato come ""
-  # e lo schema di Astro (`email` è `z.email().optional()`) fa fallire la build.
+  # e lo schema di Astro fa fallire la build (`email` è `z.email().optional()`,
+  # l'etichetta di una storia è "Oggi" o "Nuovo"). Così un campo facoltativo
+  # vuoto non compare nel file, e un oggetto facoltativo mai aggiunto (la
+  # seconda foto di un prodotto) nemmeno.
   omit_empty_optional_fields: true
 
-# Cartella globale delle immagini (Libreria dei file): coincide con quella
-# delle pagine, l'unica in cui `autonomia.yml` consente di caricare file.
-media_folder: src/content/pagine/immagini
+# Come si scrivono i nomi dei file nuovi e delle foto caricate: solo lettere
+# ASCII senza accenti, in minuscolo (spazi e altri segni diventano trattini).
+# Lo slug ASCII di Sveltia lascia passare anche `_` e `~`: per questo i nomi di
+# prodotti e post vengono dalla sola data (vedi `slug` delle collection), e
+# `eIndirizzoFoto` (src/content/foto.ts) accetta `_` e `~` nel nome di una foto.
+slug:
+  encoding: ascii
+  clean_accents: true
+  lowercase: true
 
+# Nessun `media_folder`: le foto non si caricano nel repository (che è pubblico)
+# ma su Cloudflare R2, e Sveltia non lo chiede quando c'è un archivio esterno.
+# Anche `autonomia.yml` non lascia caricare nessun file (`media.percorsi: []`).
 media_libraries:
+  # L'archivio interno (file nel repository) è spento: resta solo R2.
+  default: false
   all:
     # Le foto si convertono nel browser, prima del caricamento: WebP, qualità 85,
     # dentro un riquadro di 2400 x 2400 px (larghezza e altezza massime insieme:
@@ -50,8 +64,19 @@ media_libraries:
         quality: 85
         width: 2400
         height: 2400
-    # Niente spazi, maiuscole o accenti nei nomi dei file.
+    # Niente spazi, maiuscole o accenti nei nomi dei file (con lo `slug` qui sopra).
     slugify_filename: true
+  # Le foto caricate dal pannello vanno nel bucket `alma-living-prova`, nella
+  # cartella `cms/`, e nei contenuti finisce il loro indirizzo pubblico
+  # (https://foto.almalivingviaricasoli.it/cms/<nome>). Access Key ID e Account ID
+  # non sono segreti; la chiave segreta del token la inserisce ogni persona nel
+  # pannello (Impostazioni) e resta nel suo browser, mai nel repository.
+  cloudflare_r2:
+    access_key_id: 8ff6b443631b5f4d1f51c7b6dd13ebee
+    account_id: ade1bdd8232fb26690d8fc2593289760
+    bucket: alma-living-prova
+    public_url: https://foto.almalivingviaricasoli.it
+    prefix: cms/
   # Niente foto di stock da servizi esterni.
   stock_assets: false
 
@@ -139,55 +164,274 @@ collections:
                 hint: Ora in formato 24 ore, dopo l'apertura.
                 pattern: ['^([01]\d|2[0-3]):[0-5]\d$', "L'ora va scritta come HH:MM, per esempio 19:30."]
 
-  - name: pagine
-    label: Pagine
-    label_singular: Pagina
-    icon: article
-    folder: src/content/pagine
-    extension: md
-    identifier_field: titolo
-    summary: '{{titolo}}'
-    # Le pagine si modificano soltanto: nuove pagine ed eliminazioni passano da
-    # una proposta di sviluppo (create e delete a livello 0 in `autonomia.yml`).
-    create: false
-    delete: false
+  # Prodotti degli scaffali: un file JSON per prodotto. La redazione li crea, li
+  # modifica e li toglie (create e delete a livello 1 in `autonomia.yml`, cioè
+  # con l'approvazione).
+  - name: prodotti
+    label: Prodotti degli scaffali
+    label_singular: Prodotto
+    icon: shopping_bag
+    folder: src/content/prodotti
+    extension: json
+    format: json
+    identifier_field: nome
+    summary: '{{nome}}'
+    # Il nome del file (l'id della voce nella pagina) è la data del prodotto,
+    # `AAAA-MM-GG`: solo cifre e trattini, come vuole la build. Se c'è già,
+    # Sveltia aggiunge `-1`, `-2`… Non si scrive a mano (`editable: false`): nel
+    # pannello non c'è il riquadro "Slug".
+    slug:
+      template: '{{fields.data}}'
+      editable: false
+    create: true
+    delete: true
     publish: false
-    # Cartelle relative alla pagina: `src/content/pagine/immagini/`. Nel frontmatter
-    # il percorso è `immagini/<file>.webp`, relativo alla pagina come richiede `image()` di Astro.
-    media_folder: immagini
-    public_folder: immagini
     fields:
-      - name: titolo
-        label: Titolo
+      - name: nome
+        label: Nome
         widget: string
-        hint: È il titolo della pagina nei motori di ricerca.
-        maxlength: 70
-      - name: descrizione
-        label: Descrizione
-        widget: text
-        hint: È la descrizione nei risultati di ricerca.
-        minlength: 50
-        maxlength: 160
-      - name: immagine
-        label: Immagine
-        widget: image
-        hint: Foto JPEG, PNG, WebP, AVIF o HEIC. Il pannello la converte in WebP.
-        # Solo file caricati (niente indirizzi esterni) e niente SVG, che può contenere codice.
-        choose_url: false
-        accept: image/jpeg,image/png,image/webp,image/avif,.heic,.heif
-      - name: immagine_alt
-        label: Testo alternativo dell'immagine
+        hint: Il nome sulla scheda, per esempio Plaid Abbracciami.
+        maxlength: 60
+      - name: dettaglio
+        label: Dettaglio
         widget: string
-        hint: Descrivi cosa si vede nella foto, per chi non può vederla.
-        minlength: 5
-        maxlength: 150
-      - name: body
+        hint: La riga sotto il nome, per esempio Pile ricamato con frange, verde o rosso.
+        maxlength: 90
+      - name: categorie
+        label: Categorie
+        widget: select
+        multiple: true
+        min: 1
+        hint: Una o più. La prima che scegli è quella scritta sulla scheda.
+        options:
+          - { label: Letto, value: letto }
+          - { label: Bagno, value: bagno }
+          - { label: Bimbi, value: bimbi }
+          - { label: Tavola e cucina, value: tavola }
+          - { label: Profumi per la casa, value: profumi }
+          - { label: Natale e regali, value: natale }
+          - { label: Mare, value: mare }
+      - name: novita
+        label: Novità
+        widget: boolean
+        required: false
+        default: false
+        hint: Se è attivo, la scheda dice «Novità» al posto della categoria.
+      - name: data
+        label: Data
+        widget: datetime
+        type: date
+        format: YYYY-MM-DD
+        default: '{{now}}'
+        hint: Il giorno in cui il prodotto è arrivato. Gli scaffali mostrano prima i più recenti.
+      - name: foto
+        label: Foto principale
+        widget: object
+        # Gli stessi tre campi per ogni foto (prodotti, post e storie): `&` li
+        # nomina, `*` li ripete. Sveltia legge la configurazione con gli alias YAML.
+        fields: &campiFoto
+          - &fotoSrc
+            name: src
+            label: Foto
+            widget: image
+            hint: Una foto JPEG, PNG, WebP, AVIF o HEIC. Il pannello la converte in WebP.
+            # Solo foto caricate (niente indirizzi esterni) e niente SVG, che può contenere codice.
+            choose_url: false
+            accept: image/jpeg,image/png,image/webp,image/avif,.heic,.heif
+          - &fotoAlt
+            name: alt
+            label: Testo alternativo
+            widget: string
+            hint: Descrivi cosa si vede nella foto, per chi non può vederla.
+            minlength: 5
+            maxlength: 150
+          - &fotoInquadratura
+            name: inquadratura
+            label: Inquadratura
+            widget: select
+            hint: Quale parte della foto resta in vista quando è tagliata.
+            default: centro
+            options:
+              - { label: In alto, value: alto }
+              - { label: "Un po' in alto", value: centro-alto }
+              - { label: Al centro, value: centro }
+              - { label: "Un po' in basso", value: centro-basso }
+              - { label: In basso, value: basso }
+      - name: secondaFoto
+        label: Seconda foto
+        widget: object
+        required: false
+        hint: Facoltativa. Se manca, la scheda mostra un dettaglio ingrandito della foto principale.
+        fields: *campiFoto
+      - name: colori
+        label: Colori
+        label_singular: Colore
+        widget: list
+        required: false
+        max: 6
+        hint: Facoltativi, per un prodotto in più colori. La foto del colore va messa a tutti i colori o a nessuno.
+        summary: '{{nome}}'
+        fields:
+          - name: nome
+            label: Nome del colore
+            widget: string
+            hint: Per esempio verde.
+            maxlength: 30
+          - name: tinta
+            label: Tinta del pallino
+            widget: color
+          - name: foto
+            label: Foto del colore
+            widget: object
+            required: false
+            fields: *campiFoto
+
+  # Post del diario: un file JSON per post. La redazione li crea, li modifica e
+  # li toglie, con l'approvazione.
+  - name: post
+    label: Post
+    label_singular: Post
+    icon: photo_library
+    folder: src/content/post
+    extension: json
+    format: json
+    identifier_field: data
+    summary: '{{data}} · {{testo | truncate(50)}}'
+    # Come per i prodotti: il nome del file è la data del post (`AAAA-MM-GG`),
+    # quindi non comincia mai con `articolo-` (nella pagina gli articoli degli
+    # scaffali sono `articolo-<id>`, accanto ai post).
+    slug:
+      template: '{{fields.data}}'
+      editable: false
+    create: true
+    delete: true
+    publish: false
+    fields:
+      - name: data
+        label: Data
+        widget: datetime
+        type: date
+        format: YYYY-MM-DD
+        default: '{{now}}'
+        hint: Il giorno del post. La griglia mostra prima i più recenti.
+      - name: testo
         label: Testo
-        widget: markdown
-        # Nessun componente dell'editor (predefiniti: `image` e `code-block`).
-        # Un'immagine inserita nel testo potrebbe avere un indirizzo esterno, cioè
-        # una risorsa di terzi sul sito: l'immagine della pagina si carica dal
-        # campo `immagine`. L'elenco vuoto vale davvero (Sveltia usa quello
-        # predefinito solo se l'opzione manca). La build toglie comunque le
-        # immagini esterne scritte a mano (src/lib/markdown.ts).
-        editor_components: []
+        widget: text
+        maxlength: 1000
+      - name: foto
+        label: Foto
+        label_singular: Foto
+        widget: list
+        min: 1
+        max: 10
+        hint: Da 1 a 10 foto. Con più foto il post diventa una galleria; la prima è quella della griglia.
+        summary: '{{alt}}'
+        fields: *campiFoto
+      - name: soggetto
+        label: Di cosa parla
+        widget: string
+        required: false
+        hint: Facoltativo, per il messaggio WhatsApp, per esempio «sui cuscini di Natale». Se manca, il messaggio dice solo la data del post.
+        maxlength: 60
+
+  # Storie: gli otto file fissi della fila, nell'ordine di ORDINE_STORIE
+  # (src/sito/contenuti.ts). Una collection a file non crea né elimina: se ne
+  # cambia il contenuto. Il nome è di sola lettura (livello 0 in `autonomia.yml`).
+  - name: storie
+    label: Storie
+    icon: auto_stories
+    publish: false
+    files:
+      - name: oggi
+        label: Oggi
+        file: src/content/storie/oggi.json
+        format: json
+        fields: &campiStoria
+          - name: nome
+            label: Nome
+            widget: string
+            readonly: true
+            hint: Il nome sotto il cerchio della storia. Non si cambia.
+          - name: data
+            label: Data
+            widget: datetime
+            type: date
+            format: YYYY-MM-DD
+            default: '{{now}}'
+            hint: Il giorno scritto in cima alla storia.
+          - name: etichetta
+            label: Etichetta
+            widget: select
+            # Facoltativa e senza una scelta vuota tra le opzioni: il pannello
+            # aggiunge da sé "(Nessuna)", che vale "" e con
+            # `omit_empty_optional_fields` non viene scritta nel file.
+            required: false
+            hint: Facoltativa, sul cerchio della storia. Con «Nessuna» il cerchio resta senza etichetta.
+            options:
+              - { label: Oggi, value: Oggi }
+              - { label: Nuovo, value: Nuovo }
+          - name: invito
+            label: Invito
+            widget: select
+            hint: Il pulsante in evidenza nella scheda della storia.
+            options:
+              - { label: WhatsApp, value: whatsapp }
+              - { label: Chiama, value: chiama }
+              - { label: Indicazioni, value: indicazioni }
+          - name: foto
+            label: Foto
+            label_singular: Foto
+            widget: list
+            min: 1
+            max: 10
+            hint: Almeno una foto. La prima è anche la copertina del cerchio.
+            summary: '{{frase}}'
+            fields:
+              - *fotoSrc
+              - *fotoAlt
+              - *fotoInquadratura
+              - name: frase
+                label: Frase
+                widget: text
+                hint: Il testo che la storia mostra su questa foto. Più è lunga, più la foto resta in vista.
+                maxlength: 200
+              - name: soggetto
+                label: Di cosa parla
+                widget: string
+                hint: Con l'articolo e in minuscolo, per esempio «i plaid delle feste». Lo usano la scheda e il messaggio WhatsApp.
+                maxlength: 60
+      - name: arrivi
+        label: Arrivi
+        file: src/content/storie/arrivi.json
+        format: json
+        fields: *campiStoria
+      - name: vetrina
+        label: Vetrina
+        file: src/content/storie/vetrina.json
+        format: json
+        fields: *campiStoria
+      - name: casette
+        label: Casette
+        file: src/content/storie/casette.json
+        format: json
+        fields: *campiStoria
+      - name: candele
+        label: Candele
+        file: src/content/storie/candele.json
+        format: json
+        fields: *campiStoria
+      - name: bimbi
+        label: Bimbi
+        file: src/content/storie/bimbi.json
+        format: json
+        fields: *campiStoria
+      - name: tavola
+        label: Tavola
+        file: src/content/storie/tavola.json
+        format: json
+        fields: *campiStoria
+      - name: lenzuola
+        label: Lenzuola
+        file: src/content/storie/lenzuola.json
+        format: json
+        fields: *campiStoria

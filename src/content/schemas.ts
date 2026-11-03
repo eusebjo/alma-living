@@ -1,5 +1,4 @@
 import { z } from 'astro/zod';
-import type { ZodTypeAny } from 'astro/zod';
 import { CATEGORIE } from './categorie';
 import { eIndirizzoFoto, INQUADRATURE } from './foto';
 import type { Inquadratura } from './foto';
@@ -87,42 +86,6 @@ export const negozioSchema = z.object({
 });
 
 export type Negozio = z.infer<typeof negozioSchema>;
-
-// `image` è la funzione che Astro passa a `defineCollection({ schema })`; i test
-// ne passano una finta. Tenerla come parametro evita di importare `astro:content`
-// (modulo virtuale non disponibile fuori da Astro) in questo file.
-export function makePaginaSchema(image: () => ZodTypeAny) {
-  return z.object({
-    titolo: z
-      .string()
-      .min(1, 'Il titolo è obbligatorio.')
-      .max(
-        LIMITI.pagina.titolo.max,
-        `Il titolo può avere al massimo ${LIMITI.pagina.titolo.max} caratteri.`,
-      ),
-    descrizione: z
-      .string()
-      .min(
-        LIMITI.pagina.descrizione.min,
-        `La descrizione deve avere almeno ${LIMITI.pagina.descrizione.min} caratteri.`,
-      )
-      .max(
-        LIMITI.pagina.descrizione.max,
-        `La descrizione può avere al massimo ${LIMITI.pagina.descrizione.max} caratteri.`,
-      ),
-    immagine: image(),
-    immagine_alt: z
-      .string()
-      .min(
-        LIMITI.pagina.immagine_alt.min,
-        `Il testo alternativo deve avere almeno ${LIMITI.pagina.immagine_alt.min} caratteri.`,
-      )
-      .max(
-        LIMITI.pagina.immagine_alt.max,
-        `Il testo alternativo può avere al massimo ${LIMITI.pagina.immagine_alt.max} caratteri.`,
-      ),
-  });
-}
 
 // --- Foto, prodotti, post e storie ---
 

@@ -1,6 +1,11 @@
 import picomatch from 'picomatch';
 import { z } from 'astro/zod';
-import { makePaginaSchema, negozioSchema } from '../../src/content/schemas';
+import {
+  negozioSchema,
+  postSchema,
+  prodottoSchema,
+  storiaSchema,
+} from '../../src/content/schemas';
 import { parseContent } from './parse';
 import type { ChangedFile, Rules, Violazione } from './types';
 
@@ -14,15 +19,15 @@ import type { ChangedFile, Rules, Violazione } from './types';
 // decide solo se la modifica è permessa, questo se il contenuto è valido.
 
 /**
- * Schema di ogni collection di `autonomia.yml`, per nome. Per le pagine
- * `immagine` si controlla solo come testo: nella build è `image()` di Astro, che
- * ha bisogno della build per controllare che il file esista.
+ * Schema di ogni collection di `autonomia.yml`, per nome. Le foto si
+ * controllano come indirizzi del bucket (`fotoSchema`): una foto presa da un
+ * altro sito è rifiutata qui come nella build.
  */
 const SCHEMI: Record<string, z.ZodType> = {
   negozio: negozioSchema,
-  pagine: makePaginaSchema(() =>
-    z.string().min(1, "L'immagine della pagina è obbligatoria."),
-  ),
+  prodotti: prodottoSchema,
+  post: postSchema,
+  storie: storiaSchema,
 };
 
 // Stessa lettura dei percorsi di `evaluate`: `/` come separatore, niente file nascosti.

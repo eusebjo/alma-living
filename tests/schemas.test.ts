@@ -5,7 +5,6 @@ import { INQUADRATURE, indirizzoFoto, inquadraturaVicina } from '../src/content/
 import { GIORNI, LIMITI } from '../src/content/limits';
 import {
   fotoSchema,
-  makePaginaSchema,
   negozioSchema,
   postSchema,
   prodottoSchema,
@@ -173,68 +172,11 @@ describe('negozioSchema', () => {
   });
 });
 
-describe('makePaginaSchema', () => {
-  const schema = makePaginaSchema(() => z.string());
-  const paginaValida = {
-    titolo: 'Alma Living',
-    descrizione:
-      'Alma Living, negozio di biancheria per la casa in Via Ricasoli a Livorno.',
-    immagine: './immagini/home.webp',
-    immagine_alt: 'Immagine segnaposto',
-  };
-
-  it('accetta un esempio valido', () => {
-    expect(schema.safeParse(paginaValida).success).toBe(true);
-  });
-
-  it('accetta un titolo di 70 caratteri e rifiuta uno di 71', () => {
-    expect(
-      schema.safeParse({ ...paginaValida, titolo: 'a'.repeat(70) }).success,
-    ).toBe(true);
-    expect(
-      schema.safeParse({ ...paginaValida, titolo: 'a'.repeat(71) }).success,
-    ).toBe(false);
-  });
-
-  it('accetta una descrizione di 50 caratteri e rifiuta una di 49', () => {
-    expect(
-      schema.safeParse({ ...paginaValida, descrizione: 'a'.repeat(50) }).success,
-    ).toBe(true);
-    expect(
-      schema.safeParse({ ...paginaValida, descrizione: 'a'.repeat(49) }).success,
-    ).toBe(false);
-  });
-
-  it('rifiuta una descrizione oltre il limite', () => {
-    const descrizione = 'a'.repeat(LIMITI.pagina.descrizione.max + 1);
-    expect(schema.safeParse({ ...paginaValida, descrizione }).success).toBe(
-      false,
-    );
-  });
-
-  it("rifiuta l'assenza di immagine_alt", () => {
-    const { immagine_alt: _alt, ...senzaAlt } = paginaValida;
-    expect(schema.safeParse(senzaAlt).success).toBe(false);
-  });
-
-  it("rifiuta un immagine_alt troppo corto o troppo lungo", () => {
-    expect(
-      schema.safeParse({ ...paginaValida, immagine_alt: 'abcd' }).success,
-    ).toBe(false);
-    expect(
-      schema.safeParse({
-        ...paginaValida,
-        immagine_alt: 'a'.repeat(LIMITI.pagina.immagine_alt.max + 1),
-      }).success,
-    ).toBe(false);
-  });
-
-  it("usa il tipo di immagine passato dal chiamante", () => {
-    const conImmagineNumerica = makePaginaSchema(() => z.number());
-    expect(
-      conImmagineNumerica.safeParse({ ...paginaValida, immagine: 1 }).success,
-    ).toBe(true);
-    expect(conImmagineNumerica.safeParse(paginaValida).success).toBe(false);
+describe('collection pagine', () => {
+  it('non esiste più: niente schema né limiti delle pagine', async () => {
+    const schemi = await import('../src/content/schemas');
+    expect(schemi).not.toHaveProperty('makePaginaSchema');
+    expect(LIMITI).not.toHaveProperty('pagina');
   });
 });
 

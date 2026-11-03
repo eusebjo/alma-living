@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { validaConSchemi } from '../../scripts/autonomia/schemi';
-import type { ChangedFile, Rules } from '../../scripts/autonomia/types';
+import type { ChangedFile } from '../../scripts/autonomia/types';
+import type { PostContenuto, Prodotto, StoriaContenuto } from '../../src/content/schemas';
 import {
-  HOME,
   NEGOZIO,
+  NOTA,
   ORARI_LUNEDI,
-  homeMd,
+  POST,
+  PRODOTTO,
+  STORIA,
+  aggiunto,
   modificato,
   negozioJson,
+  notaMd,
+  postJson,
+  prodottoJson,
+  regoleConNoteEImmagini,
   rules,
+  storiaJson,
   type Negozio,
 } from './fixtures';
 
@@ -17,13 +26,19 @@ import {
 
 const GERGO = /branch|merge|commit/i;
 const INGLESE = /expected|received|invalid input|required/i;
-const PAGINA = 'src/content/pagine/chi-siamo.md';
+const NUOVO_POST = 'src/content/post/nuovo.json';
 
 const negozio = (modifica: (n: Negozio) => void): ChangedFile =>
   modificato(NEGOZIO, negozioJson(), negozioJson(modifica));
 
-const pagina = (campi: Parameters<typeof homeMd>[0], path = HOME): ChangedFile =>
-  modificato(path, homeMd(), homeMd(campi));
+const post = (modifica: (p: PostContenuto) => void, path = POST): ChangedFile =>
+  modificato(path, postJson(), postJson(modifica));
+
+const prodotto = (modifica: (p: Prodotto) => void): ChangedFile =>
+  modificato(PRODOTTO, prodottoJson(), prodottoJson(modifica));
+
+const storia = (modifica: (s: StoriaContenuto) => void): ChangedFile =>
+  modificato(STORIA, storiaJson(), storiaJson(modifica));
 
 const negozioSenza = (campo: string): ChangedFile => {
   const dati = JSON.parse(negozioJson()) as Record<string, unknown>;
@@ -185,46 +200,174 @@ describe('validaConSchemi, negozio.json', () => {
   });
 });
 
-describe('validaConSchemi, pagine', () => {
-  it('una pagina valida non dà nessuna violazione', () => {
-    expect(validaConSchemi([pagina({ titolo: 'Nuovo titolo' })], rules)).toEqual([]);
+describe('validaConSchemi, prodotti, post e storie', () => {
+  it('un post, un prodotto e una storia validi non danno nessuna violazione', () => {
+    const file = [
+      post((p) => {
+        p.testo = 'Un testo nuovo.';
+      }),
+      prodotto((p) => {
+        p.colori = [
+          { nome: 'sabbia', tinta: '#d8c3a5' },
+          { nome: 'bianco', tinta: '#FFFFFF' },
+        ];
+      }),
+      storia((s) => {
+        delete s.etichetta;
+      }),
+    ];
+    expect(validaConSchemi(file, rules)).toEqual([]);
   });
 
-  it('l’immagine si controlla come percorso (testo), senza verificare che il file esista', () => {
-    expect(
-      validaConSchemi([pagina({ immagine: './immagini/che-non-esiste.webp' })], rules),
-    ).toEqual([]);
+  it('un post nuovo valido non dà nessuna violazione', () => {
+    expect(validaConSchemi([aggiunto(NUOVO_POST, postJson())], rules)).toEqual([]);
   });
 
-  it.each<[string, Parameters<typeof homeMd>[0], string, RegExp]>([
-    ['titolo troppo lungo', { titolo: 'x'.repeat(71) }, 'titolo', /al massimo 70 caratteri/],
-    ['descrizione troppo corta', { descrizione: 'Troppo corta.' }, 'descrizione', /almeno 50 caratteri/],
-    ['immagine vuota', { immagine: "''" }, 'immagine', /immagine/i],
-  ])('%s: violazione in italiano sul campo giusto', (_nome, campi, campo, testo) => {
-    const violazioni = validaConSchemi([pagina(campi)], rules);
+  it('un post con una foto da r2.dev: «La foto va caricata dal pannello.»', () => {
+    const daR2Dev = 'https://pub-02e2834056a84517a87c5431c6904c14.r2.dev/cms/cuscini.webp';
+    for (const file of [
+      post((p) => {
+        p.foto[0]!.src = daR2Dev;
+      }),
+      aggiunto(
+        NUOVO_POST,
+        postJson((p) => {
+          p.foto[0]!.src = daR2Dev;
+        }),
+      ),
+    ]) {
+      const violazioni = validaConSchemi([file], rules);
+
+      expect(violazioni).toHaveLength(1);
+      expect(violazioni[0]).toMatchObject({ file: file.path, campo: 'foto.src', azione: 'formato' });
+      expect(violazioni[0]!.messaggio).toMatch(/^La foto va caricata dal pannello\. \(riga 1 dell'elenco\)/);
+      expect(violazioni[0]!.messaggio).toMatch(/pannello dei contenuti/);
+    }
+  });
+
+  it('la foto di un prodotto da un altro sito o da una sottocartella è rifiutata', () => {
+    for (const src of [
+      'https://example.com/plaid.webp',
+      'https://foto.almalivingviaricasoli.it/cms/estate/plaid.webp',
+    ]) {
+      const violazioni = validaConSchemi(
+        [
+          prodotto((p) => {
+            p.foto.src = src;
+          }),
+        ],
+        rules,
+      );
+      expect(violazioni.map((v) => [v.campo, v.messaggio.split(' Correggi')[0]]), src).toEqual([
+        ['foto.src', 'La foto va caricata dal pannello.'],
+      ]);
+    }
+  });
+
+  it.each<[string, ChangedFile, string, RegExp]>([
+    [
+      'post con una data che non esiste',
+      post((p) => {
+        p.data = '2026-02-30';
+      }),
+      'data',
+      /La data non è valida/,
+    ],
+    [
+      'post senza foto',
+      post((p) => {
+        p.foto = [];
+      }),
+      'foto',
+      /almeno una foto/,
+    ],
+    [
+      'post con un’inquadratura sconosciuta',
+      post((p) => {
+        (p.foto[0] as { inquadratura: string }).inquadratura = 'sinistra';
+      }),
+      'foto.inquadratura',
+      /Inquadratura non valida/,
+    ],
+    [
+      'prodotto con una categoria sconosciuta',
+      prodotto((p) => {
+        (p as { categorie: string[] }).categorie = ['cucina'];
+      }),
+      'categorie',
+      /Categoria non valida/,
+    ],
+    [
+      'prodotto con la foto solo su alcuni colori',
+      prodotto((p) => {
+        p.colori = [
+          { nome: 'verde', tinta: '#5e654f', foto: p.foto },
+          { nome: 'rosso', tinta: '#b8263a' },
+        ];
+      }),
+      'colori',
+      /a tutti i colori o a nessuno/,
+    ],
+    [
+      'prodotto con una tinta scritta a parole',
+      prodotto((p) => {
+        p.colori = [{ nome: 'verde', tinta: 'verde' }];
+      }),
+      'colori.tinta',
+      /#RRGGBB/,
+    ],
+    [
+      'storia con l’etichetta vuota',
+      storia((s) => {
+        (s as { etichetta: string }).etichetta = '';
+      }),
+      'etichetta',
+      /«Oggi» o «Nuovo»/,
+    ],
+    [
+      'storia con un invito sconosciuto',
+      storia((s) => {
+        (s as { invito: string }).invito = 'email';
+      }),
+      'invito',
+      /Invito non valido/,
+    ],
+    [
+      'storia con una foto senza frase',
+      storia((s) => {
+        delete (s.foto[0] as { frase?: string }).frase;
+      }),
+      'foto.frase',
+      /^Questo campo è obbligatorio\./,
+    ],
+  ])('%s: violazione in italiano sul campo giusto', (_nome, file, campo, testo) => {
+    const violazioni = validaConSchemi([file], rules);
 
     expect(violazioni).toHaveLength(1);
-    expect(violazioni[0]).toMatchObject({ file: HOME, campo, azione: 'formato' });
+    expect(violazioni[0]).toMatchObject({ file: file.path, campo, azione: 'formato' });
     expect(violazioni[0]!.messaggio).toMatch(testo);
+    expect(violazioni[0]!.messaggio).not.toMatch(INGLESE);
     expect(violazioni[0]!.messaggio).not.toMatch(GERGO);
   });
 
-  it('il testo (corpo) non ha limiti: anche vuoto o lunghissimo va bene', () => {
-    expect(validaConSchemi([pagina({ corpo: '' })], rules)).toEqual([]);
-    expect(validaConSchemi([pagina({ corpo: 'parola '.repeat(5000) })], rules)).toEqual([]);
-  });
-
-  it('vale per ogni pagina della cartella, non solo per home.md', () => {
-    const violazioni = validaConSchemi([pagina({ titolo: 'x'.repeat(71) }, PAGINA)], rules);
-    expect(violazioni).toHaveLength(1);
-    expect(violazioni[0]!.file).toBe(PAGINA);
+  it('vale per ogni file della cartella, non solo per quelli di oggi', () => {
+    const altro = 'src/content/post/2026-11-03.json';
+    const violazioni = validaConSchemi(
+      [
+        post((p) => {
+          p.foto = [];
+        }, altro),
+      ],
+      rules,
+    );
+    expect(violazioni.map((v) => v.file)).toEqual([altro]);
   });
 });
 
 describe('validaConSchemi, cosa si controlla', () => {
   it('salta i file rimossi e quelli senza testo letto', () => {
-    const rimosso: ChangedFile = { path: HOME, status: 'removed', before: homeMd(), after: null };
-    const nonLetto: ChangedFile = { path: HOME, status: 'modified', before: null, after: null };
+    const rimosso: ChangedFile = { path: POST, status: 'removed', before: postJson(), after: null };
+    const nonLetto: ChangedFile = { path: POST, status: 'modified', before: null, after: null };
     expect(validaConSchemi([rimosso, nonLetto], rules)).toEqual([]);
   });
 
@@ -238,53 +381,38 @@ describe('validaConSchemi, cosa si controlla', () => {
     expect(validaConSchemi([rotto], rules)).toEqual([]);
   });
 
-  it('salta i file fuori dalle collection (immagini, altro)', () => {
+  it('salta i file fuori dalle collection (immagini, la vecchia cartella delle pagine, altro)', () => {
     const foto: ChangedFile = {
-      path: 'src/content/pagine/immagini/foto.webp',
+      path: 'src/content/post/foto.webp',
       status: 'added',
       before: null,
       after: null,
       sizeBytes: 1000,
     };
-    expect(validaConSchemi([foto, modificato('README.md', 'a', 'b')], rules)).toEqual([]);
+    const pagina = modificato('src/content/pagine/home.md', notaMd(), notaMd({ titolo: '' }));
+    expect(
+      validaConSchemi([foto, pagina, modificato('README.md', 'a', 'b')], rules),
+    ).toEqual([]);
   });
 
   it('controlla anche un file aggiunto o rinominato', () => {
-    const aggiunto: ChangedFile = {
-      path: PAGINA,
-      status: 'added',
-      before: null,
-      after: homeMd({ titolo: 'x'.repeat(71) }),
-    };
+    const sbagliato = postJson((p) => {
+      p.foto = [];
+    });
     const rinominato: ChangedFile = {
-      path: PAGINA,
-      previousPath: HOME,
+      path: NUOVO_POST,
+      previousPath: POST,
       status: 'renamed',
-      before: homeMd(),
-      after: homeMd({ titolo: 'x'.repeat(71) }),
+      before: postJson(),
+      after: sbagliato,
     };
-    expect(validaConSchemi([aggiunto], rules)).toHaveLength(1);
+    expect(validaConSchemi([aggiunto(NUOVO_POST, sbagliato)], rules)).toHaveLength(1);
     expect(validaConSchemi([rinominato], rules)).toHaveLength(1);
   });
 
   it('una collection senza schema noto non viene controllata (e non fa fallire nulla)', () => {
-    const conAltra: Rules = {
-      ...rules,
-      contenuti: {
-        ...rules.contenuti,
-        eventi: {
-          file: 'src/content/eventi/*.md',
-          formato: 'markdown',
-          azioni: { crea: 0, modifica: 1, elimina: 0 },
-          campi: { titolo: 1 },
-        },
-      },
-    };
-    const evento = modificato(
-      'src/content/eventi/festa.md',
-      homeMd(),
-      homeMd({ titolo: 'x'.repeat(500) }),
-    );
-    expect(validaConSchemi([evento], conAltra)).toEqual([]);
+    // Le note in Markdown delle regole di prova non hanno uno schema in SCHEMI.
+    const nota = modificato(NOTA, notaMd(), notaMd({ titolo: 'x'.repeat(500) }));
+    expect(validaConSchemi([nota], regoleConNoteEImmagini)).toEqual([]);
   });
 });

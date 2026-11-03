@@ -25,9 +25,12 @@ export function indirizzoFoto(cartella: CartellaFoto, nome: string): string {
   return `${FOTO_BASE}/${cartella}/${nome}`;
 }
 
-// Il nome di un file: lettere, cifre, punto, trattino e trattino basso, e non
-// comincia con un punto. Niente `%` (una `..` nascosta come `%2e%2e`), spazi né barre.
-const NOME_FILE = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
+// Il nome di un file: lettere, cifre, punto, trattino, trattino basso e tilde,
+// e non comincia con un punto. Niente `%` (una `..` nascosta come `%2e%2e`),
+// spazi né barre. La tilde c'è perché il pannello può lasciarla nel nome di una
+// foto caricata: lo slug ASCII di Sveltia tiene lettere, cifre, `_`, `-` e `~`
+// (vedi `public/admin/config.yml`), e nell'indirizzo resta così com'è.
+const NOME_FILE = /^[A-Za-z0-9_~][A-Za-z0-9._~-]*$/;
 
 /**
  * Vero solo per l'indirizzo di una foto del bucket: `https:` su `FOTO_BASE`,
