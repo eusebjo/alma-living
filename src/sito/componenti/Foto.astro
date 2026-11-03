@@ -2,13 +2,15 @@
 // Una foto con `<Picture>`: AVIF e WebP alle larghezze indicate (senza quelle oltre
 // l'originale), taglio centrato su `scatto.posizione`. La foto sta su
 // foto.almalivingviaricasoli.it (`scatto.src`): la build la scarica, ne legge le
-// misure (`inferRemoteSize`, la stessa lettura di `inferSize`) e serve le versioni
+// misure (`inferRemoteSize`, la stessa lettura di `inferSize`, una volta per foto e
+// con qualche tentativo se la rete sbaglia: `misureFoto`) e serve le versioni
 // ottimizzate da /_astro/.
 // Le misure e il taglio (`object-fit`) li decide il contenitore. Uno scatto con
 // `ingrandimento` (il secondo scatto di una scheda, un dettaglio) porta anche il
 // punto di ingrandimento e la scala (`--scala`): chi lo mostra le usa nel suo CSS.
-import { inferRemoteSize, Picture } from 'astro:assets';
+import { Picture } from 'astro:assets';
 import { limitaLarghezze } from '../comune/larghezze';
+import { misureFoto } from '../comune/misure-foto';
 import { formatoDiRipiego } from '../comune/ripiego';
 import type { Scatto, ScattoArticolo } from './dati';
 
@@ -31,7 +33,7 @@ const { scatto, larghezze, sizes, principale = false, alt = scatto.alt, class: c
 // `inferSize` direttamente su `<Picture>` non basta: per le foto remote non toglie
 // le larghezze oltre l'originale (per le importate sì), e il `srcset` direbbe
 // `1000w` di una foto larga 896 px. Qui le togliamo noi, come per le importate.
-const originale = await inferRemoteSize(scatto.src);
+const originale = await misureFoto(scatto.src);
 const larghezzeFoto = limitaLarghezze(larghezze, originale.width);
 
 // Il ripiego (l'`<img>` dentro `<picture>`) lo decide il formato vero della foto,
