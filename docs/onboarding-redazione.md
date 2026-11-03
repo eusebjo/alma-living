@@ -10,7 +10,7 @@ Il sito si modifica dal pannello: ogni modifica diventa una **proposta**. La pro
 2. **Verifica in due passaggi.** Su GitHub: foto del profilo, "Settings", "Password and authentication", "Two-factor authentication", "Enable". Meglio con un'app sul telefono. Si conservano i codici di recupero in un posto sicuro.
 3. **Invito al sito.** eusebjo invia l'invito al repository `eusebjo/alma-living`. Arriva un'email da GitHub: si apre e si preme "Accept invitation" (oppure si apre https://github.com/eusebjo/alma-living/invitations). Senza invito accettato il pannello non lascia entrare.
 4. **Niente email dei controlli automatici.** Su GitHub: "Settings", "Notifications", sezione "System", "Actions": si sceglie di **non essere avvisata** ("Don't notify", oppure si toglie la spunta da "Email"). Quelle email sono in inglese e non servono: l'esito del controllo si legge in italiano nella proposta.
-5. **Primo accesso al pannello.** Si apre https://alma-living.sebjomuho.workers.dev/admin/ e si preme **"Accedi con GitHub"**. GitHub chiede di autorizzare l'accesso: si preme "Authorize". Si inserisce il codice della verifica in due passaggi se richiesto.
+5. **Primo accesso al pannello.** Si apre https://almalivingviaricasoli.it/admin/ e si preme **"Accedi con GitHub"**. GitHub chiede di autorizzare l'accesso: si preme "Authorize". Si inserisce il codice della verifica in due passaggi se richiesto.
 
 ## Modificare una pagina o i dati del negozio
 
