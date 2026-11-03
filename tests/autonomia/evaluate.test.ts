@@ -4,24 +4,34 @@ import { evaluate } from '../../scripts/autonomia/evaluate';
 import { eRamoDelPannello, ruoloDi, ruoloEffettivo } from '../../scripts/autonomia/ruolo';
 import type { ChangedFile, Rules } from '../../scripts/autonomia/types';
 import {
-  HOME,
+  IMMAGINI,
   NEGOZIO,
+  NOTA,
   ORARI_LUNEDI,
+  POST,
+  PRODOTTO,
+  STORIA,
   aggiunto,
-  homeMd,
   immagine,
   kb,
   modificato,
   negozioJson,
+  notaMd,
+  postJson,
+  prodottoJson,
   proposta,
+  regoleConNoteEImmagini,
   regoleDelRepository,
   rimosso,
   rinominato,
   rules,
+  storiaJson,
 } from './fixtures';
 
-const FOTO_WEBP = 'src/content/pagine/immagini/foto.webp';
-const FOTO_JPG = 'src/content/pagine/immagini/foto.jpg';
+// Immagini caricate nel repository: le ammettono solo le regole di prova
+// (`regoleConNoteEImmagini`); con quelle vere sono fuori perimetro.
+const FOTO_WEBP = `${IMMAGINI}/foto.webp`;
+const FOTO_JPG = `${IMMAGINI}/foto.jpg`;
 
 describe('evaluate, autore e ruolo', () => {
   it('1. eusebjo modifica src/layouts/BaseLayout.astro: consentito, ruolo sviluppo', () => {
@@ -59,9 +69,9 @@ describe('evaluate, autore e ruolo', () => {
     expect(evaluate(proposta([], { author: 'LEI' }), rules).ruolo).toBe('redazione');
   });
 
-  it('2. un estraneo modifica home.md: respinto, azione autore', () => {
+  it('2. un estraneo modifica un post: respinto, azione autore', () => {
     const verdetto = evaluate(
-      proposta([modificato(HOME, homeMd(), homeMd({ titolo: 'Altro titolo' }))], {
+      proposta([modificato(POST, postJson(), postJson((p) => { p.testo = 'Altro testo.'; }))], {
         author: 'estraneo',
       }),
       rules,
@@ -88,6 +98,86 @@ describe('evaluate, autore e ruolo', () => {
     for (const autore of ['eusebjo2', 'xeusebjo', 'eusebjo[bot]', 'lei-bis', '']) {
       expect(evaluate(proposta([], { author: autore }), rules).esito).toBe('respinto');
     }
+  });
+});
+
+// Togliere un prodotto o un post dal pannello (flusso editoriale): Sveltia apre
+// la proposta con lo stato «In Attesa di Eliminazione», cioè l'etichetta
+// `sveltia-cms/pending_deletion`, senza passare da «In revisione». È già inviata:
+// l'approvazione di eusebjo è quella che la completa.
+describe('evaluate, eliminazione dal pannello (pending_deletion)', () => {
+  const ELIMINAZIONE = 'sveltia-cms/pending_deletion';
+  const RAMO_POST = 'cms/post/p1';
+  const RAMO_PRODOTTO = 'cms/prodotti/sabbia';
+  const eliminazione = (
+    files: ChangedFile[],
+    ramo: string | null,
+    altro: Partial<Parameters<typeof proposta>[1]> = {},
+  ) => evaluate(proposta(files, { labels: [ELIMINAZIONE], ...altro }), rules, { ramo });
+
+  it('lei toglie un post con l\'etichetta di eliminazione: consentito, livello 1, non in bozza', () => {
+    expect(eliminazione([rimosso(POST, postJson())], RAMO_POST)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('lei toglie un prodotto con l\'etichetta di eliminazione: consentito, livello 1', () => {
+    expect(eliminazione([rimosso(PRODOTTO, prodottoJson())], RAMO_PRODOTTO)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('anche sul ramo del pannello aperto da chi è nello sviluppo vale il livello 1', () => {
+    const verdetto = eliminazione([rimosso(POST, postJson())], RAMO_POST, { author: 'eusebjo' });
+    expect(verdetto).toMatchObject({ ruolo: 'redazione', esito: 'consentito', livello: 1 });
+  });
+
+  it('l\'etichetta di eliminazione non dà nessun potere in più: un campo vietato resta respinto', () => {
+    const verdetto = eliminazione(
+      [
+        rimosso(POST, postJson()),
+        modificato(
+          NEGOZIO,
+          negozioJson(),
+          negozioJson((n) => {
+            n.nome = 'Altro nome';
+          }),
+        ),
+      ],
+      RAMO_POST,
+    );
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni).toEqual([
+      expect.objectContaining({ file: NEGOZIO, campo: 'nome', azione: 'modifica' }),
+    ]);
+  });
+
+  it('con l\'etichetta di eliminazione una storia non si toglie, un file fuori perimetro nemmeno', () => {
+    const storia = eliminazione([rimosso(STORIA, storiaJson())], 'cms/storie/oggi');
+    expect(storia.esito).toBe('respinto');
+    expect(storia.violazioni.map((v) => [v.file, v.azione])).toEqual([[STORIA, 'elimina']]);
+
+    const fuori = eliminazione([rimosso('src/pages/index.astro', 'a')], RAMO_POST);
+    expect(fuori.esito).toBe('respinto');
+    expect(fuori.violazioni.map((v) => v.azione)).toEqual(['perimetro']);
+  });
+
+  it('un\'eliminazione in bozza resta in bozza, e un altro file aggiunto con la stessa etichetta passa per le regole', () => {
+    const bozza = eliminazione([rimosso(POST, postJson())], RAMO_POST, { draft: true });
+    expect(bozza.esito).toBe('in_bozza');
+
+    const crea = eliminazione(
+      [aggiunto('src/content/storie/nuova.json', storiaJson())],
+      'cms/storie/nuova',
+    );
+    expect(crea.esito).toBe('respinto');
+    expect(crea.violazioni.map((v) => v.azione)).toEqual(['crea']);
   });
 });
 
@@ -357,12 +447,12 @@ describe('evaluate, campi di negozio.json', () => {
     }
   });
 
-  it('6e. un campo del frontmatter con un punto o vuoto (corpo.x) è un errore di formato', () => {
+  it('6e. un campo del frontmatter con un punto o vuoto (corpo.x) è un errore di formato (regole di prova)', () => {
     for (const riga of ['corpo.x: 1', 'titolo.extra: 1', '"": 1', 'altro:\n  "a.b": 1']) {
-      const dopo = homeMd().replace('---\n\n', `${riga}\n---\n\n`);
-      const verdetto = evaluate(proposta([modificato(HOME, homeMd(), dopo)]), rules);
+      const dopo = notaMd().replace('---\n\n', `${riga}\n---\n\n`);
+      const verdetto = evaluate(proposta([modificato(NOTA, notaMd(), dopo)]), regoleConNoteEImmagini);
       expect(verdetto.esito, riga).toBe('respinto');
-      expect(verdetto.violazioni.map((v) => [v.file, v.azione]), riga).toEqual([[HOME, 'formato']]);
+      expect(verdetto.violazioni.map((v) => [v.file, v.azione]), riga).toEqual([[NOTA, 'formato']]);
     }
   });
 
@@ -423,8 +513,13 @@ describe('evaluate, perimetro dei file', () => {
     ['package.json'],
     ['src/content/schemas.ts'],
     ['src/content/negozio/altro.json'],
-    ['src/content/pagine/sotto/annidata.md'],
-    ['src/content/pagine/home.txt'],
+    ['src/content/post/sotto/annidato.json'],
+    ['src/content/post/p1.md'],
+    ['src/content/prodotti/sabbia.yml'],
+    ['src/content/storie/oggi.txt'],
+    // La collection `pagine` non c'è più: i suoi file sono fuori perimetro.
+    ['src/content/pagine/home.md'],
+    ['src/content/pagine/immagini/home.webp'],
   ])('7. lei modifica %s: respinto, azione perimetro', (percorso) => {
     const verdetto = evaluate(proposta([modificato(percorso, 'a', 'b')]), rules);
 
@@ -434,28 +529,35 @@ describe('evaluate, perimetro dei file', () => {
   });
 
   it.each([
-    ['src/content/pagine/immagini/../../../../.github/workflows/ci.yml'],
-    ['src/content/pagine/./home.md'],
-    ['src/content/pagine/../negozio/negozio.json'],
-    ['src\\content\\pagine\\home.md'],
-    ['src/content/pagine/immagini\\..\\..\\..\\.github\\ci.yml'],
-    ['/src/content/pagine/home.md'],
-    ['src//content/pagine/home.md'],
-    ['src/content/pagine/immagini//foto.webp'],
-    ['src/content/pagine/immagini/estate//foto.webp'],
-    ['src/content/pagine/home.md/'],
-    ['src/content/pagine/immagini/.nascosto.webp'],
-    ['src/content/pagine/immagini/.cartella/foto.webp'],
-    ['SRC/content/pagine/home.md'],
-    ['src/content/pagine/home.md\0.png'],
+    ['src/content/post/../../../.github/workflows/ci.yml'],
+    ['src/content/post/./p1.json'],
+    ['src/content/post/../negozio/negozio.json'],
+    ['src\\content\\post\\p1.json'],
+    ['src/content/post\\..\\..\\..\\.github\\ci.yml'],
+    ['/src/content/post/p1.json'],
+    ['src//content/post/p1.json'],
+    ['src/content/post//p1.json'],
+    ['src/content/post/p1.json/'],
+    ['src/content/post/.nascosto.json'],
+    ['src/content/post/.cartella/p1.json'],
+    ['SRC/content/post/p1.json'],
+    ['src/content/post/p1.json\0.png'],
+    [`${IMMAGINI}/../../../../.github/workflows/ci.yml`],
+    [`${IMMAGINI}//foto.webp`],
+    [`${IMMAGINI}/estate//foto.webp`],
+    [`${IMMAGINI}/.nascosto.webp`],
+    [`${IMMAGINI}/.cartella/foto.webp`],
     [''],
   ])('7b. il percorso anomalo %j è fuori perimetro (nessuna scorciatoia con ../, backslash o simili)', (percorso) => {
-    const verdetto = evaluate(
-      proposta([{ ...modificato(percorso, 'a', 'b'), sizeBytes: 10 }]),
-      rules,
-    );
-    expect(verdetto.esito).toBe('respinto');
-    expect(verdetto.violazioni.map((v) => v.azione)).toContain('perimetro');
+    // Con le regole di prova, così anche la cartella delle immagini ha le sue trappole.
+    for (const regole of [rules, regoleConNoteEImmagini]) {
+      const verdetto = evaluate(
+        proposta([{ ...modificato(percorso, 'a', 'b'), sizeBytes: 10 }]),
+        regole,
+      );
+      expect(verdetto.esito).toBe('respinto');
+      expect(verdetto.violazioni.map((v) => v.azione)).toContain('perimetro');
+    }
   });
 
   it('7c. una proposta con un file di contenuto valido e uno fuori perimetro è respinta per intero', () => {
@@ -492,73 +594,117 @@ describe('evaluate, perimetro dei file', () => {
   });
 
   it('un tipo di modifica non riconosciuto (es. copied di GitHub) non passa', () => {
-    const strano = { ...modificato(HOME, homeMd(), homeMd()), status: 'copied' } as unknown as ChangedFile;
+    const strano = { ...modificato(POST, postJson(), postJson()), status: 'copied' } as unknown as ChangedFile;
     const verdetto = evaluate(proposta([strano]), rules);
     expect(verdetto.esito).toBe('respinto');
-    expect(verdetto.violazioni[0]).toMatchObject({ file: HOME, azione: 'perimetro' });
+    expect(verdetto.violazioni[0]).toMatchObject({ file: POST, azione: 'perimetro' });
+  });
+
+  it.each([
+    'src/content/post/cuscini.webp',
+    'src/content/prodotti/sabbia.jpg',
+    'src/content/storie/oggi.png',
+    'src/content/immagini/foto.webp',
+    'public/foto.webp',
+  ])('con le regole vere nessun file si carica nel repository: %s è fuori perimetro', (percorso) => {
+    // Le foto stanno su R2 (`media.percorsi` è vuoto): una foto nel repository
+    // pubblico, aggiunta o modificata, è sempre respinta.
+    for (const status of ['added', 'modified'] as const) {
+      const verdetto = evaluate(proposta([immagine(percorso, kb(100), status)]), rules);
+      expect(verdetto.esito, status).toBe('respinto');
+      expect(verdetto.violazioni.map((v) => [v.file, v.azione]), status).toEqual([
+        [percorso, 'perimetro'],
+      ]);
+    }
   });
 });
 
 describe('evaluate, creazione, eliminazione e rinomina di contenuti', () => {
-  it('8. lei aggiunge src/content/pagine/nuova.md: respinto, azione crea', () => {
-    const verdetto = evaluate(
-      proposta([aggiunto('src/content/pagine/nuova.md', homeMd())]),
-      rules,
-    );
+  const NUOVO_POST = 'src/content/post/nuovo.json';
+  const NUOVA_STORIA = 'src/content/storie/nuova.json';
 
-    expect(verdetto.esito).toBe('respinto');
-    expect(verdetto.violazioni).toHaveLength(1);
-    expect(verdetto.violazioni[0]).toMatchObject({
-      file: 'src/content/pagine/nuova.md',
-      azione: 'crea',
+  it('8. lei crea src/content/post/nuovo.json valido: consentito, livello 1', () => {
+    expect(evaluate(proposta([aggiunto(NUOVO_POST, postJson())]), rules)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
     });
   });
 
-  it('9. lei rimuove home.md: respinto, azione elimina', () => {
-    const verdetto = evaluate(proposta([rimosso(HOME, homeMd())]), rules);
+  it('8b. lei crea un prodotto: consentito, livello 1', () => {
+    const verdetto = evaluate(
+      proposta([aggiunto('src/content/prodotti/plaid-abbracciami.json', prodottoJson())]),
+      rules,
+    );
+    expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1 });
+  });
+
+  it('8c. lei crea src/content/storie/nuova.json: respinto, «Non puoi creare nuovi contenuti.»', () => {
+    const verdetto = evaluate(proposta([aggiunto(NUOVA_STORIA, storiaJson())]), rules);
+
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni).toEqual([
+      { file: NUOVA_STORIA, azione: 'crea', messaggio: 'Non puoi creare nuovi contenuti.' },
+    ]);
+  });
+
+  it('8d. un post nuovo che non si legge come JSON è un errore di formato', () => {
+    const verdetto = evaluate(proposta([aggiunto(NUOVO_POST, '{"data": ')]), rules);
+    expect(verdetto.violazioni.map((v) => [v.file, v.azione])).toEqual([[NUOVO_POST, 'formato']]);
+  });
+
+  it('9. lei toglie un post o un prodotto: consentito, livello 1', () => {
+    const verdetto = evaluate(
+      proposta([rimosso(POST, postJson()), rimosso(PRODOTTO, prodottoJson())]),
+      rules,
+    );
+    expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1, violazioni: [] });
+  });
+
+  it('9b. lei toglie una storia: respinto, azione elimina', () => {
+    const verdetto = evaluate(proposta([rimosso(STORIA, storiaJson())]), rules);
 
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni).toHaveLength(1);
-    expect(verdetto.violazioni[0]).toMatchObject({ file: HOME, azione: 'elimina' });
+    expect(verdetto.violazioni[0]).toMatchObject({ file: STORIA, azione: 'elimina' });
   });
 
-  it('10. lei rinomina home.md: respinto (elimina del vecchio più crea del nuovo)', () => {
-    const nuovo = 'src/content/pagine/principale.md';
-    const verdetto = evaluate(proposta([rinominato(HOME, nuovo, homeMd())]), rules);
+  it('10. lei rinomina una storia: respinto (elimina della vecchia più crea della nuova)', () => {
+    const verdetto = evaluate(proposta([rinominato(STORIA, NUOVA_STORIA, storiaJson())]), rules);
 
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni.map((v) => [v.file, v.azione])).toEqual([
-      [HOME, 'elimina'],
-      [nuovo, 'crea'],
+      [STORIA, 'elimina'],
+      [NUOVA_STORIA, 'crea'],
     ]);
   });
 
   it('10b. spostare un contenuto fuori dal perimetro, o un file esterno dentro, è respinto', () => {
     const fuori = evaluate(
-      proposta([rinominato(HOME, 'src/pages/home.md', homeMd())]),
+      proposta([rinominato(STORIA, 'src/pages/oggi.json', storiaJson())]),
       rules,
     );
     expect(fuori.violazioni.map((v) => [v.file, v.azione])).toEqual([
-      [HOME, 'elimina'],
-      ['src/pages/home.md', 'perimetro'],
+      [STORIA, 'elimina'],
+      ['src/pages/oggi.json', 'perimetro'],
     ]);
 
     const dentro = evaluate(
-      proposta([rinominato('src/layouts/Altro.astro', 'src/content/pagine/x.md', homeMd())]),
+      proposta([rinominato('src/layouts/Altro.astro', NUOVO_POST, postJson())]),
       rules,
     );
     expect(dentro.violazioni.map((v) => [v.file, v.azione])).toEqual([
       ['src/layouts/Altro.astro', 'perimetro'],
-      ['src/content/pagine/x.md', 'crea'],
     ]);
   });
 
   it('10c. una rinomina senza percorso precedente non si può verificare ed è respinta', () => {
     const senzaOrigine: ChangedFile = {
-      path: 'src/content/pagine/x.md',
+      path: NUOVO_POST,
       status: 'renamed',
-      before: homeMd(),
-      after: homeMd(),
+      before: postJson(),
+      after: postJson(),
     };
     const verdetto = evaluate(proposta([senzaOrigine]), rules);
     expect(verdetto.esito).toBe('respinto');
@@ -575,17 +721,76 @@ describe('evaluate, creazione, eliminazione e rinomina di contenuti', () => {
   });
 });
 
-describe('evaluate, pagine in markdown', () => {
-  it('13. lei modifica titolo e corpo di home.md: consentito', () => {
+describe('evaluate, campi di prodotti, post e storie', () => {
+  it('lei cambia testo e foto di un post: consentito, livello 1', () => {
+    const dopo = postJson((p) => {
+      p.testo = 'Un testo nuovo per il post.';
+      p.foto[0]!.inquadratura = 'alto';
+    });
+    expect(evaluate(proposta([modificato(POST, postJson(), dopo)]), rules)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('lei cambia nome, categorie e colori di un prodotto: consentito, livello 1', () => {
+    const dopo = prodottoJson((p) => {
+      p.nome = 'Lenzuola sabbia';
+      p.categorie = ['letto', 'bagno'];
+      p.colori = [{ nome: 'sabbia', tinta: '#d8c3a5' }];
+    });
+    expect(evaluate(proposta([modificato(PRODOTTO, prodottoJson(), dopo)]), rules)).toMatchObject({
+      esito: 'consentito',
+      livello: 1,
+    });
+  });
+
+  it('lei cambia data, etichetta, invito e foto di una storia: consentito, livello 1', () => {
+    const dopo = storiaJson((s) => {
+      s.data = '2026-11-03';
+      delete s.etichetta;
+      s.invito = 'chiama';
+      s.foto[0]!.frase = 'Una frase nuova.';
+    });
+    expect(evaluate(proposta([modificato(STORIA, storiaJson(), dopo)]), rules)).toMatchObject({
+      esito: 'consentito',
+      livello: 1,
+    });
+  });
+
+  it('il nome di una storia non si cambia: respinto, campo nome', () => {
+    const dopo = storiaJson((s) => {
+      s.nome = 'Domani';
+    });
+    const verdetto = evaluate(proposta([modificato(STORIA, storiaJson(), dopo)]), rules);
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni).toEqual([
+      expect.objectContaining({ file: STORIA, campo: 'nome', azione: 'modifica' }),
+    ]);
+  });
+
+  it('un campo che lo schema non prevede è vietato', () => {
+    const dopo = JSON.stringify({ ...JSON.parse(postJson()), bozza: true });
+    const verdetto = evaluate(proposta([modificato(POST, postJson(), dopo)]), rules);
+    expect(verdetto.violazioni.map((v) => [v.file, v.campo])).toEqual([[POST, 'bozza']]);
+  });
+});
+
+describe('evaluate, contenuti in Markdown (regole di prova)', () => {
+  const regole = regoleConNoteEImmagini;
+
+  it('13. lei modifica titolo e corpo di una nota: consentito', () => {
     const verdetto = evaluate(
       proposta([
         modificato(
-          HOME,
-          homeMd(),
-          homeMd({ titolo: 'Un titolo nuovo', corpo: 'Un testo completamente nuovo.' }),
+          NOTA,
+          notaMd(),
+          notaMd({ titolo: 'Un titolo nuovo', corpo: 'Un testo completamente nuovo.' }),
         ),
       ]),
-      rules,
+      regole,
     );
 
     expect(verdetto).toEqual({
@@ -596,37 +801,37 @@ describe('evaluate, pagine in markdown', () => {
     });
   });
 
-  it('lei può cambiare descrizione e immagine di una pagina', () => {
+  it('lei può cambiare descrizione e immagine di una nota', () => {
     const verdetto = evaluate(
       proposta([
         modificato(
-          HOME,
-          homeMd(),
-          homeMd({
-            descrizione: 'Una descrizione nuova della pagina principale.',
+          NOTA,
+          notaMd(),
+          notaMd({
+            descrizione: 'Una descrizione nuova della nota.',
             immagine: './immagini/foto.webp',
           }),
         ),
       ]),
-      rules,
+      regole,
     );
     expect(verdetto.esito).toBe('consentito');
   });
 
-  it('aggiungere un campo che la pagina non prevede (nessuna regola) è vietato', () => {
-    const dopo = homeMd().replace('---\n\n', 'bozza: false\n---\n\n');
-    const verdetto = evaluate(proposta([modificato(HOME, homeMd(), dopo)]), rules);
+  it('aggiungere un campo che la nota non prevede (nessuna regola) è vietato', () => {
+    const dopo = notaMd().replace('---\n\n', 'bozza: false\n---\n\n');
+    const verdetto = evaluate(proposta([modificato(NOTA, notaMd(), dopo)]), regole);
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni).toHaveLength(1);
-    expect(verdetto.violazioni[0]).toMatchObject({ file: HOME, campo: 'bozza' });
+    expect(verdetto.violazioni[0]).toMatchObject({ file: NOTA, campo: 'bozza' });
   });
 
   it('differenze di sole righe a capo o spazi attorno al corpo non contano come modifiche', () => {
     const verdetto = evaluate(
       proposta([
-        modificato(HOME, homeMd(), homeMd({ fineRiga: '\r\n', corpo: '   Testo segnaposto della pagina principale.   ' })),
+        modificato(NOTA, notaMd(), notaMd({ fineRiga: '\r\n', corpo: '   Testo segnaposto della nota.   ' })),
       ]),
-      rules,
+      regole,
     );
     expect(verdetto.esito).toBe('consentito');
     expect(verdetto.livello).toBe(1);
@@ -635,7 +840,7 @@ describe('evaluate, pagine in markdown', () => {
   it('un frontmatter scritto in un linguaggio diverso da YAML è un errore di formato e non viene eseguito', () => {
     const globale = globalThis as Record<string, unknown>;
     const dopo = `---js\n{ titolo: (globalThis.__autonomiaValutazione = true, 'x') }\n---\nTesto`;
-    const verdetto = evaluate(proposta([modificato(HOME, homeMd(), dopo)]), rules);
+    const verdetto = evaluate(proposta([modificato(NOTA, notaMd(), dopo)]), regole);
 
     expect(globale.__autonomiaValutazione).toBeUndefined();
     expect(verdetto.esito).toBe('respinto');
@@ -644,16 +849,18 @@ describe('evaluate, pagine in markdown', () => {
 
   it('un frontmatter rotto è un errore di formato', () => {
     const verdetto = evaluate(
-      proposta([modificato(HOME, homeMd(), '---\ntitolo: [aperta\n---\nTesto')]),
-      rules,
+      proposta([modificato(NOTA, notaMd(), '---\ntitolo: [aperta\n---\nTesto')]),
+      regole,
     );
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['formato']);
   });
 });
 
-describe('evaluate, immagini', () => {
+describe('evaluate, immagini caricate nel repository (regole di prova)', () => {
+  const regole = regoleConNoteEImmagini;
+
   it('11. lei carica immagini/foto.webp da 900 KB: consentito', () => {
-    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(900))]), rules);
+    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(900))]), regole);
 
     expect(verdetto).toEqual({
       ruolo: 'redazione',
@@ -664,7 +871,7 @@ describe('evaluate, immagini', () => {
   });
 
   it('12. lei carica immagini/foto.jpg da 9.000 KB: respinto, azione dimensione (focus 3)', () => {
-    const verdetto = evaluate(proposta([immagine(FOTO_JPG, kb(9000))]), rules);
+    const verdetto = evaluate(proposta([immagine(FOTO_JPG, kb(9000))]), regole);
 
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni).toHaveLength(1);
@@ -674,36 +881,36 @@ describe('evaluate, immagini', () => {
   });
 
   it('12b. il limite è inclusivo: 1.500 KB esatti passano, un byte in più no', () => {
-    expect(evaluate(proposta([immagine(FOTO_WEBP, kb(1500))]), rules).esito).toBe('consentito');
-    expect(evaluate(proposta([immagine(FOTO_WEBP, kb(1500) + 1)]), rules).esito).toBe('respinto');
+    expect(evaluate(proposta([immagine(FOTO_WEBP, kb(1500))]), regole).esito).toBe('consentito');
+    expect(evaluate(proposta([immagine(FOTO_WEBP, kb(1500) + 1)]), regole).esito).toBe('respinto');
   });
 
   it('12c. il limite si applica anche a una foto modificata e a una già presente sostituita', () => {
-    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(2000), 'modified')]), rules);
+    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(2000), 'modified')]), regole);
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['dimensione']);
   });
 
   it('12d. senza la dimensione il limite non si può verificare: respinto (si rifiuta ciò che non si sa misurare)', () => {
     for (const dimensione of [undefined, Number.NaN, -1, Number.POSITIVE_INFINITY]) {
-      const verdetto = evaluate(proposta([immagine(FOTO_WEBP, dimensione)]), rules);
+      const verdetto = evaluate(proposta([immagine(FOTO_WEBP, dimensione)]), regole);
       expect(verdetto.esito).toBe('respinto');
       expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['dimensione']);
     }
   });
 
   it('modificare un\'immagine già presente conta come caricamento (livello 1)', () => {
-    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(100), 'modified')]), rules);
+    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(100), 'modified')]), regole);
     expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1 });
   });
 
   it('eliminare un\'immagine è vietato; la dimensione non serve', () => {
-    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, undefined, 'removed')]), rules);
+    const verdetto = evaluate(proposta([immagine(FOTO_WEBP, undefined, 'removed')]), regole);
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni.map((v) => [v.file, v.azione])).toEqual([[FOTO_WEBP, 'elimina']]);
   });
 
   it('rinominare un\'immagine è vietato (elimina più carica)', () => {
-    const nuovo = 'src/content/pagine/immagini/nuova.webp';
+    const nuovo = `${IMMAGINI}/nuova.webp`;
     const rinomina: ChangedFile = {
       path: nuovo,
       previousPath: FOTO_WEBP,
@@ -712,41 +919,42 @@ describe('evaluate, immagini', () => {
       after: null,
       sizeBytes: kb(100),
     };
-    const verdetto = evaluate(proposta([rinomina]), rules);
+    const verdetto = evaluate(proposta([rinomina]), regole);
     expect(verdetto.violazioni.map((v) => [v.file, v.azione])).toEqual([[FOTO_WEBP, 'elimina']]);
   });
 
   it('immagini in sottocartelle del percorso dei media sono ammesse', () => {
     const verdetto = evaluate(
-      proposta([immagine('src/content/pagine/immagini/estate/mare.webp', kb(100))]),
-      rules,
+      proposta([immagine(`${IMMAGINI}/estate/mare.webp`, kb(100))]),
+      regole,
     );
     expect(verdetto.esito).toBe('consentito');
   });
 
   it('le immagini fuori da percorsi dei media sono fuori perimetro', () => {
-    const verdetto = evaluate(proposta([immagine('public/foto.webp', kb(100))]), rules);
+    const verdetto = evaluate(proposta([immagine('public/foto.webp', kb(100))]), regole);
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['perimetro']);
   });
 
   it('una proposta con testo e foto valide è consentita a livello 1', () => {
     const verdetto = evaluate(
       proposta([
-        modificato(HOME, homeMd(), homeMd({ immagine: './immagini/foto.webp' })),
+        modificato(NOTA, notaMd(), notaMd({ immagine: './immagini/foto.webp' })),
         immagine(FOTO_WEBP, kb(900)),
       ]),
-      rules,
+      regole,
     );
     expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1 });
   });
 });
 
-describe('evaluate, campi nascosti nel frontmatter (stessa lettura della build)', () => {
+describe('evaluate, campi nascosti nel frontmatter (stessa lettura della build, regole di prova)', () => {
+  const regole = regoleConNoteEImmagini;
   const BOM = String.fromCharCode(0xfeff);
-  const conSlug = homeMd().replace('---\n\n', 'slug: altra\n---\n\n');
+  const conSlug = notaMd().replace('---\n\n', 'slug: altra\n---\n\n');
 
   it('la modifica normale che aggiunge slug è respinta per il campo slug', () => {
-    const verdetto = evaluate(proposta([modificato(HOME, homeMd(), conSlug)]), rules);
+    const verdetto = evaluate(proposta([modificato(NOTA, notaMd(), conSlug)]), regole);
     expect(verdetto.violazioni.map((v) => [v.azione, v.campo])).toEqual([['modifica', 'slug']]);
   });
 
@@ -764,17 +972,17 @@ describe('evaluate, campi nascosti nel frontmatter (stessa lettura della build)'
   it.each(Object.entries(nascoste))(
     'respinge (formato) il frontmatter nascosto: %s',
     (_nome, dopo) => {
-      const verdetto = evaluate(proposta([modificato(HOME, homeMd(), dopo)]), rules);
+      const verdetto = evaluate(proposta([modificato(NOTA, notaMd(), dopo)]), regole);
 
       expect(verdetto.esito).toBe('respinto');
-      expect(verdetto.violazioni.map((v) => [v.file, v.azione])).toEqual([[HOME, 'formato']]);
+      expect(verdetto.violazioni.map((v) => [v.file, v.azione])).toEqual([[NOTA, 'formato']]);
     },
   );
 
   it('anche se il frontmatter nascosto è già nel contenuto di partenza', () => {
     const verdetto = evaluate(
-      proposta([modificato(HOME, `\n${conSlug}`, `\n${conSlug}\nUn paragrafo in più.`)]),
-      rules,
+      proposta([modificato(NOTA, `\n${conSlug}`, `\n${conSlug}\nUn paragrafo in più.`)]),
+      regole,
     );
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['formato']);
   });
@@ -786,44 +994,44 @@ describe('evaluate, campi nascosti nel frontmatter (stessa lettura della build)'
   });
 
   it('una chiave di unione YAML (<<) non nasconde campi: è un campo sconosciuto e vietato', () => {
-    const dopo = homeMd().replace('---\n\n', 'base: &b {slug: altra}\n<<: *b\n---\n\n');
-    const verdetto = evaluate(proposta([modificato(HOME, homeMd(), dopo)]), rules);
+    const dopo = notaMd().replace('---\n\n', 'base: &b {slug: altra}\n<<: *b\n---\n\n');
+    const verdetto = evaluate(proposta([modificato(NOTA, notaMd(), dopo)]), regole);
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni.map((v) => v.campo)).toEqual(['base', '<<']);
   });
 
-  it('una pagina aggiunta da chi ha crea > 0 è controllata con la stessa regola', () => {
-    const regole: Rules = {
-      ...rules,
+  it('una nota aggiunta da chi ha crea > 0 è controllata con la stessa regola', () => {
+    const conCrea: Rules = {
+      ...regole,
       contenuti: {
-        ...rules.contenuti,
-        pagine: { ...rules.contenuti.pagine, azioni: { crea: 1, modifica: 1, elimina: 0 } },
+        ...regole.contenuti,
+        note: { ...regole.contenuti.note!, azioni: { crea: 1, modifica: 1, elimina: 0 } },
       },
     };
-    const nuova = 'src/content/pagine/nuova.md';
-    expect(evaluate(proposta([aggiunto(nuova, homeMd())]), regole).esito).toBe('consentito');
+    const nuova = 'src/content/note/nuova.md';
+    expect(evaluate(proposta([aggiunto(nuova, notaMd())]), conCrea).esito).toBe('consentito');
     for (const testo of Object.values(nascoste)) {
-      expect(evaluate(proposta([aggiunto(nuova, testo)]), regole).violazioni.map((v) => v.azione)).toEqual([
+      expect(evaluate(proposta([aggiunto(nuova, testo)]), conCrea).violazioni.map((v) => v.azione)).toEqual([
         'formato',
       ]);
     }
   });
 });
 
-describe('evaluate, tipi di immagine ammessi', () => {
-  const IMMAGINI = 'src/content/pagine/immagini';
+describe('evaluate, tipi di immagine ammessi (regole di prova)', () => {
+  const regole = regoleConNoteEImmagini;
   const caricaFile = (nome: string, status: ChangedFile['status'] = 'added') =>
     proposta([immagine(`${IMMAGINI}/${nome}`, kb(100), status)]);
 
   it.each(['webp', 'jpg', 'jpeg', 'png', 'avif'])('accetta .%s', (estensione) => {
-    const verdetto = evaluate(caricaFile(`foto.${estensione}`), rules);
+    const verdetto = evaluate(caricaFile(`foto.${estensione}`), regole);
     expect(verdetto).toMatchObject({ esito: 'consentito', livello: 1, violazioni: [] });
   });
 
   it.each(['foto.WEBP', 'foto.Jpg', 'foto.JPEG', 'foto.PnG', 'FOTO.AVIF'])(
     'accetta %s (maiuscole e minuscole indifferenti)',
     (nome) => {
-      expect(evaluate(caricaFile(nome), rules).esito).toBe('consentito');
+      expect(evaluate(caricaFile(nome), regole).esito).toBe('consentito');
     },
   );
 
@@ -842,7 +1050,7 @@ describe('evaluate, tipi di immagine ammessi', () => {
     'foto.php',
     'foto.exe',
   ])('respinge %s con azione formato', (nome) => {
-    const verdetto = evaluate(caricaFile(nome), rules);
+    const verdetto = evaluate(caricaFile(nome), regole);
 
     expect(verdetto.esito).toBe('respinto');
     expect(verdetto.violazioni).toHaveLength(1);
@@ -853,21 +1061,21 @@ describe('evaluate, tipi di immagine ammessi', () => {
   });
 
   it('conta l\'ultima estensione: foto.webp.svg è respinto, foto.svg.webp passa', () => {
-    expect(evaluate(caricaFile('foto.webp.svg'), rules).violazioni.map((v) => v.azione)).toEqual([
+    expect(evaluate(caricaFile('foto.webp.svg'), regole).violazioni.map((v) => v.azione)).toEqual([
       'formato',
     ]);
-    expect(evaluate(caricaFile('foto.svg.webp'), rules).esito).toBe('consentito');
+    expect(evaluate(caricaFile('foto.svg.webp'), regole).esito).toBe('consentito');
   });
 
   it.each(['foto', 'foto.', 'foto.svg.', 'foto.svg ', 'foto. webp', 'foto.webp '])(
     'respinge il nome senza una vera estensione ammessa: %j',
     (nome) => {
-      expect(evaluate(caricaFile(nome), rules).violazioni.map((v) => v.azione)).toEqual(['formato']);
+      expect(evaluate(caricaFile(nome), regole).violazioni.map((v) => v.azione)).toEqual(['formato']);
     },
   );
 
   it('si applica anche a un file modificato e alla destinazione di una rinomina', () => {
-    expect(evaluate(caricaFile('foto.svg', 'modified'), rules).violazioni.map((v) => v.azione)).toEqual([
+    expect(evaluate(caricaFile('foto.svg', 'modified'), regole).violazioni.map((v) => v.azione)).toEqual([
       'formato',
     ]);
     const rinomina: ChangedFile = {
@@ -878,7 +1086,7 @@ describe('evaluate, tipi di immagine ammessi', () => {
       after: null,
       sizeBytes: kb(10),
     };
-    expect(evaluate(proposta([rinomina]), rules).violazioni.map((v) => [v.file, v.azione])).toEqual([
+    expect(evaluate(proposta([rinomina]), regole).violazioni.map((v) => [v.file, v.azione])).toEqual([
       [`${IMMAGINI}/vecchia.webp`, 'elimina'],
       [`${IMMAGINI}/nuova.svg`, 'formato'],
     ]);
@@ -887,7 +1095,7 @@ describe('evaluate, tipi di immagine ammessi', () => {
   it('un file rimosso viene respinto per l\'eliminazione, non per il formato', () => {
     const verdetto = evaluate(
       proposta([immagine(`${IMMAGINI}/vecchia.svg`, undefined, 'removed')]),
-      rules,
+      regole,
     );
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['elimina']);
   });
@@ -895,21 +1103,21 @@ describe('evaluate, tipi di immagine ammessi', () => {
   it('formato e dimensione sono segnalati insieme', () => {
     const verdetto = evaluate(
       proposta([immagine(`${IMMAGINI}/grande.svg`, kb(9000))]),
-      rules,
+      regole,
     );
     expect(verdetto.violazioni.map((v) => v.azione).sort()).toEqual(['dimensione', 'formato']);
   });
 
   it('l\'elenco delle estensioni viene dalle regole, senza distinguere maiuscole e minuscole', () => {
-    const regole: Rules = { ...rules, media: { ...rules.media, estensioni: ['PNG'] } };
-    expect(evaluate(caricaFile('foto.png'), regole).esito).toBe('consentito');
-    expect(evaluate(caricaFile('foto.webp'), regole).violazioni.map((v) => v.azione)).toEqual(['formato']);
-    const nessuna: Rules = { ...rules, media: { ...rules.media, estensioni: [] } };
+    const soloPng: Rules = { ...regole, media: { ...regole.media, estensioni: ['PNG'] } };
+    expect(evaluate(caricaFile('foto.png'), soloPng).esito).toBe('consentito');
+    expect(evaluate(caricaFile('foto.webp'), soloPng).violazioni.map((v) => v.azione)).toEqual(['formato']);
+    const nessuna: Rules = { ...regole, media: { ...regole.media, estensioni: [] } };
     expect(evaluate(caricaFile('foto.png'), nessuna).esito).toBe('respinto');
   });
 
   it('il messaggio dice, in italiano, quali formati si possono caricare', () => {
-    const [violazione] = evaluate(caricaFile('foto.svg'), rules).violazioni;
+    const [violazione] = evaluate(caricaFile('foto.svg'), regole).violazioni;
     expect(violazione.messaggio).toMatch(/WEBP, JPG, JPEG, PNG o AVIF/);
     expect(violazione.messaggio).not.toMatch(/branch|merge|commit/i);
   });
@@ -968,7 +1176,7 @@ describe('evaluate, livelli', () => {
   it('media e contenuti si combinano con il minimo', () => {
     const regole: Rules = {
       ...negozioConLivelli({ orari: 3 }, 4),
-      media: { ...rules.media, azioni: { carica: 2, elimina: 0 } },
+      media: { ...regoleConNoteEImmagini.media, azioni: { carica: 2, elimina: 0 } },
     };
     const verdetto = evaluate(
       proposta([
@@ -987,7 +1195,10 @@ describe('evaluate, livelli', () => {
   });
 
   it('se il caricamento delle immagini è a livello 0 ogni immagine è vietata', () => {
-    const regole: Rules = { ...rules, media: { ...rules.media, azioni: { carica: 0, elimina: 0 } } };
+    const regole: Rules = {
+      ...regoleConNoteEImmagini,
+      media: { ...regoleConNoteEImmagini.media, azioni: { carica: 0, elimina: 0 } },
+    };
     const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(10))]), regole);
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['carica']);
   });
@@ -1063,7 +1274,10 @@ describe('evaluate, glob e collection', () => {
   });
 
   it('un elenco di percorsi media vuoto non fa corrispondere nulla', () => {
-    const regole: Rules = { ...rules, media: { ...rules.media, percorsi: [] } };
+    const regole: Rules = {
+      ...regoleConNoteEImmagini,
+      media: { ...regoleConNoteEImmagini.media, percorsi: [] },
+    };
     const verdetto = evaluate(proposta([immagine(FOTO_WEBP, kb(10))]), regole);
     expect(verdetto.violazioni.map((v) => v.azione)).toEqual(['perimetro']);
   });
@@ -1175,7 +1389,7 @@ describe('evaluate, rami del pannello (cms/): regole della redazione per chiunqu
   });
 
   it('il prefisso cms/ si riconosce senza distinguere maiuscole e minuscole (si sbaglia dal lato prudente)', () => {
-    for (const ramo of ['CMS/negozio/negozio', 'Cms/pagine/home']) {
+    for (const ramo of ['CMS/negozio/negozio', 'Cms/post/p1']) {
       expect(daSviluppo([modificaNomeNegozio], ramo), ramo).toMatchObject({
         ruolo: 'redazione',
         esito: 'respinto',
@@ -1216,19 +1430,29 @@ describe('evaluate, messaggi per chi gestisce i contenuti', () => {
         modificato(NEGOZIO, negozioJson(), negozioJson((n) => { n.nome = 'x'; })),
         modificato(NEGOZIO, negozioJson(), '{rotto'),
         modificato('src/layouts/BaseLayout.astro', 'a', 'b'),
-        aggiunto('src/content/pagine/nuova.md', homeMd()),
-        rimosso(HOME, homeMd()),
-        rinominato(HOME, 'src/content/pagine/x.md', homeMd()),
-        rinominato('src/layouts/A.astro', 'src/content/pagine/y.md', homeMd()),
-        { path: 'src/content/pagine/z.md', status: 'renamed', before: null, after: null },
-        immagine(FOTO_JPG, kb(9000)),
-        immagine('src/content/pagine/immagini/foto.svg', kb(10)),
-        immagine(FOTO_WEBP, undefined),
-        immagine(FOTO_WEBP, undefined, 'removed'),
-        { ...modificato(HOME, homeMd(), homeMd()), status: 'copied' } as unknown as ChangedFile,
-        modificato('src/content/pagine/../x', 'a', 'b'),
+        modificato(STORIA, storiaJson(), storiaJson((s) => { s.nome = 'x'; })),
+        aggiunto('src/content/storie/nuova.json', storiaJson()),
+        aggiunto('src/content/post/rotto.json', '{rotto'),
+        rimosso(STORIA, storiaJson()),
+        rinominato(STORIA, 'src/content/storie/x.json', storiaJson()),
+        rinominato('src/layouts/A.astro', 'src/content/storie/y.json', storiaJson()),
+        { path: 'src/content/storie/z.json', status: 'renamed', before: null, after: null },
+        immagine('src/content/post/foto.webp', kb(10)),
+        { ...modificato(POST, postJson(), postJson()), status: 'copied' } as unknown as ChangedFile,
+        modificato('src/content/post/../x', 'a', 'b'),
       ]),
       rules,
+    ),
+    // Le immagini nel repository solo con le regole di prova: tipo, peso, eliminazione.
+    evaluate(
+      proposta([
+        modificato(NOTA, notaMd(), '---\ntitolo: [aperta\n---\nTesto'),
+        immagine(FOTO_JPG, kb(9000)),
+        immagine(`${IMMAGINI}/foto.svg`, kb(10)),
+        immagine(FOTO_WEBP, undefined),
+        immagine(FOTO_WEBP, undefined, 'removed'),
+      ]),
+      regoleConNoteEImmagini,
     ),
   ];
 
@@ -1259,10 +1483,10 @@ describe('evaluate, messaggi per chi gestisce i contenuti', () => {
 describe('eRamoDelPannello', () => {
   it.each([
     'cms/negozio/negozio',
-    'cms/pagine/home',
+    'cms/post/p1',
     'cms/x',
-    'CMS/pagine/home',
-    'Cms/pagine/home',
+    'CMS/post/p1',
+    'Cms/post/p1',
   ])('%s è un ramo del pannello', (ramo) => {
     expect(eRamoDelPannello(ramo)).toBe(true);
   });
@@ -1272,9 +1496,9 @@ describe('eRamoDelPannello', () => {
     'fase1/9-correzioni',
     'fase1/cms/x',
     'cms',
-    'cmsx/pagine/home',
-    'cms-pagine/home',
-    ' cms/pagine/home',
+    'cmsx/post/p1',
+    'cms-post/p1',
+    ' cms/post/p1',
     '',
     null,
     undefined,
@@ -1285,8 +1509,8 @@ describe('eRamoDelPannello', () => {
 
 describe('ruoloEffettivo', () => {
   it('lo sviluppo su un ramo cms/ vale come redazione', () => {
-    expect(ruoloEffettivo('eusebjo', 'cms/pagine/home', rules)).toBe('redazione');
-    expect(ruoloEffettivo('Eusebjo', 'CMS/pagine/home', rules)).toBe('redazione');
+    expect(ruoloEffettivo('eusebjo', 'cms/post/p1', rules)).toBe('redazione');
+    expect(ruoloEffettivo('Eusebjo', 'CMS/post/p1', rules)).toBe('redazione');
   });
 
   it('lo sviluppo su un altro ramo, o senza ramo, resta sviluppo', () => {
@@ -1296,7 +1520,7 @@ describe('ruoloEffettivo', () => {
   });
 
   it('la redazione resta redazione e gli sconosciuti restano sconosciuti, su qualunque ramo', () => {
-    for (const ramo of ['cms/pagine/home', 'fase1/x', null]) {
+    for (const ramo of ['cms/post/p1', 'fase1/x', null]) {
       expect(ruoloEffettivo('lei', ramo, rules)).toBe('redazione');
       expect(ruoloEffettivo('estraneo', ramo, rules)).toBe('sconosciuto');
     }

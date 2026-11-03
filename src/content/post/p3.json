@@ -1,0 +1,27 @@
+{
+  "data": "2026-10-11",
+  "testo": "L’inverno è alle porte e torna la voglia di casa. Soffici, caldi, avvolgenti: abbiamo scelto quattro plaid per le serate sul divano. Vi aspettiamo in negozio per scegliere il vostro.",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/scaffale.jpg",
+      "alt": "Uno scaffale del negozio con plaid e cuscini in pelo bianchi, rosa e grigi",
+      "inquadratura": "centro"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/copriletto-rosso.jpg",
+      "alt": "Copriletto rosso con volant e cuscini natalizi, all’aperto",
+      "inquadratura": "centro"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/mare.jpg",
+      "alt": "Lenzuola e plaid piegati in riva al mare",
+      "inquadratura": "centro"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/coperta.jpg",
+      "alt": "Coperta in maglia grigia arrotolata, chiusa con fiocco e bottone",
+      "inquadratura": "centro"
+    }
+  ],
+  "soggetto": "sui plaid"
+}

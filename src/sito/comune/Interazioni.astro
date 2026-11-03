@@ -1,0 +1,30 @@
+---
+// Lo script del sito (vedi `interazioni.ts` per i protocolli di markup). Si
+// include una sola volta per pagina, in fondo al contenuto. Astro
+// lo impacchetta in /_astro/: nessun codice scritto dentro la pagina.
+---
+
+<script>
+  import { avviaInterazioni } from './interazioni';
+
+  avviaInterazioni();
+</script>
+
+<style is:global>
+  /* I protocolli nascondono con `hidden`: nessuno stile della pagina, per
+     esempio un `display: grid`, deve poterlo vincere. */
+  [hidden] {
+    display: none !important;
+  }
+
+  /* Con un dialog aperto (storia o post) la pagina dietro non scorre. Lo spazio
+     della barra di scorrimento resta riservato: dove la barra occupa spazio
+     (Windows) la pagina non scatta di lato quando sparisce. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+</style>

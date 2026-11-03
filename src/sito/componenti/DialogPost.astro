@@ -1,0 +1,451 @@
+---
+// Un post aperto (protocollo "Post" dello script comune): la foto, o le foto
+// con la galleria, e a fianco la didascalia con le azioni. Sul telefono occupa
+// lo schermo, con la testata in alto.
+import { Image } from 'astro:assets';
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp } from '../comune/contatti';
+import logo from '../comune/logo/alma-nero.png';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import { delData, messaggioPost, type Post } from './dati';
+
+interface Props {
+  post: Post;
+  negozio: DatiNegozio;
+}
+
+const { post, negozio } = Astro.props;
+const totale = post.foto.length;
+const galleria = totale > 1;
+---
+
+<dialog class="post" data-post={post.id} aria-label={`Post ${delData(post.data)}`}>
+  <article class="scheda">
+    <header class="testa">
+      <span class="avatar" aria-hidden="true">
+        <Image src={logo} alt="" widths={[60, 90]} sizes="30px" />
+      </span>
+      <div class="chi">
+        <p class="autore">{negozio.nome}</p>
+        <p class="dove">{negozio.indirizzoBreve}</p>
+      </div>
+      <button type="button" class="chiudi" data-post-chiudi aria-label="Chiudi il post" autofocus>
+        <Icona nome="chiudi" />
+      </button>
+    </header>
+
+    <div class="foto" data-galleria={galleria ? '' : undefined}>
+      <ul class="pila" role="list">
+        {
+          post.foto.map((scatto, i) => (
+            <li class="diapositiva" data-galleria-foto={galleria ? '' : undefined} hidden={i > 0}>
+              <Foto
+                scatto={scatto}
+                larghezze={[400, 600, 800, 1000]}
+                sizes="(min-width: 960px) 600px, 100vw"
+              />
+            </li>
+          ))
+        }
+      </ul>
+      {
+        galleria && (
+          <>
+            <span class="contatore" data-galleria-contatore>
+              1 di {totale}
+            </span>
+            <button type="button" class="freccia prec" data-galleria-prec aria-label="Foto precedente">
+              <Icona nome="prec" misura={18} />
+            </button>
+            <button type="button" class="freccia succ" data-galleria-succ aria-label="Foto successiva">
+              <Icona nome="succ" misura={18} />
+            </button>
+            <div class="punti" role="group" aria-label="Foto del post">
+              {post.foto.map((_, i) => (
+                <button
+                  type="button"
+                  class="punto"
+                  data-galleria-punto
+                  aria-label={`Foto ${i + 1} di ${totale}`}
+                  aria-current={i === 0 ? 'true' : undefined}
+                >
+                  <span />
+                </button>
+              ))}
+            </div>
+          </>
+        )
+      }
+    </div>
+
+    <div class="testo">
+      <p class="riga"><span class="data">{post.data}</span></p>
+      <p class="didascalia">{post.testo}</p>
+      <div class="azioni">
+        <a class="pieno" href={linkWhatsApp(negozio.whatsapp, messaggioPost(post))}>
+          <Icona nome="whatsapp" misura={18} />Chiedi su WhatsApp
+        </a>
+        <a class="filo" href={negozio.telefonoHref}>
+          <Icona nome="telefono" misura={18} />Chiama il negozio
+        </a>
+      </div>
+    </div>
+  </article>
+</dialog>
+
+<style>
+  /* Come le storie: il dialog copre lo schermo, senza riempimento, così un
+     clic fuori dalla scheda lo chiude. */
+  .post {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--sfondo-post);
+    color: var(--nero);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .post[open] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .post::backdrop {
+    background: transparent;
+  }
+
+  .scheda {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'testa'
+      'foto'
+      'testo';
+    width: 100%;
+    min-height: 100%;
+    background: var(--bianco);
+    align-content: start;
+  }
+
+  /* --- Testata --- */
+  .testa {
+    grid-area: testa;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 6px 6px 12px;
+  }
+
+  .avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--latte);
+    box-shadow:
+      0 0 0 2px var(--bianco),
+      0 0 0 3.5px var(--salvia-scura);
+  }
+
+  .avatar :global(img) {
+    display: block;
+    width: 27px;
+    height: auto;
+  }
+
+  .chi {
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .autore {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .dove {
+    margin: 0;
+    font-size: 13px;
+    color: var(--grigio-testo);
+  }
+
+  .chiudi {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--latte);
+    color: var(--nero);
+    transition: background-color 200ms ease;
+  }
+
+  .chiudi:hover {
+    background: var(--latte-sopra);
+  }
+
+  /* --- Foto e galleria --- */
+  .foto {
+    grid-area: foto;
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: var(--sabbia);
+  }
+
+  .pila,
+  .diapositiva {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .diapositiva :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .contatore {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    padding: 6px 12px;
+    border-radius: var(--pillola);
+    background: var(--contatore-foto);
+    color: var(--bianco);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .freccia {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--vetro);
+    color: var(--nero);
+  }
+
+  .prec {
+    left: 12px;
+  }
+
+  .succ {
+    right: 12px;
+  }
+
+  .punti {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 4px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .punto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--raggio-piccolo);
+    background: none;
+  }
+
+  .punto span {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--pillola);
+    background: var(--punto-spento);
+    box-shadow: var(--ombra-punto);
+    transition:
+      width 300ms ease,
+      background-color 300ms ease;
+  }
+
+  .punto[aria-current='true'] span {
+    width: 20px;
+    background: var(--bianco);
+  }
+
+  .foto :focus-visible {
+    outline-color: var(--bianco);
+  }
+
+  /* --- Didascalia e azioni --- */
+  .testo {
+    grid-area: testo;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 14px 18px 16px;
+  }
+
+  .riga {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0;
+  }
+
+  .data {
+    font-size: 14px;
+    color: var(--grigio-testo);
+  }
+
+  .didascalia {
+    margin: 14px 0 0;
+    font-size: 16px;
+    line-height: 1.6;
+    text-wrap: pretty;
+    /* Il campo del pannello è su più righe: un a capo scritto dalla redazione si vede. */
+    white-space: pre-line;
+  }
+
+  .azioni {
+    display: grid;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 18px;
+  }
+
+  .azioni a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 50px;
+    border-radius: var(--pillola);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .pieno {
+    background: var(--salvia-scura);
+    color: var(--bianco);
+  }
+
+  .pieno:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  .filo {
+    box-shadow: inset 0 0 0 1px var(--nero);
+    color: var(--nero);
+  }
+
+  .filo:hover {
+    background: var(--latte-sopra);
+  }
+
+  /* --- Telefono ruotato: la foto quadrata a tutta larghezza spingerebbe la
+     didascalia molto sotto; resta quadrata, alta al più il 70% dello schermo. --- */
+  @media (orientation: landscape) and (max-height: 500px) and (max-width: 959px) {
+    .foto {
+      justify-self: center;
+      width: min(100%, 70dvh);
+    }
+  }
+
+  /* --- Computer: foto a sinistra, testo a destra --- */
+  @media (min-width: 960px) {
+    .post[open] {
+      align-items: center;
+    }
+
+    .scheda {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        'foto testa'
+        'foto testo';
+      /* La foto è quadrata e larga 3/5: la scheda sta nello schermo anche in altezza. */
+      width: min(1000px, calc(100vw - 112px), calc((100dvh - 80px) / 0.6));
+      min-height: 0;
+      /* Lo spazio attorno sta sulla scheda: il dialog non ha riempimento, così
+         un clic fuori dalla scheda cade sul dialog e lo chiude. */
+      margin: 40px 56px;
+      overflow: hidden;
+      border-radius: var(--raggio-scheda);
+      box-shadow: var(--ombra-dialog);
+    }
+
+    .testa {
+      gap: 12px;
+      margin: 22px 28px 0;
+      padding: 0 0 16px;
+      box-shadow: inset 0 -1px 0 var(--linea);
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .avatar :global(img) {
+      width: 30px;
+    }
+
+    .autore {
+      font-size: 15px;
+    }
+
+    .dove {
+      font-size: 13px;
+    }
+
+    .chiudi {
+      margin-right: -6px;
+    }
+
+    .testo {
+      padding: 18px 28px 24px;
+    }
+
+    .didascalia {
+      font-size: 17px;
+    }
+
+    .azioni {
+      padding-top: 22px;
+    }
+  }
+</style>

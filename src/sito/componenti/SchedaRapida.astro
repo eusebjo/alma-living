@@ -1,0 +1,555 @@
+---
+// La scheda rapida "Chiedi disponibilità" di un articolo (scelta 5 del piano): un
+// dialog per articolo, con il protocollo "Post" dello script comune. La apre il
+// link che copre la scheda (`SchedaArticolo.astro`, con `data-post-apri`): senza
+// JavaScript quel link porta a WhatsApp e la scheda rapida non si vede mai.
+// Apertura, chiusura (X, Esc, tocco fuori dal foglio) e ritorno del focus al link
+// sono del protocollo. I due scatti hanno qui il loro interruttore, che non segue
+// quello della scheda: si apre sul primo scatto, e lo scatto scelto qui resta
+// finché la pagina non si ricarica.
+//
+// Come `DialogPost`: il dialog copre lo schermo, con il velo, e non ha
+// riempimento, così un tocco fuori dal foglio cade sul dialog e lo chiude.
+//
+// Fino a 767 px è un foglio che sale dal basso: la foto piccola a sinistra del
+// nome, sotto il messaggio e le azioni. Da 768 px è una finestra centrata con la
+// foto a sinistra, alta quanto la finestra: larga 680 px sul tablet (da 768 a
+// 1023 px), 780 px sul computer (da 1024 px). Le media query sono quelle di
+// `LIMITI_SELEZIONE` (`dati.ts`) e di `Selezione.astro`. Sugli schermi bassi (il
+// telefono ruotato) la finestra si stringe e il foglio scorre dentro.
+//
+// I colori (scelta 6 del piano), solo per gli articoli che ne hanno: una riga in
+// testa al corpo, prima del messaggio, con un pallino per colore (protocollo
+// "Colori" dello script comune). Il pallino scelto riscrive il nome, il messaggio
+// e il link a WhatsApp, già scritti qui nella pagina per ogni colore: lo script li
+// copia, non compone frasi. Il colore scelto resta finché la pagina non si ricarica.
+// Se ogni colore ha la sua foto (`conFoto`), al posto dei due scatti c'è una galleria
+// di quelle foto, senza frecce né pallini bianchi: i pallini colore la comandano.
+// Altrimenti restano i due scatti con il loro interruttore.
+//
+// Il corpo è una colonna di righe distanziate: una riga in più si aggiunge in testa
+// al corpo, prima del messaggio.
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp, messaggioDisponibilita } from '../comune/contatti';
+import DueScatti from './DueScatti.astro';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import { idSchedaRapida, nomeConColore, occhielloArticolo, testoColori, type Articolo } from './dati';
+
+interface Props {
+  articolo: Articolo;
+  negozio: DatiNegozio;
+}
+
+const { articolo, negozio } = Astro.props;
+const id = idSchedaRapida(articolo);
+const idTitolo = `${id}-titolo`;
+const idNome = `${id}-nome`;
+const messaggio = messaggioDisponibilita(articolo.nome);
+
+const larghezze = [400, 600, 800];
+const sizes = '(min-width: 1024px) 380px, (min-width: 768px) 330px, 156px';
+
+const colori = articolo.colori ?? [];
+const haColori = colori.length > 0;
+const fotoColori = colori.flatMap((colore) => (colore.foto ? [colore.foto] : []));
+const conFoto = haColori && fotoColori.length === colori.length;
+// Per ogni colore i testi che il pallino porta: il nome con il colore, il messaggio e il link.
+const pallini = colori.map((colore) => {
+  const messaggioColore = messaggioDisponibilita(articolo.nome, colore.nome);
+  return {
+    colore,
+    nome: nomeConColore(articolo.nome, colore),
+    messaggio: messaggioColore,
+    href: linkWhatsApp(negozio.whatsapp, messaggioColore),
+  };
+});
+---
+
+<dialog class="scheda-rapida" data-post={id} aria-labelledby={`${idTitolo} ${idNome}`}>
+  <article class="foglio" data-colori={haColori ? articolo.id : undefined}>
+    <div class="testa">
+      <span class="maniglia" aria-hidden="true"></span>
+      <div class="riga">
+        <p class="titolo" id={idTitolo}>Chiedi disponibilità</p>
+        <button type="button" class="chiudi" data-post-chiudi aria-label="Chiudi" autofocus>
+          <Icona nome="chiudi" misura={18} />
+        </button>
+      </div>
+    </div>
+
+    <div class="foto">
+      {
+        conFoto ? (
+          <div class="galleria" data-galleria>
+            {fotoColori.map((scatto, i) => (
+              <div class="diapositiva" data-galleria-foto hidden={i > 0}>
+                <Foto scatto={scatto} larghezze={larghezze} sizes={sizes} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <DueScatti scatti={articolo.scatti} nome={articolo.nome} larghezze={larghezze} sizes={sizes} />
+        )
+      }
+    </div>
+
+    <div class="capo">
+      <p class:list={['occhiello', { novita: articolo.novita }]}>
+        {articolo.novita && <span class="punto" aria-hidden="true" />}{occhielloArticolo(articolo)}
+      </p>
+      <h2 class="nome" id={idNome} data-colore-dove={haColori ? 'nome' : undefined}>{articolo.nome}</h2>
+      <p class="dettaglio">{articolo.dettaglio}</p>
+    </div>
+
+    <div class="corpo">
+      {
+        haColori && (
+          <div>
+            <p class="colore">
+              <span class="etichetta">Colore:</span> <span data-colore-dove="testo">{testoColori(colori)}</span>
+            </p>
+            <div class="pallini" role="group" aria-label="Scegli il colore">
+              {pallini.map((p, i) => (
+                <button
+                  type="button"
+                  class="pallino"
+                  style={`--tinta: ${p.colore.tinta}`}
+                  data-colore={p.colore.nome}
+                  aria-pressed="false"
+                  aria-label={`Colore ${p.colore.nome}`}
+                  data-colore-nome={p.nome}
+                  data-colore-testo={p.colore.nome}
+                  data-colore-messaggio={p.messaggio}
+                  data-colore-href={p.href}
+                  data-colore-foto={conFoto ? i : undefined}
+                >
+                  <span />
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      <div>
+        <p class="messaggio" data-colore-dove={haColori ? 'messaggio' : undefined}>{messaggio}</p>
+        <p class="nota">Il messaggio è già scritto: puoi cambiarlo prima di inviarlo.</p>
+      </div>
+      <div class="azioni">
+        <a class="invia" href={linkWhatsApp(negozio.whatsapp, messaggio)} data-colore-dove={haColori ? 'link' : undefined}>
+          <Icona nome="whatsapp" misura={18} />Invia su WhatsApp
+        </a>
+        <a class="chiama" href={negozio.telefonoHref}>Preferisci chiamare? {negozio.telefono}</a>
+      </div>
+    </div>
+  </article>
+</dialog>
+
+<style>
+  /* --- Telefono (fino a 767 px): un foglio che sale dal basso --- */
+  .scheda-rapida {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--velo-scheda);
+    color: var(--nero);
+    overflow: hidden;
+  }
+
+  .scheda-rapida[open] {
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .scheda-rapida::backdrop {
+    background: transparent;
+  }
+
+  .foglio {
+    display: grid;
+    grid-template-columns: 156px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 14px;
+    width: 100%;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 8px 16px max(16px, env(safe-area-inset-bottom));
+    border-radius: var(--raggio-scheda) var(--raggio-scheda) 0 0;
+    background: var(--bianco);
+    box-shadow: var(--ombra-rapida);
+  }
+
+  /* --- Testa: la maniglia (solo sul telefono), il titolo e la X --- */
+  .testa {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+    padding: 0 0 8px;
+  }
+
+  .maniglia {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 6px;
+    border-radius: 2px;
+    background: var(--bordo);
+  }
+
+  .riga {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .titolo {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--salvia-scura);
+  }
+
+  .chiudi {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-right: -6px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--latte);
+    color: var(--nero);
+    transition: background-color 200ms ease;
+  }
+
+  .chiudi:hover {
+    background: var(--latte-sopra);
+  }
+
+  /* --- Foto: i due scatti, con l'interruttore in basso --- */
+  .foto {
+    --interruttore-basso: 6px;
+    grid-column: 1;
+    grid-row: 2;
+    position: relative;
+    min-width: 0;
+    aspect-ratio: 3 / 4;
+    /* `clip` e non `hidden`: il secondo scatto ingrandito non rende la foto
+       scorrevole, nemmeno per script o per il focus da tastiera. */
+    overflow: clip;
+    border-radius: var(--raggio-foto-rapida);
+    background: var(--sabbia);
+  }
+
+  /* --- Capo: occhiello, nome e dettaglio, accanto alla foto --- */
+  .capo {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    min-width: 0;
+  }
+
+  .occhiello {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    color: var(--grigio-testo);
+  }
+
+  .occhiello.novita {
+    color: var(--salvia-scura);
+  }
+
+  .punto {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--salvia-scura);
+  }
+
+  /* --- La galleria dei colori (se ogni colore ha la sua foto): una foto alla volta,
+     che i pallini scelgono. Le foto coprono il riquadro. --- */
+  .galleria,
+  .diapositiva {
+    position: absolute;
+    inset: 0;
+  }
+
+  .diapositiva :global(picture),
+  .diapositiva :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .diapositiva :global(img) {
+    object-fit: cover;
+  }
+
+  .nome {
+    margin: 6px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--titolo-medio);
+    font-weight: 400;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  .dettaglio {
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--grigio-testo);
+    text-wrap: pretty;
+  }
+
+  /* --- Corpo: il messaggio già scritto e le due azioni --- */
+  .corpo {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    padding-top: 16px;
+  }
+
+  /* --- I colori: «Colore: …» e un pallino da 44 px per colore (il tondo è di 20 px).
+     La tinta è un dato dell'articolo (`--tinta`, scritta dalla pagina). Il colore
+     scelto ha un doppio anello, bianco e nero, visibile su ogni tinta. --- */
+  .colore {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--grigio-testo);
+  }
+
+  .etichetta {
+    font-weight: 600;
+    color: var(--nero);
+  }
+
+  .pallini {
+    display: flex;
+    margin: 2px 0 0 -12px;
+  }
+
+  .pallino {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  /* Il focus da tastiera sta attorno al tondo, non al riquadro da 44 px. */
+  .pallino:focus-visible {
+    outline: none;
+  }
+
+  .pallino:focus-visible span {
+    outline: 2px solid var(--salvia-scura);
+    outline-offset: 5px;
+  }
+
+  .pallino span {
+    display: block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--tinta);
+    box-shadow: inset 0 0 0 1px var(--anello-pallino);
+    transition: box-shadow 200ms ease;
+  }
+
+  .pallino[aria-pressed='true'] span {
+    box-shadow:
+      0 0 0 2px var(--bianco),
+      0 0 0 3.5px var(--nero),
+      inset 0 0 0 1px var(--anello-pallino);
+  }
+
+  .messaggio {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: var(--raggio-medio) var(--raggio-medio) var(--raggio-medio) 4px;
+    background: var(--salvia-chiara);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .nota {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--grigio-testo);
+  }
+
+  .azioni {
+    display: grid;
+    gap: 2px;
+  }
+
+  .invia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 50px;
+    border-radius: var(--pillola);
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .invia:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  .chiama {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    color: var(--nero);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+
+  /* --- Da 768 px: una finestra centrata, con la foto a sinistra (misure del tablet) --- */
+  @media (width > 767px) {
+    .scheda-rapida[open] {
+      align-items: center;
+      justify-content: center;
+    }
+
+    .foglio {
+      grid-template-columns: 330px minmax(0, 1fr);
+      /* L'ultima riga è `1fr` e non `minmax(0, 1fr)`: così ha come minimo il suo
+         contenuto e la griglia non la stringe per stare in `max-height`. Stretta,
+         il corpo, allineato in basso, uscirebbe verso l'alto, sopra il dettaglio,
+         dove lo scorrimento non arriva: il foglio deve scorrere, non comprimersi. */
+      grid-template-rows: auto auto 1fr;
+      column-gap: 0;
+      width: min(680px, 100vw - 80px);
+      max-height: calc(100dvh - 80px);
+      margin: 40px;
+      padding: 0;
+      border-radius: var(--raggio-scheda);
+    }
+
+    .foto {
+      /* L'interruttore sta a 16 px dal fondo, come sulla scheda (`SchedaArticolo.astro`). */
+      --interruttore-basso: 16px;
+      grid-column: 1;
+      grid-row: 1 / span 3;
+      aspect-ratio: auto;
+      min-height: 440px;
+      border-radius: 0;
+    }
+
+    .testa {
+      grid-column: 2;
+      grid-row: 1;
+      padding: 18px 18px 0 28px;
+    }
+
+    .maniglia {
+      display: none;
+    }
+
+    .capo {
+      align-self: start;
+      padding: 6px 28px 0;
+    }
+
+
+    .dettaglio {
+      font-size: 15px;
+    }
+
+    .corpo {
+      grid-column: 2;
+      grid-row: 3;
+      justify-content: flex-end;
+      padding: 20px 28px 24px;
+    }
+  }
+
+  /* --- Computer (da 1024 px) --- */
+  @media (width > 1023px) {
+    .foglio {
+      grid-template-columns: 380px minmax(0, 1fr);
+      width: min(780px, 100vw - 112px);
+      margin: 40px 56px;
+    }
+
+    .foto {
+      min-height: 507px;
+    }
+
+    .testa {
+      padding: 20px 22px 0 32px;
+    }
+
+    .capo {
+      padding: 6px 32px 0;
+    }
+
+
+    .corpo {
+      padding: 22px 32px 28px;
+    }
+  }
+
+  /* --- Schermi bassi da 768 px (il telefono ruotato): la finestra si stringe e
+     il foglio scorre dentro. Le righe seguono il contenuto (vedi l'ultima riga
+     della griglia, nel blocco da 768 px). --- */
+  @media (width > 767px) and (max-height: 560px) {
+    .foglio {
+      grid-template-columns: 220px minmax(0, 1fr);
+      max-height: calc(100dvh - 32px);
+      margin: 16px;
+    }
+
+    .foto {
+      min-height: 0;
+    }
+
+    /* La testa resta in alto mentre il foglio scorre: la X si vede sempre. */
+    .testa {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--bianco);
+    }
+  }
+</style>

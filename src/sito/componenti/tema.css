@@ -1,0 +1,242 @@
+/* Gettoni del tema Salvia social, quello del sito: colori, raggi, caratteri e
+   misure, con i valori della tavola `SalviaSocial.dc.html`, aggiornati alla
+   versione 3 (la tavola `DiarioFascia.dc.html`). Valgono dove il `body` ha
+   `data-variante="salvia-social"` (lo mette `LayoutSito`). Tutti i componenti
+   usano solo queste proprietà: per cambiare la palette basta questo file.
+   Le variabili `--font-…` le scrive il componente Font di Astro (LayoutSito). */
+[data-variante='salvia-social'] {
+  /* Colori della tavola */
+  --bianco: #ffffff;
+  --latte: #f6f5f0;
+  --salvia: #9aa893;
+  --salvia-chiara: #dce2d6;
+  --salvia-scura: #46553f;
+  --verde-notte: #2a3326;
+  --nero: #1c1c1a;
+  --grigio-testo: #5b5e57;
+  --sabbia: #e8e1d5;
+
+  /* Sfumature della tavola: stati al passaggio, linee e puntini */
+  --salvia-scura-sopra: #35412f;
+  --latte-sopra: #f1efe9;
+  --testo-morbido: #3e413b;
+  --linea: #eceae3;
+  --linea-testata: #e6e3db;
+  --bordo: #d6d3c9;
+  --bordo-chiaro: #e2dfd6;
+  --anello-visto: #c9c5ba;
+  --grigio-chiaro: #edebe6;
+  --punto-aperto: #4e8a3a;
+  --punto-chiuso: #9c998f;
+  --punto-aperto-chiaro: #bfe0a6;
+  --punto-chiuso-chiaro: #c9c5ba;
+  --vetro: rgb(255 255 255 / 0.94);
+  --vetro-chiaro: rgb(255 255 255 / 0.5);
+  --vetro-sopra: rgb(255 255 255 / 0.4);
+  --sfondo-post: rgb(24 28 22 / 0.8);
+  /* Il velo dietro la scheda rapida "Chiedi disponibilità": 0,6 da 768 px. */
+  --velo-scheda: rgb(24 28 22 / 0.55);
+  --velo-post: rgb(28 33 26 / 0.62);
+  --velo-post-alto: rgb(28 33 26 / 0.12);
+  /* Sotto la data di un post: sopra il velo del riquadro (almeno 0,12)
+     arriva ad almeno 0,62, cioè 4,6:1 per il bianco anche su una foto bianca. */
+  --velo-post-testo: rgb(28 33 26 / 0.57);
+  /* Il lettore delle storie (tavola StorieRichiesta): un fondo pieno, i veli a
+     gradiente sulla foto e la scheda degli inviti. Su una foto bianca il bianco
+     arriva a 4,5:1 con 0,58 di velo, il grigio chiaro della data con 0,63: in
+     alto 0,66 fa 6,1:1 per il bianco e 5,1:1 per la data, in basso 0,72 fa 7,6:1.
+     Sulla scheda (0,72 sopra la foto sfocata) il bianco fa almeno 7,2:1, il
+     soggetto 5,6:1. */
+  --fondo-storie: #141712;
+  --velo-storia-alto: rgb(16 18 14 / 0.66);
+  --velo-storia: rgb(16 18 14 / 0.72);
+  --velo-storia-fondo: rgb(16 18 14 / 0.82);
+  --velo-invito: rgb(20 23 18 / 0.72);
+  /* Il soggetto della foto sulla scheda degli inviti. */
+  --testo-scheda-storia: #e6e3db;
+  /* Le pillole sul fondo scuro: il bordo al 70% fa 9,9:1 (al 30% della tavola
+     sarebbe 3,5:1, appena sopra il minimo di WCAG 1.4.11). */
+  --vetro-pillola: rgb(255 255 255 / 0.1);
+  --bordo-pillola: rgb(255 255 255 / 0.7);
+  --barra-storia: rgb(255 255 255 / 0.32);
+  --bordo-storia: rgb(255 255 255 / 0.85);
+  --contatore-foto: rgb(28 33 26 / 0.72);
+  --linea-chiara: rgb(255 255 255 / 0.2);
+  --punto-spento: rgb(255 255 255 / 0.6);
+  /* Il bordo dei pallini colore della scheda rapida: più scuro della tavola (0,2),
+     perché il pallino bianco sul fondo bianco arrivi a 3:1 (WCAG 1.4.11). */
+  --anello-pallino: rgb(28 28 26 / 0.5);
+  /* La linea vuota delle tacche dell'apertura: 3,3:1 sul bianco (WCAG 1.4.11). */
+  --tacca: #918d82;
+
+  /* Ombre della tavola */
+  --ombra-pillola: 0 10px 28px -12px rgb(28 28 26 / 0.45);
+  --ombra-bottone: 0 14px 30px -18px rgb(28 40 24 / 0.8);
+  --ombra-etichetta: 0 18px 40px -22px rgb(28 33 26 / 0.55);
+  --ombra-biglietto: 0 24px 50px -36px rgb(28 40 24 / 0.5);
+  --ombra-riquadro: 0 40px 80px -50px rgb(28 40 24 / 0.5);
+  --ombra-scheda: 0 30px 50px -30px rgb(28 40 24 / 0.45);
+  --ombra-pannello: 0 30px 60px -36px rgb(28 33 26 / 0.5);
+  --ombra-foto: 0 40px 80px -40px rgb(28 40 24 / 0.55);
+  --ombra-cornice: 0 34px 64px -46px rgb(28 40 24 / 0.6);
+  --ombra-recensioni: 0 30px 60px -28px rgb(28 40 24 / 0.55);
+  --ombra-oggi: 0 10px 24px -16px rgb(28 40 24 / 0.5);
+  --ombra-barra: 0 0 0 1px var(--bordo-chiaro), 0 20px 40px -18px rgb(28 33 26 / 0.5);
+  --ombra-dialog: 0 40px 120px -30px rgb(0 0 0 / 0.7);
+  --ombra-rapida: 0 40px 120px -30px rgb(0 0 0 / 0.6);
+  --linea-orari: rgb(28 28 26 / 0.14);
+  --ombra-punto: 0 1px 3px rgb(0 0 0 / 0.3);
+  --ombra-icona: 0 1px 2px rgb(0 0 0 / 0.5);
+  --ombra-invito: 0 14px 32px -16px rgb(0 0 0 / 0.7);
+
+  /* Raggi */
+  --raggio: 20px;
+  --pillola: 999px;
+  --raggio-grande: 28px;
+  --raggio-scheda: 24px;
+  --raggio-medio: 16px;
+  --raggio-piccolo: 12px;
+  /* La foto della scheda rapida sul telefono. */
+  --raggio-foto-rapida: 14px;
+  /* Gli angoli in basso della foto di una storia, sopra la fascia di "Chiedi informazioni". */
+  --raggio-storia: 14px;
+  /* Le miniature ai lati della cornice dell'apertura. */
+  --raggio-miniatura: 14px;
+  /* Sul telefono la tavola arrotonda un po' meno. */
+  --raggio-telefono: 18px;
+  --raggio-riquadro-telefono: 22px;
+
+  /* Caratteri */
+  --titoli: var(--font-libre-caslon-display), Georgia, serif;
+  --corsivo: var(--font-libre-caslon-text), Georgia, serif;
+  --testo: var(--font-instrument-sans), 'Helvetica Neue', Arial, sans-serif;
+
+  /* Misure: dal telefono (390 px) al computer (1440 px) */
+  --larghezza: 1440px;
+  --margine: clamp(20px, 4vw, 56px);
+  --sezione: clamp(72px, 4.6vw + 54px, 120px);
+  --fascia: clamp(64px, 3.8vw + 49px, 104px);
+  /* La scala dei titoli, dal telefono (390 px) al computer (1440 px): l'h1
+     dell'apertura è il più grande, poi gli h2 delle sezioni, poi i titoli medi
+     (fascia Instagram, finestra degli scaffali, voto di Google, nome nella
+     scheda rapida, motto del piè di pagina), poi gli h3 (nomi dei prodotti,
+     "Post dal negozio"). */
+  --h1: clamp(34px, 1.714vw + 27.31px, 52px);
+  --h2: clamp(30px, 1.333vw + 24.8px, 44px);
+  --titolo-medio: clamp(24px, 0.762vw + 21.03px, 32px);
+  --h3: clamp(18px, 0.381vw + 16.51px, 22px);
+  --occhiello: 12px;
+  --testo-sezione: 16px;
+
+  margin: 0;
+  background: var(--bianco);
+  color: var(--nero);
+  font-family: var(--testo);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (min-width: 960px) {
+  [data-variante='salvia-social'] {
+    --occhiello: 13px;
+    --testo-sezione: 17px;
+  }
+}
+
+/* Da 768 px la scheda rapida è una finestra centrata: il velo è un po' più scuro.
+   Stessa media query della scheda rapida (`SchedaRapida.astro`). */
+@media (width > 767px) {
+  [data-variante='salvia-social'] {
+    --velo-scheda: rgb(24 28 22 / 0.6);
+  }
+}
+
+/* Barre fisse: l'header in alto (64 px sul telefono, 88 sul computer) e, sul
+   telefono, la barra dei contatti in basso (72 px). Lo scorrimento della pagina,
+   sia verso un'ancora sia verso un elemento che riceve il focus da tastiera,
+   lascia loro posto (più 8 px), così nulla resta coperto (WCAG 2.2, 2.4.11). */
+html:has(> body[data-variante='salvia-social']) {
+  scroll-padding-top: 72px;
+  scroll-padding-bottom: 80px;
+}
+
+@media (min-width: 960px) {
+  html:has(> body[data-variante='salvia-social']) {
+    scroll-padding-top: 96px;
+    scroll-padding-bottom: 0;
+  }
+}
+
+/* Con una storia, un post o una scheda rapida aperti la pagina non scorre, ma
+   dove la barra di scorrimento occupa spazio (Windows) la sua striscia resta
+   riservata e mostra lo sfondo della radice: senza queste regole sarebbe una
+   striscia bianca accanto al velo scuro. Le tinte sono i fondi dei dialog: per
+   le storie il fondo pieno (`--fondo-storie`, che qui fuori dal tema non
+   si legge), per post e schede rapide i veli (`--sfondo-post`, `--velo-scheda`)
+   sopra il bianco della pagina; il `body` continua a dipingere il suo bianco,
+   quindi la pagina non cambia. La scheda rapida è anche un `dialog[data-post]`:
+   la sua regola viene dopo, con la stessa specificità, e vince. */
+html:has(> body[data-variante='salvia-social']):has(dialog[data-storie][open]) {
+  background-color: #141712;
+}
+
+html:has(> body[data-variante='salvia-social']):has(dialog[data-post][open]) {
+  background-color: color-mix(in srgb, rgb(24 28 22) 80%, #ffffff);
+}
+
+html:has(> body[data-variante='salvia-social']):has(dialog.scheda-rapida[open]) {
+  background-color: color-mix(in srgb, rgb(24 28 22) 55%, #ffffff);
+}
+
+@media (width > 767px) {
+  html:has(> body[data-variante='salvia-social']):has(dialog.scheda-rapida[open]) {
+    background-color: color-mix(in srgb, rgb(24 28 22) 60%, #ffffff);
+  }
+}
+
+[data-variante='salvia-social'] *,
+[data-variante='salvia-social'] *::before,
+[data-variante='salvia-social'] *::after {
+  box-sizing: border-box;
+}
+
+[data-variante='salvia-social'] :focus-visible {
+  outline: 2px solid var(--salvia-scura);
+  outline-offset: 3px;
+}
+
+[data-variante='salvia-social'] button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Testo per chi usa un lettore di schermo, non visibile. */
+[data-variante='salvia-social'] .solo-lettori {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-variante='salvia-social']) {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-variante='salvia-social'] *,
+  [data-variante='salvia-social'] *::before,
+  [data-variante='salvia-social'] *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}

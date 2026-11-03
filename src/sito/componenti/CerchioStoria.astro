@@ -1,0 +1,101 @@
+---
+// Il cerchio di una storia della fila sotto l'header: apre il dialog delle
+// storie sul suo gruppo. Dopo la visione lo script aggiunge `data-vista` e
+// l'anello si fa grigio e sottile, come sulla tavola.
+import Foto from './Foto.astro';
+import type { Storia } from './dati';
+
+interface Props {
+  storia: Storia;
+}
+
+const { storia } = Astro.props;
+const copertina = storia.foto[0];
+if (!copertina) throw new Error(`La storia "${storia.id}" non ha foto.`);
+---
+
+<button
+  type="button"
+  class="cerchio"
+  data-storia-apri={storia.id}
+  aria-label={`Apri la storia ${storia.nome}`}
+>
+  <span class="anello">
+    <Foto scatto={copertina} alt="" larghezze={[124, 144]} sizes="62px" />
+    {storia.etichetta && <span class="etichetta">{storia.etichetta}</span>}
+  </span>
+  <span class="nome">{storia.nome}</span>
+</button>
+
+<style>
+  .cerchio {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 72px;
+    padding: 4px 0 0;
+    border: 0;
+    border-radius: var(--raggio-piccolo);
+    background: none;
+    color: var(--nero);
+  }
+
+  .anello {
+    position: relative;
+    display: block;
+    padding: 3px;
+    border-radius: 50%;
+    background: var(--bianco);
+    box-shadow: 0 0 0 2px var(--salvia-scura);
+    transition: box-shadow 400ms ease;
+  }
+
+  .cerchio[data-vista] .anello {
+    box-shadow: 0 0 0 1px var(--anello-visto);
+  }
+
+  .anello :global(img) {
+    display: block;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .etichetta {
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    border-radius: var(--pillola);
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    box-shadow: 0 0 0 2px var(--bianco);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .nome {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+  }
+
+  @media (hover: hover) {
+    .cerchio:hover .anello {
+      box-shadow: 0 0 0 2px var(--nero);
+    }
+  }
+</style>

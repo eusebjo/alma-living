@@ -1,0 +1,21 @@
+{
+  "nome": "Bimbi",
+  "data": "2026-10-20",
+  "invito": "chiama",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/neonato.jpg",
+      "alt": "Accappatoi da bimbo con cappuccio e orsetto ricamato",
+      "inquadratura": "centro-alto",
+      "frase": "Accappatoi con il cappuccio e l’orsetto ricamato, per i più piccoli di casa.",
+      "soggetto": "gli accappatoi con l’orsetto"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/accappatoi-appesi.jpg",
+      "alt": "Accappatoi da bimbo appesi, rosa, bianco e azzurro",
+      "inquadratura": "centro-alto",
+      "frase": "In rosa, bianco e azzurro. Belli anche da regalare per una nascita.",
+      "soggetto": "gli accappatoi rosa, bianchi e azzurri"
+    }
+  ]
+}

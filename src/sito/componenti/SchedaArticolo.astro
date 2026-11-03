@@ -1,0 +1,220 @@
+---
+// Un articolo della selezione: la foto con i suoi due scatti (`DueScatti.astro`) e
+// il pulsante tondo con la freccia, poi occhiello, nome e dettaglio. Tutta la
+// scheda è coperta da `a.apri`, un link a WhatsApp con il messaggio di
+// disponibilità già scritto: senza JavaScript porta lì. Con lo script apre la
+// scheda rapida dell'articolo (`SchedaRapida.astro`, protocollo "Post"; con Ctrl,
+// Cmd, Maiusc o Alt resta un link). È il primo elemento della scheda, quindi anche
+// da tastiera il focus arriva prima su di lui che sull'interruttore dei due scatti
+// (che sta sopra, con `z-index` più alto).
+//
+// Fino a 767 px la scheda è stretta (due colonne): foto con raggio e pulsante più
+// piccoli, testi più piccoli. Da 768 px le misure del tablet e del computer.
+// Sul computer con il mouse (`(hover: hover) and (width > 1023px)`) il passaggio
+// del mouse sulla scheda mostra il secondo scatto, appena ingrandito, e riempie la
+// freccia; sull'interruttore mostra invece lo scatto scelto, così il clic si vede.
+// Sul tablet e sul telefono non c'è passaggio: valgono i pallini.
+import type { DatiNegozio } from '../comune/negozio';
+import { linkWhatsApp, messaggioDisponibilita } from '../comune/contatti';
+import DueScatti from './DueScatti.astro';
+import Icona from './Icona.astro';
+import { idSchedaRapida, occhielloArticolo, type Articolo } from './dati';
+
+interface Props {
+  articolo: Articolo;
+  negozio: DatiNegozio;
+}
+
+const { articolo, negozio } = Astro.props;
+const titolo = `articolo-${articolo.id}`;
+---
+
+<article class="scheda" aria-labelledby={titolo}>
+  <a
+    class="apri"
+    href={linkWhatsApp(negozio.whatsapp, messaggioDisponibilita(articolo.nome))}
+    data-post-apri={idSchedaRapida(articolo)}
+    aria-label={`Chiedi disponibilità: ${articolo.nome}`}></a>
+  <div class="foto">
+    <DueScatti
+      scatti={articolo.scatti}
+      nome={articolo.nome}
+      larghezze={[300, 450, 600]}
+      sizes="(min-width: 1440px) 314px, (min-width: 1024px) 22vw, (min-width: 768px) 30vw, 46vw"
+    />
+    <span class="freccia" aria-hidden="true"><Icona nome="freccia" misura={18} /></span>
+  </div>
+  <div class="testo">
+    <p class:list={['occhiello', { novita: articolo.novita }]}>
+      {articolo.novita && <span class="punto" aria-hidden="true" />}{occhielloArticolo(articolo)}
+    </p>
+    <h3 id={titolo}>{articolo.nome}</h3>
+    <p class="dettaglio">{articolo.dettaglio}</p>
+  </div>
+</article>
+
+<style>
+  /* --- Telefono (fino a 767 px) --- */
+  .scheda {
+    position: relative;
+  }
+
+  .apri {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    border-radius: var(--raggio-telefono);
+  }
+
+  .scheda .apri:focus-visible {
+    outline: 2px solid var(--salvia-scura);
+    outline-offset: 4px;
+  }
+
+  .foto {
+    --interruttore-basso: 4px;
+    position: relative;
+    aspect-ratio: 3 / 4;
+    /* `clip` e non `hidden`: il secondo scatto ingrandito non rende la foto
+       scorrevole, nemmeno per script o per il focus da tastiera. */
+    overflow: clip;
+    border-radius: var(--raggio-telefono);
+    background: var(--sabbia);
+  }
+
+  .freccia {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow:
+      inset 0 0 0 1px var(--bordo),
+      var(--ombra-etichetta);
+    transition:
+      background-color 250ms ease,
+      color 250ms ease,
+      box-shadow 250ms ease;
+  }
+
+  .freccia :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .testo {
+    padding: 12px 2px 0;
+  }
+
+  .occhiello {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    color: var(--grigio-testo);
+  }
+
+  .occhiello.novita {
+    color: var(--salvia-scura);
+  }
+
+  .punto {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--salvia-scura);
+  }
+
+  h3 {
+    margin: 4px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--h3);
+    font-weight: 400;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .dettaglio {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--grigio-testo);
+    text-wrap: pretty;
+  }
+
+  /* --- Tablet e computer (da 768 px): i punti di rottura sono i complementi
+     esatti di `LIMITI_SELEZIONE` (vedi `Selezione.astro`) --- */
+  @media (width > 767px) {
+    .apri,
+    .foto {
+      border-radius: var(--raggio);
+    }
+
+    .foto {
+      --interruttore-basso: 16px;
+    }
+
+    .freccia {
+      right: 16px;
+      bottom: 16px;
+      width: 44px;
+      height: 44px;
+    }
+
+    .freccia :global(svg) {
+      width: 18px;
+      height: 18px;
+    }
+
+    .testo {
+      padding: 18px 4px 0;
+    }
+
+    .occhiello {
+      font-size: 12px;
+    }
+
+    h3 {
+      margin-top: 6px;
+    }
+
+    .dettaglio {
+      margin-top: 6px;
+      font-size: 15px;
+    }
+  }
+
+  /* --- Computer con il mouse: il secondo scatto al passaggio, ma non quando il
+     mouse è sull'interruttore (lì conta lo scatto scelto, così il clic si vede) --- */
+  @media (hover: hover) and (width > 1023px) {
+    .scheda:hover:not(:has(:global([data-interruttore]:hover))) {
+      --secondo: 1;
+    }
+
+    .scheda:hover {
+      --zoom: 1.04;
+    }
+
+    .scheda:hover .freccia,
+    .apri:focus-visible ~ .foto .freccia {
+      background: var(--salvia-scura);
+      color: var(--bianco);
+      box-shadow:
+        inset 0 0 0 1px var(--salvia-scura),
+        var(--ombra-etichetta);
+    }
+  }
+</style>

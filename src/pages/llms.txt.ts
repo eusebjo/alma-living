@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getCollection, getEntry } from 'astro:content';
+import { getEntry } from 'astro:content';
 import { absoluteUrl, getSiteConfig } from '../config/site';
 import { llmsTxt } from '../lib/llms';
 
@@ -10,22 +10,19 @@ export const GET: APIRoute = async () => {
   if (!negozioEntry) {
     throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
   }
+  const negozio = negozioEntry.data;
 
-  // La pagina `home` è la radice del sito; ogni altra pagina `<id>.md` deve
-  // avere la sua rotta `/<id>/`.
-  const pagine = (await getCollection('pagine'))
-    .sort((a, b) => {
-      if (a.id === 'home') return -1;
-      if (b.id === 'home') return 1;
-      return a.id.localeCompare(b.id);
-    })
-    .map((pagina) => ({
-      titolo: pagina.data.titolo,
-      descrizione: pagina.data.descrizione,
-      url: absoluteUrl(siteUrl, pagina.id === 'home' ? '/' : `/${pagina.id}/`),
-    }));
+  // Il sito ha una sola pagina, la home (src/pages/index.astro): stesso titolo
+  // della pagina, descrizione del negozio.
+  const pagine = [
+    {
+      titolo: 'Alma Living, biancheria per la casa a Livorno',
+      descrizione: negozio.descrizione,
+      url: absoluteUrl(siteUrl, '/'),
+    },
+  ];
 
-  return new Response(llmsTxt(negozioEntry.data, pagine, siteUrl), {
+  return new Response(llmsTxt(negozio, pagine, siteUrl), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 };

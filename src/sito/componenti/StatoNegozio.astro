@@ -1,0 +1,50 @@
+---
+// "Aperto ora, chiude alle 19:30" con il puntino colorato (protocollo "Stato del
+// negozio"): lo script sostituisce tutto il testo e aggiunge `data-aperto`.
+// Senza JavaScript resta il riassunto degli orari, senza puntino.
+import type { Fascia } from '../comune/orari';
+import { orariInBreve } from './settimana';
+
+interface Props {
+  orari: Fascia[];
+  /** Su fondo scuro: puntini più chiari. */
+  chiaro?: boolean;
+}
+
+const { orari, chiaro = false } = Astro.props;
+---
+
+<span class:list={['stato', { chiaro }]} data-stato-negozio data-orari={JSON.stringify(orari)}
+  >{orariInBreve(orari)}</span
+>
+
+<style>
+  .stato {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stato[data-aperto]::before {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--punto-chiuso);
+  }
+
+  .stato[data-aperto='true']::before {
+    background: var(--punto-aperto);
+  }
+
+  .chiaro[data-aperto]::before {
+    width: 7px;
+    height: 7px;
+    background: var(--punto-chiuso-chiaro);
+  }
+
+  .chiaro[data-aperto='true']::before {
+    background: var(--punto-aperto-chiaro);
+  }
+</style>

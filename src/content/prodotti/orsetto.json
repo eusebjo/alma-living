@@ -1,0 +1,34 @@
+{
+  "nome": "Accappatoio con orsetto",
+  "dettaglio": "Con cappuccio · rosa, sabbia o azzurro",
+  "categorie": [
+    "bimbi",
+    "bagno"
+  ],
+  "novita": false,
+  "data": "2026-10-26",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/neonato.jpg",
+    "alt": "Accappatoi da bimbo con cappuccio e orsetto ricamato",
+    "inquadratura": "centro-alto"
+  },
+  "secondaFoto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/accappatoi-appesi.jpg",
+    "alt": "Accappatoi da bimbo appesi, rosa, bianco e azzurro",
+    "inquadratura": "centro-alto"
+  },
+  "colori": [
+    {
+      "nome": "rosa",
+      "tinta": "#ddb3b8"
+    },
+    {
+      "nome": "sabbia",
+      "tinta": "#cdb896"
+    },
+    {
+      "nome": "azzurro",
+      "tinta": "#a9c7e0"
+    }
+  ]
+}

@@ -5,7 +5,16 @@ import {
 } from '../../scripts/autonomia/github';
 import { MARCATORE } from '../../scripts/autonomia/report';
 import { eseguiVerifica, rapportoErrore } from '../../scripts/autonomia/verifica';
-import { ETICHETTA_INVIATA, HOME, NEGOZIO, homeMd, negozioJson, rules } from './fixtures';
+import {
+  ETICHETTA_INVIATA,
+  IMMAGINI,
+  NEGOZIO,
+  POST,
+  negozioJson,
+  postJson,
+  regoleConNoteEImmagini,
+  rules,
+} from './fixtures';
 import {
   BASE_SHA,
   HEAD_SHA,
@@ -17,9 +26,10 @@ import {
 } from './octokitFinto';
 
 const ref = { owner: 'eusebjo', repo: 'alma-living', pullNumber: 7 };
-const FOTO = 'src/content/pagine/immagini/foto.webp';
+// Una foto caricata nel repository: è un file dei media solo con le regole di prova.
+const FOTO = `${IMMAGINI}/foto.webp`;
 const GERGO = /branch|merge|commit/i;
-const URL_ANTEPRIMA = 'https://cms-pagine-home-alma-living.sebjomuho.workers.dev/';
+const URL_ANTEPRIMA = 'https://cms-post-p1-alma-living.sebjomuho.workers.dev/';
 
 /** Proposta di `lei` che cambia solo la descrizione del negozio: consentita, livello 1. */
 function modificaConsentita(extra: ScenarioFinto = {}): ScenarioFinto {
@@ -173,7 +183,7 @@ describe('eseguiVerifica', () => {
         }),
       );
 
-      const esito = await eseguiVerifica(octokit, ref, rules);
+      const esito = await eseguiVerifica(octokit, ref, regoleConNoteEImmagini);
 
       expect(esito.superato).toBe(false);
       expect(esito.verdict?.esito).toBe('respinto');
@@ -190,11 +200,11 @@ describe('eseguiVerifica', () => {
         respinta({
           files: [
             { filename: 'src/layouts/BaseLayout.astro', status: 'modified' },
-            { filename: HOME, status: 'modified' },
+            { filename: POST, status: 'modified' },
           ],
           contenuti: {
-            [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-            [chiave(HEAD_SHA, HOME)]: { tipo: 'symlink' },
+            [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+            [chiave(HEAD_SHA, POST)]: { tipo: 'symlink' },
           },
         }),
       );
@@ -202,7 +212,7 @@ describe('eseguiVerifica', () => {
       const esito = await eseguiVerifica(octokit, ref, rules);
 
       expect(esito.verdict?.violazioni.map((v) => v.file).sort()).toEqual(
-        [HOME, 'src/layouts/BaseLayout.astro'].sort(),
+        [POST, 'src/layouts/BaseLayout.astro'].sort(),
       );
     });
 
@@ -254,7 +264,7 @@ describe('eseguiVerifica', () => {
     it('un ramo cms/ senza file non è consentito: vale come una proposta della redazione', async () => {
       const { octokit } = creaOctokitFinto({
         autore: 'eusebjo',
-        ramo: 'cms/pagine/home',
+        ramo: 'cms/post/p1',
         etichette: [ETICHETTA_INVIATA],
         files: [],
       });
@@ -313,7 +323,7 @@ describe('eseguiVerifica', () => {
 
       expect(esito.superato).toBe(true);
       expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'consentito', livello: 1 });
-      expect(corpoDelRapporto(stato)).toContain(URL_ANTEPRIMA.replace('pagine-home', 'negozio-negozio'));
+      expect(corpoDelRapporto(stato)).toContain(URL_ANTEPRIMA.replace('post-p1', 'negozio-negozio'));
       expect(stato.etichette).toEqual([ETICHETTA_INVIATA, ETICHETTA_LIVELLO_1]);
     });
 
@@ -431,13 +441,17 @@ describe('eseguiVerifica', () => {
       ]);
     });
 
-    it('vale anche per una pagina con la descrizione troppo corta', async () => {
+    it('vale anche per un post con una foto presa da un altro indirizzo', async () => {
       const { octokit, stato } = creaOctokitFinto(
         modificaConsentita({
-          files: [{ filename: HOME, status: 'modified' }],
+          files: [{ filename: POST, status: 'modified' }],
           contenuti: {
-            [chiave(BASE_SHA, HOME)]: { testo: homeMd() },
-            [chiave(HEAD_SHA, HOME)]: { testo: homeMd({ descrizione: 'Troppo corta.' }) },
+            [chiave(BASE_SHA, POST)]: { testo: postJson() },
+            [chiave(HEAD_SHA, POST)]: {
+              testo: postJson((p) => {
+                p.foto[0]!.src = 'https://pub-02e2834056a84517a87c5431c6904c14.r2.dev/cms/a.webp';
+              }),
+            },
           },
         }),
       );
@@ -445,7 +459,47 @@ describe('eseguiVerifica', () => {
       const esito = await eseguiVerifica(octokit, ref, rules);
 
       expect(esito.superato).toBe(false);
-      expect(corpoDelRapporto(stato)).toMatch(/almeno 50 caratteri/);
+      expect(esito.verdict?.violazioni.map((v) => [v.azione, v.campo])).toEqual([
+        ['formato', 'foto.src'],
+      ]);
+      expect(corpoDelRapporto(stato)).toMatch(/La foto va caricata dal pannello\./);
+    });
+
+    it.each([
+      ['src/content/post/Plaid_Rosso.json', /usa solo lettere minuscole, numeri e trattini/],
+      ['src/content/post/articolo-sabbia.json', /non può cominciare con «articolo-»/],
+    ])('un post nuovo che si chiama %s è respinto, con un messaggio in italiano', async (path, testo) => {
+      const { octokit, stato } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: path, status: 'added' }],
+          contenuti: { [chiave(HEAD_SHA, path)]: { testo: postJson() } },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'respinto' });
+      expect(esito.verdict?.violazioni.map((v) => [v.file, v.azione])).toEqual([[path, 'formato']]);
+      const corpo = corpoDelRapporto(stato);
+      expect(corpo).toMatch(testo);
+      expect(corpo).not.toMatch(GERGO);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('un post nuovo che si chiama con la data è consentito, livello 1', async () => {
+      const path = 'src/content/post/2026-11-03-1.json';
+      const { octokit } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: path, status: 'added' }],
+          contenuti: { [chiave(HEAD_SHA, path)]: { testo: postJson() } },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
     });
 
     it('una bozza resta in bozza: il contenuto si controlla quando la proposta viene inviata', async () => {
@@ -623,7 +677,7 @@ describe('eseguiVerifica', () => {
         }),
       );
 
-      const esito = await eseguiVerifica(octokit, ref, rules);
+      const esito = await eseguiVerifica(octokit, ref, regoleConNoteEImmagini);
 
       expect(esito.superato).toBe(false);
       expect(esito.verdict?.esito).toBe('respinto');

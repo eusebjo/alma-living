@@ -3,19 +3,21 @@ import { evaluate } from '../../scripts/autonomia/evaluate';
 import { MARCATORE, formatReport } from '../../scripts/autonomia/report';
 import type { Azione, Verdict, Violazione } from '../../scripts/autonomia/types';
 import {
-  HOME,
+  IMMAGINI,
   NEGOZIO,
   ORARI_LUNEDI,
+  STORIA,
   aggiunto,
-  homeMd,
   immagine,
   kb,
   modificato,
   negozioJson,
   proposta,
+  regoleConNoteEImmagini,
   rimosso,
   rinominato,
   rules,
+  storiaJson,
 } from './fixtures';
 
 const GERGO = /branch|merge|commit/i;
@@ -161,13 +163,20 @@ describe('formatReport', () => {
           modificato(NEGOZIO, negozioJson(), negozioJson((n) => { n.nome = 'x'; })),
           modificato(NEGOZIO, negozioJson(), '{rotto'),
           modificato('src/layouts/BaseLayout.astro', 'a', 'b'),
-          aggiunto('src/content/pagine/nuova.md', homeMd()),
-          rimosso(HOME, homeMd()),
-          rinominato(HOME, 'src/content/pagine/x.md', homeMd()),
-          immagine('src/content/pagine/immagini/foto.jpg', kb(9000)),
-          immagine('src/content/pagine/immagini/foto.webp', undefined, 'removed'),
+          aggiunto('src/content/storie/nuova.json', storiaJson()),
+          rimosso(STORIA, storiaJson()),
+          rinominato(STORIA, 'src/content/storie/x.json', storiaJson()),
+          immagine('src/content/post/foto.webp', kb(10)),
         ]),
         rules,
+      ),
+      // Peso ed eliminazione delle immagini nel repository: solo con le regole di prova.
+      evaluate(
+        proposta([
+          immagine(`${IMMAGINI}/foto.jpg`, kb(9000)),
+          immagine(`${IMMAGINI}/foto.webp`, undefined, 'removed'),
+        ]),
+        regoleConNoteEImmagini,
       ),
     ];
 

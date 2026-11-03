@@ -23,7 +23,7 @@ contenuti:
     azioni: { crea: 0, modifica: 1, elimina: 0 }
     campi: { nome: 0, orari: 1 }
 media:
-  percorsi: [src/content/pagine/immagini/**]
+  percorsi: [src/content/immagini/**]
   estensioni: [webp, jpg, jpeg, png, avif]
   dimensione_massima_kb: 1500
   azioni: { carica: 1, elimina: 0 }
@@ -39,8 +39,9 @@ describe('loadRules', () => {
     expect(rules.proposte.stati_inviati).toEqual([
       'sveltia-cms/pending_review',
       'sveltia-cms/pending_publish',
+      'sveltia-cms/pending_deletion',
     ]);
-    expect(Object.keys(rules.contenuti)).toEqual(['negozio', 'pagine']);
+    expect(Object.keys(rules.contenuti)).toEqual(['negozio', 'prodotti', 'post', 'storie']);
     expect(rules.contenuti.negozio).toMatchObject({
       file: 'src/content/negozio/negozio.json',
       formato: 'json',
@@ -54,16 +55,57 @@ describe('loadRules', () => {
         orari: 1,
       },
     });
-    expect(rules.contenuti.pagine).toMatchObject({
-      file: 'src/content/pagine/*.md',
-      formato: 'markdown',
+    // Prodotti e post: la redazione li crea, li modifica e li toglie, sempre
+    // con l'approvazione (livello 1). Le otto storie sono fisse: se ne cambia
+    // solo il contenuto, non il nome.
+    expect(rules.contenuti.prodotti).toEqual({
+      file: 'src/content/prodotti/*.json',
+      formato: 'json',
+      azioni: { crea: 1, modifica: 1, elimina: 1 },
+      campi: {
+        nome: 1,
+        dettaglio: 1,
+        categorie: 1,
+        novita: 1,
+        data: 1,
+        foto: 1,
+        secondaFoto: 1,
+        colori: 1,
+      },
     });
+    expect(rules.contenuti.post).toEqual({
+      file: 'src/content/post/*.json',
+      formato: 'json',
+      azioni: { crea: 1, modifica: 1, elimina: 1 },
+      campi: { data: 1, testo: 1, foto: 1, soggetto: 1 },
+    });
+    expect(rules.contenuti.storie).toEqual({
+      file: 'src/content/storie/*.json',
+      formato: 'json',
+      azioni: { crea: 0, modifica: 1, elimina: 0 },
+      campi: { nome: 0, data: 1, etichetta: 1, invito: 1, foto: 1 },
+    });
+    // Le foto stanno su R2: nessun file si carica nel repository.
     expect(rules.media).toEqual({
-      percorsi: ['src/content/pagine/immagini/**'],
+      percorsi: [],
       estensioni: ['webp', 'jpg', 'jpeg', 'png', 'avif'],
       dimensione_massima_kb: 1500,
-      azioni: { carica: 1, elimina: 0 },
+      azioni: { carica: 0, elimina: 0 },
     });
+  });
+
+  it('accetta un elenco di percorsi dei media vuoto (nessun file caricato nel repository)', () => {
+    const vuoto = base.replace('percorsi: [src/content/immagini/**]', 'percorsi: []');
+    expect(loadRules(vuoto).media.percorsi).toEqual([]);
+  });
+
+  it('lancia se i percorsi dei media mancano o non sono un elenco', () => {
+    expect(() => loadRules(base.replace('  percorsi: [src/content/immagini/**]\n', ''))).toThrow(
+      /media\.percorsi/,
+    );
+    expect(() =>
+      loadRules(base.replace('percorsi: [src/content/immagini/**]', 'percorsi: src/content/immagini/**')),
+    ).toThrow(/media\.percorsi/);
   });
 
   it('carica il file minimo usato come base dei casi non validi', () => {

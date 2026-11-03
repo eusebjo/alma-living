@@ -1,0 +1,15 @@
+{
+  "nome": "Coperta in maglia",
+  "dettaglio": "Grigia, chiusa con fiocco e bottone",
+  "categorie": [
+    "letto",
+    "natale"
+  ],
+  "novita": false,
+  "data": "2026-10-22",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/coperta.jpg",
+    "alt": "Coperta in maglia grigia arrotolata, chiusa con fiocco e bottone",
+    "inquadratura": "centro"
+  }
+}

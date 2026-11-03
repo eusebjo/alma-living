@@ -1,0 +1,21 @@
+{
+  "nome": "Lenzuola",
+  "data": "2026-10-15",
+  "invito": "whatsapp",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/lenzuola-beige.jpg",
+      "alt": "Lenzuola color sabbia in primo piano",
+      "inquadratura": "centro",
+      "frase": "Lenzuola color sabbia: stanno bene con il bianco e con il rosa cipria.",
+      "soggetto": "le lenzuola color sabbia"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/volant.jpg",
+      "alt": "Lenzuola bianche e color panna con il volant",
+      "inquadratura": "centro",
+      "frase": "E le parure bianche con il volant, piegate per colore sugli scaffali.",
+      "soggetto": "le parure con il volant"
+    }
+  ]
+}

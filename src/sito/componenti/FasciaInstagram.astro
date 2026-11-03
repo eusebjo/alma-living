@@ -1,0 +1,183 @@
+---
+// La fascia Instagram, tra il diario e il negozio (tavola DiarioFascia.dc.html):
+// bianca, tra due linee sottili e senza foto. È l'unico punto della pagina,
+// oltre all'icona dell'header e alla riga del piè di pagina, che porta a
+// Instagram: storie e post propongono invece di chiamare il negozio. Sul
+// telefono è centrata, dal computer in riga con il pulsante a destra.
+import type { DatiNegozio } from '../comune/negozio';
+import Icona from './Icona.astro';
+
+interface Props {
+  negozio: DatiNegozio;
+}
+
+const { negozio } = Astro.props;
+---
+
+<section id="instagram" class="fascia" aria-labelledby="instagram-titolo">
+  <div class="dentro">
+    <div class="riga">
+      <span class="simbolo" aria-hidden="true">
+        <Icona nome="instagram" misura={26} />
+      </span>
+      <div class="testi">
+        <h2 id="instagram-titolo">Seguici anche su Instagram</h2>
+        <p>
+          <span class="nome">{negozio.instagram.handle}</span>
+        </p>
+      </div>
+      <a
+        class="apri"
+        href={negozio.instagram.url}
+        aria-label={`Apri Instagram: ${negozio.instagram.handle}`}
+      >
+        <Icona nome="instagram" misura={20} />Apri Instagram<Icona nome="esterno" misura={18} />
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .fascia {
+    background: var(--bianco);
+  }
+
+  .dentro {
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: 28px var(--margine);
+  }
+
+  /* --- Telefono: una colonna centrata tra due linee --- */
+  .riga {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 4px;
+    box-shadow:
+      inset 0 1px 0 var(--bordo),
+      inset 0 -1px 0 var(--bordo);
+    text-align: center;
+  }
+
+  .simbolo {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--bordo);
+    color: var(--nero);
+  }
+
+  /* Le icone sono di Icona.astro: le loro misure si cambiano con :global. */
+  .simbolo :global(svg) {
+    width: 26px;
+    height: 26px;
+  }
+
+  .testi {
+    min-width: 0;
+  }
+
+  h2 {
+    margin: 16px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--titolo-medio);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 8px 0 0;
+  }
+
+  .nome {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    color: var(--nero);
+  }
+
+  .apri {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: min(100%, 420px);
+    min-height: 52px;
+    margin-top: 20px;
+    border-radius: var(--pillola);
+    background: var(--salvia-scura);
+    color: var(--bianco);
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .apri:hover {
+    background: var(--salvia-scura-sopra);
+  }
+
+  /* --- Computer: in riga, il pulsante a destra --- */
+  @media (min-width: 960px) {
+    .dentro {
+      padding: 40px var(--margine);
+    }
+
+    .riga {
+      flex-direction: row;
+      gap: 28px;
+      padding: 30px 8px;
+      text-align: left;
+    }
+
+    .simbolo {
+      width: 76px;
+      height: 76px;
+    }
+
+    .simbolo :global(svg) {
+      width: 32px;
+      height: 32px;
+    }
+
+    .testi {
+      flex: 1 1 auto;
+    }
+
+    h2 {
+      margin: 0;
+      line-height: 1.1;
+      text-wrap: wrap;
+    }
+
+    p {
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .nome {
+      display: inline;
+      font-size: inherit;
+      line-height: inherit;
+    }
+
+    .apri {
+      display: inline-flex;
+      flex: none;
+      width: auto;
+      min-height: 54px;
+      margin-top: 0;
+      padding: 0 24px 0 22px;
+      white-space: nowrap;
+    }
+  }
+</style>

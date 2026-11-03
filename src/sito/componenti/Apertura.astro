@@ -1,0 +1,541 @@
+---
+// L'apertura "La foto grande" (tavola FotoGrande2.dc.html): il claim e la frase
+// "cosa e dove", poi le foto dei dodici prodotti di `vetrina`, che cambiano da
+// sole ogni 5 secondi in dissolvenza (protocollo "Galleria" dello script comune,
+// con `data-galleria-auto`).
+// - Computer (da 1024 px): tre colonne alla larghezza del contenuto. Al centro la
+//   cornice con le cinque foto `grande` (le altre sette hanno
+//   `data-galleria-salta`, quindi lo script le salta); sotto la cornice il nome
+//   del prodotto e le cinque tacche. Ai lati le miniature delle altre sette
+//   (3-6 a sinistra, che salgono; 8-10 a destra, che scendono), decorative.
+// - Telefono e tablet: solo la cornice, che sfoglia tutte e dodici le foto; sopra
+//   la foto il nome in una pillola. Niente tacche né miniature.
+// - Le foto sono una scena (scelta di eusebjo del 2 novembre 2026): girano sempre
+//   da sole, senza pausa visibile, contatore o gesti. Le tacche del computer
+//   segnano solo a che punto è il giro e non si cliccano (`data-galleria-punto`
+//   su uno `span`). Per WCAG 2.2.2 restano due modi di fermare il movimento che
+//   non si vedono: da tastiera il primo elemento dell'apertura è un pulsante che
+//   compare solo con il focus, e con "riduci movimento" lo script parte da fermo e
+//   qui nulla si muove.
+// - Senza JavaScript si vede la prima foto, le miniature stanno ferme e non ci
+//   sono pausa né tacche.
+// Gli stati `data-galleria-avviata` e `-ferma` li scrive lo script: nell'HTML non
+// ci sono. L'annuncio (`data-galleria-annuncio`) nasce con
+// `aria-live="off"` e lo script lo cambia.
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import { vetrina } from './dati';
+
+/** Le foto della cornice del computer, con il loro indice in `vetrina` (per le tacche). */
+const grandi = vetrina.flatMap((prodotto, indice) => (prodotto.grande ? [{ prodotto, indice }] : []));
+/** Le miniature: a sinistra le foto 3-6, a destra le 8-10 (le non `grande`, nell'ordine). */
+const piccole = vetrina.filter((prodotto) => !prodotto.grande);
+const miniatureSinistra = piccole.slice(0, 4);
+const miniatureDestra = piccole.slice(4);
+if (grandi.length !== 5 || miniatureDestra.length !== 3) {
+  throw new Error('La vetrina di Salvia social prevede 5 foto grandi e 7 miniature (4 + 3).');
+}
+
+/** Dove le foto non `grande` escono dalla cornice: sul computer stanno tra le miniature. */
+const SALTA_SUL_COMPUTER = '(width > 1023px)';
+---
+
+<section
+  id="apertura"
+  class="apertura"
+  aria-labelledby="apertura-titolo"
+  data-galleria
+  data-galleria-auto="5000"
+>
+  <h1 id="apertura-titolo">Rendiamo la tua casa ancora più casa.</h1>
+  <p class="frase">
+    <span class="frase-lunga">
+      Biancheria, profumi e dettagli che scaldano l’ambiente, scelti uno per uno per il negozio di
+      Via Ricasoli, nell’isola pedonale di Livorno.
+    </span>
+    <span class="frase-corta">
+      Biancheria, profumi e dettagli scelti uno per uno, nel negozio di Via Ricasoli a Livorno.
+    </span>
+  </p>
+
+  <div class="palco">
+    <div class="colonna" aria-hidden="true">
+      <div class="binario binario-sale">
+        {
+          [...miniatureSinistra, ...miniatureSinistra].map((prodotto) => (
+            <div class="miniatura">
+              <Foto scatto={prodotto.scatto} alt="" larghezze={[200, 300, 400]} sizes="204px" />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="centro">
+      <div class="cornice">
+        <button type="button" class="pausa" data-galleria-pausa>
+          <span class="se-gira"><Icona nome="pausa" misura={18} />Metti in pausa le foto</span>
+          <span class="se-ferma"><Icona nome="riproduci" misura={18} />Riprendi le foto</span>
+        </button>
+        <ul class="pila" role="list">
+          {
+            vetrina.map((prodotto, i) => (
+              <li
+                class="foto"
+                data-galleria-foto
+                data-galleria-salta={prodotto.grande ? undefined : SALTA_SUL_COMPUTER}
+                hidden={i > 0}
+                style={`--pos-computer: ${prodotto.scatto.posizione}; --pos-telefono: ${prodotto.posizioneTelefono}`}
+              >
+                <Foto
+                  scatto={{ ...prodotto.scatto, posizione: 'var(--posizione)' }}
+                  larghezze={[400, 600, 800, 1000]}
+                  sizes="(width > 1023px) min(61vw, 872px), 100vw"
+                  principale={i === 0}
+                />
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="sotto">
+        <p class="nome" data-galleria-annuncio aria-live="off">
+          {
+            vetrina.map((prodotto, i) => (
+              <span data-galleria-didascalia hidden={i > 0}>
+                {prodotto.nome}
+              </span>
+            ))
+          }
+        </p>
+        <div class="tacche" aria-hidden="true">
+          {
+            grandi.map(({ indice }, k) => (
+              <span
+                class="tacca"
+                data-galleria-punto={String(indice)}
+                aria-current={k === 0 ? 'true' : undefined}
+              >
+                <span class="linea">
+                  <span class="pieno" />
+                </span>
+              </span>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="colonna" aria-hidden="true">
+      <div class="binario binario-scende">
+        {
+          [...miniatureDestra, ...miniatureDestra].map((prodotto) => (
+            <div class="miniatura">
+              <Foto scatto={prodotto.scatto} alt="" larghezze={[200, 300, 400]} sizes="204px" />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* --- Telefono (fino a 767 px) --- */
+  .apertura {
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: 14px 16px 0;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--titoli);
+    font-size: var(--h1);
+    font-weight: 400;
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .frase {
+    margin: 8px 0 0;
+    font-size: var(--testo-sezione);
+    line-height: 1.45;
+    color: var(--testo-morbido);
+    text-wrap: pretty;
+  }
+
+  /* Una frase sola per misura: la corta sul telefono, la lunga da 768 px. */
+  .frase-lunga {
+    display: none;
+  }
+
+  .palco {
+    margin-top: 16px;
+  }
+
+  /* Le miniature si vedono solo sul computer. */
+  .colonna {
+    display: none;
+  }
+
+  .centro {
+    position: relative;
+    min-width: 0;
+  }
+
+  /* --- La cornice: le foto una sopra l'altra, in dissolvenza ---
+     Con il telefono ruotato la foto non supera l'altezza dello schermo. */
+  .cornice {
+    position: relative;
+    /* Le foto e la pausa si ordinano qui dentro (z-index), non con il resto della pagina. */
+    isolation: isolate;
+    aspect-ratio: 358 / 440;
+    max-height: max(320px, 80dvh);
+    border-radius: var(--raggio-telefono);
+    overflow: hidden;
+    background: var(--sabbia);
+  }
+
+  .pila {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* La posizione del taglio: quella del telefono, sul computer quella del
+     computer. `Foto` la scrive nello stile della foto come `var(--posizione)`. */
+  .foto {
+    --posizione: var(--pos-telefono);
+    position: absolute;
+    inset: 0;
+    display: block;
+    /* Il `[hidden]` dello script comune toglie la foto con `display: none`:
+       allow-discrete la tiene visibile mentre sfuma. */
+    transition:
+      opacity 1100ms ease,
+      display 1100ms allow-discrete;
+  }
+
+  /* La dissolvenza: la foto che arriva è subito piena, sotto; quella che se ne va
+     le sta sopra e sfuma. Così la prima foto non entra in dissolvenza al
+     caricamento (nessun `@starting-style`, che dipenderebbe da quando lo script
+     parte) e a metà cambio non traspare il fondo. Dove `display` non si anima,
+     il cambio resta netto. */
+  .foto[hidden] {
+    z-index: 2;
+    opacity: 0;
+  }
+
+  .foto:not([hidden]) {
+    z-index: 1;
+  }
+
+  .foto :global(img) {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* --- La pausa da tastiera: ritagliata (nell'ordine di Tab e per i lettori di
+     schermo, ma invisibile e non toccabile) finché non riceve il focus; allora
+     una pillola bianca al centro della cornice. Come il controllo di rotazione
+     del carosello W3C APG non ha `aria-pressed`: cambia il testo, secondo
+     `data-galleria-ferma` sulla galleria. --- */
+  .pausa {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 22px 0 18px;
+    border: 0;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow: var(--ombra-bottone);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    clip-path: inset(50%);
+    pointer-events: none;
+  }
+
+  .pausa:focus-visible {
+    clip-path: none;
+    pointer-events: auto;
+  }
+
+  .pausa span {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Un testo solo: l'altro con `display: none`, così non si legge nemmeno. */
+  .apertura[data-galleria-ferma] .se-gira,
+  .apertura:not([data-galleria-ferma]) .se-ferma {
+    display: none;
+  }
+
+  /* --- Sotto i 1024 px: il nome sta sulla foto, in alto --- */
+  .sotto {
+    position: absolute;
+    z-index: 2;
+    top: 14px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .nome {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    margin: 0;
+    padding: 6px 13px;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    color: var(--nero);
+    box-shadow: var(--ombra-pillola);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  /* Le tacche, solo sul computer: una per foto della cornice, segnano a che
+     punto è il giro. Non si cliccano. */
+  .tacche {
+    display: none;
+  }
+
+  .tacca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+  }
+
+  .linea {
+    position: relative;
+    display: block;
+    width: 30px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--tacca);
+  }
+
+  /* La barretta interna: vuota per le altre foto (lo script toglie loro
+     `--avanzamento`). */
+  .pieno {
+    position: absolute;
+    inset: 0;
+    background: var(--nero);
+    transform-origin: 0 50%;
+    transform: scaleX(var(--avanzamento, 0));
+  }
+
+  /* Ferma, senza JavaScript o con "riduci movimento": la tacca della foto attuale
+     è piena. Mentre il giro corre si riempie con il tempo della foto, che lo
+     script scrive in `--avanzamento` (da 0 a 1). */
+  .tacca[aria-current='true'] .pieno {
+    transform: none;
+  }
+
+  .apertura[data-galleria-avviata]:not([data-galleria-ferma]) .tacca[aria-current='true'] .pieno {
+    transform: scaleX(var(--avanzamento, 0));
+  }
+
+  /* --- Le miniature (solo sul computer): due binari con le foto e la loro
+     copia, che scorrono di un giro (metà binario più metà dello spazio tra le
+     foto) in 80 secondi. Ferme finché lo script non parte, e quando la galleria
+     è ferma. --- */
+  .binario {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Il nome sempre nella scorciatoia: senza, la minificazione la riduce a `none`. */
+  .binario-sale {
+    animation: apertura-sale 80s linear infinite paused;
+  }
+
+  .binario-scende {
+    animation: apertura-scende 80s linear infinite paused;
+  }
+
+  .apertura[data-galleria-avviata]:not([data-galleria-ferma]) .binario {
+    animation-play-state: running;
+  }
+
+  @keyframes apertura-sale {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-50% - 6px));
+    }
+  }
+
+  @keyframes apertura-scende {
+    from {
+      transform: translateY(calc(-50% - 6px));
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .miniatura {
+    flex: none;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    border-radius: var(--raggio-miniatura);
+    background: var(--sabbia);
+  }
+
+  .miniatura :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* --- Tablet (da 768 a 1023 px): la cornice orizzontale, larga quanto il
+     contenuto. Non c'è sulla tavola: è una scelta di sviluppo. --- */
+  @media (width > 767px) {
+    .apertura {
+      padding: 20px 40px 0;
+    }
+
+    .frase {
+      max-width: 40em;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .frase-lunga {
+      display: inline;
+    }
+
+    .frase-corta {
+      display: none;
+    }
+
+    .palco {
+      margin-top: 20px;
+    }
+
+    .cornice {
+      aspect-ratio: 4 / 3;
+      border-radius: var(--raggio);
+    }
+  }
+
+  /* --- Computer (da 1024 px): miniature, cornice e miniature, come le colonne
+     degli scaffali (24 px tra l'una e l'altra). --- */
+  @media (width > 1023px) {
+    .apertura {
+      padding: 28px var(--margine) 0;
+    }
+
+    .palco {
+      display: grid;
+      grid-template-columns: minmax(0, 204fr) minmax(0, 872fr) minmax(0, 204fr);
+      align-items: start;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    /* Alta quanto la cornice: le colonne stanno a 204 su 872 della sua
+       larghezza, quindi 204 x 580 contro 872 x 580. */
+    .colonna {
+      display: block;
+      aspect-ratio: 204 / 580;
+      overflow: hidden;
+      border-radius: var(--raggio-medio);
+    }
+
+    .cornice {
+      aspect-ratio: 872 / 580;
+      max-height: none;
+      border-radius: var(--raggio);
+      box-shadow: var(--ombra-cornice);
+    }
+
+    .foto {
+      --posizione: var(--pos-computer);
+    }
+
+    /* Il nome a sinistra e le tacche a destra, sotto la cornice e alla sua larghezza. */
+    .sotto {
+      position: static;
+      align-items: center;
+      gap: 24px;
+      min-height: 44px;
+      margin-top: 14px;
+    }
+
+    .nome {
+      min-height: 0;
+      padding: 0;
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+      font-family: var(--corsivo);
+      font-size: 19px;
+      font-style: italic;
+      font-weight: 400;
+      line-height: 1.3;
+    }
+
+    .tacche {
+      display: flex;
+      flex: none;
+    }
+  }
+
+  /* Riduci movimento: nulla si muove. Le foto cambiano di colpo (anche se chi
+     guarda fa ripartire il giro), le miniature stanno ferme, la tacca attuale è
+     piena e non si riempie. */
+  @media (prefers-reduced-motion: reduce) {
+    .foto {
+      transition: none;
+    }
+
+    .apertura .binario {
+      animation: none;
+    }
+
+    .apertura[data-galleria-avviata]:not([data-galleria-ferma]) .tacca[aria-current='true'] .pieno {
+      transform: none;
+    }
+  }
+
+  /* Senza JavaScript la pausa non farebbe nulla e le tacche segnerebbero
+     sempre la prima foto. */
+  @media (scripting: none) {
+    .pausa,
+    .tacche {
+      display: none;
+    }
+  }
+</style>

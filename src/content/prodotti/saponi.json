@@ -1,0 +1,15 @@
+{
+  "nome": "Saponi e profumi",
+  "dettaglio": "Saponette e diffusori per la casa",
+  "categorie": [
+    "profumi",
+    "bagno"
+  ],
+  "novita": false,
+  "data": "2026-10-21",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/bagno-prodotti.jpg",
+    "alt": "Mobile di legno con saponi e profumi per la casa, alla luce del giorno",
+    "inquadratura": "centro-basso"
+  }
+}

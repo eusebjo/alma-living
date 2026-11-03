@@ -1,0 +1,465 @@
+---
+// Il diario del negozio (sulla pagina "Post e foto", "Dal negozio": il feed di
+// tutti i post, senza la parola diario): a sinistra l'introduzione con il
+// biglietto; a destra il riquadro "Post dal negozio" (griglia 3 x 3 di post che
+// si aprono, "Mostra altri post"). Sul telefono le due parti si impilano.
+// I post sono quelli della collection `post`, dal più recente: li passa la pagina.
+// Senza post (la redazione può cancellarli tutti) restano l'introduzione e il
+// biglietto: spariscono la riga "L’ultimo post è …" e tutto il riquadro.
+import { Image } from 'astro:assets';
+import type { DatiNegozio } from '../comune/negozio';
+import logo from '../comune/logo/alma-nero.png';
+import DialogPost from './DialogPost.astro';
+import Foto from './Foto.astro';
+import Icona from './Icona.astro';
+import { delData, POST_VISIBILI, type Post } from './dati';
+
+interface Props {
+  post: Post[];
+  negozio: DatiNegozio;
+}
+
+const { post, negozio } = Astro.props;
+
+/** Il post più recente, che dà la data a "L’ultimo post è …" e "Aggiornato il …". */
+const ultimo = post[0];
+---
+
+<section id="diario" class="diario" aria-label="Dal negozio: post e foto">
+  <div class="dentro">
+    <div class="intro">
+      <p class="occhiello">Post e foto</p>
+      <h2>Dal negozio</h2>
+      <p class="presentazione">Il feed del negozio: qui trovi tutti i nostri post.</p>
+      <figure class="biglietto">
+        <div class="biglietto-autore">
+          <span class="avatar-piccolo" aria-hidden="true">
+            <Image src={logo} alt="" widths={[48, 72]} sizes="24px" />
+          </span>
+          <span><span class="forte">{negozio.nome}</span> · {negozio.via}</span>
+        </div>
+        <blockquote>
+          “Se vedi qualcosa che ti piace, scrivici: ti mandiamo altre foto e te lo teniamo da
+          parte.”
+        </blockquote>
+      </figure>
+      {
+        ultimo && (
+          <p class="frequenza">
+            <Icona nome="orologio" />L’ultimo post è {delData(ultimo.data)}
+          </p>
+        )
+      }
+    </div>
+
+    {
+      ultimo && (
+        <div class="riquadro">
+          <div class="testa">
+            <h3>Post dal negozio</h3>
+            <p class="aggiornato">Aggiornato il {ultimo.data}</p>
+          </div>
+
+          <div class="griglia">
+            {
+              post.map((voce, i) => {
+                const prima = voce.foto[0]!;
+                const piegato = i >= POST_VISIBILI;
+                const quante = voce.foto.length;
+                return (
+                  <button
+                    type="button"
+                    class="cella"
+                    data-post-apri={voce.id}
+                    data-altro={piegato ? 'post' : undefined}
+                    hidden={piegato}
+                    aria-label={`Apri il post ${delData(voce.data)}${quante > 1 ? `, ${quante} foto` : ''}`}
+                  >
+                    <Foto
+                      scatto={prima}
+                      larghezze={[200, 300, 400, 600]}
+                      sizes="(min-width: 960px) 22vw, 33vw"
+                    />
+                    {quante > 1 && <Icona nome="multi" class="multi" />}
+                    <span class="velo">
+                      <span class="velo-testo">
+                        <span class="velo-data">{voce.data}</span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })
+            }
+          </div>
+
+          {
+            // Solo se ci sono post piegati: lo script non nasconde il pulsante quando
+            // non ha niente da mostrare.
+            post.length > POST_VISIBILI && (
+              <div class="altri">
+                <button type="button" class="contorno mostra" data-mostra-altri="post">
+                  <span class="contorno-dentro">Mostra altri post<Icona nome="giu" misura={18} /></span>
+                </button>
+              </div>
+            )
+          }
+        </div>
+      )
+    }
+  </div>
+
+  {post.map((voce) => <DialogPost post={voce} negozio={negozio} />)}
+</section>
+
+<style>
+  .diario {
+    background: var(--salvia-chiara);
+  }
+
+  .dentro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+    max-width: var(--larghezza);
+    margin: 0 auto;
+    padding: var(--fascia) 12px;
+  }
+
+  /* --- Introduzione --- */
+  .intro {
+    min-width: 0;
+    padding: 0 8px;
+  }
+
+  .occhiello {
+    margin: 0;
+    font-size: var(--occhiello);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--verde-notte);
+  }
+
+  h2 {
+    margin: 12px 0 0;
+    font-family: var(--titoli);
+    font-size: var(--h2);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+
+  .presentazione {
+    margin: 16px 0 0;
+    font-size: var(--testo-sezione);
+    color: var(--verde-notte);
+    text-wrap: pretty;
+  }
+
+  .biglietto {
+    margin: 24px 0 0;
+    padding: 18px 18px 14px;
+    border-radius: var(--raggio);
+    background: var(--bianco);
+    box-shadow: var(--ombra-biglietto);
+  }
+
+  .biglietto-autore {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--grigio-testo);
+  }
+
+  .forte {
+    font-weight: 600;
+    color: var(--nero);
+  }
+
+  .avatar-piccolo {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--latte);
+    box-shadow: 0 0 0 1px var(--bordo-chiaro);
+  }
+
+  .avatar-piccolo :global(img) {
+    display: block;
+    width: 24px;
+    height: auto;
+  }
+
+  blockquote {
+    margin: 16px 0 0;
+    font-family: var(--corsivo);
+    font-size: 17px;
+    font-style: italic;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  .frequenza {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 22px 0 0;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--verde-notte);
+  }
+
+  .frequenza :global(svg) {
+    flex: none;
+  }
+
+  /* --- Riquadro dei post --- */
+  .riquadro {
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--raggio-riquadro-telefono);
+    background: var(--bianco);
+    box-shadow: var(--ombra-riquadro);
+  }
+
+  .testa {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 22px 18px 16px;
+  }
+
+  .testa h3 {
+    margin: 0;
+    font-family: var(--titoli);
+    font-size: var(--h3);
+    font-weight: 400;
+    line-height: 1.15;
+  }
+
+  .aggiornato {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--grigio-testo);
+  }
+
+  /* --- Griglia dei post --- */
+  .griglia {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .cella {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    overflow: hidden;
+    background: var(--sabbia);
+    color: var(--bianco);
+    text-align: left;
+  }
+
+  .cella:focus-visible {
+    z-index: 1;
+    outline-offset: -4px;
+    outline-color: var(--bianco);
+    box-shadow: inset 0 0 0 6px var(--salvia-scura);
+  }
+
+  .cella :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .cella :global(.multi) {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 16px;
+    height: 16px;
+    filter: drop-shadow(var(--ombra-icona));
+  }
+
+  /* Al passaggio (o con il focus) la data del post. Niente etichette come
+     "Arrivi": nel feed restano anche i post vecchi, e invecchierebbero male. */
+  .velo {
+    --velo-margine-x: 12px;
+    --velo-margine-y: 10px;
+    position: absolute;
+    inset: 0;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: var(--velo-margine-y) var(--velo-margine-x);
+    background: linear-gradient(to top, var(--velo-post), var(--velo-post-alto));
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+
+  .velo-testo {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  /* Sotto il testo, alto quanto serve (sul telefono la data può andare a
+     capo), un secondo velo pieno che sfuma verso l'alto: la sfumatura
+     del riquadro da sola, a metà altezza, non basta per 4,5:1 su una foto chiara. */
+  .velo-testo::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -24px calc(-1 * var(--velo-margine-x)) calc(-1 * var(--velo-margine-y));
+    background: linear-gradient(to bottom, transparent, var(--velo-post-testo) 24px);
+  }
+
+  .velo-data {
+    font-family: var(--titoli);
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .cella:focus-visible .velo {
+    opacity: 1;
+  }
+
+  @media (hover: hover) and (min-width: 960px) {
+    .cella:hover .velo {
+      opacity: 1;
+    }
+
+    .cella:hover :global(img) {
+      transform: scale(1.04);
+    }
+  }
+
+  /* --- Mostra altri post --- */
+  .altri {
+    display: flex;
+    justify-content: center;
+    padding: 14px 16px 16px;
+    box-shadow: inset 0 1px 0 var(--linea);
+  }
+
+  /* Senza più post da mostrare, la fascia con il pulsante sparisce. */
+  .altri:has(> .mostra[hidden]) {
+    display: none;
+  }
+
+  .contorno {
+    min-height: 46px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: var(--pillola);
+    background: var(--bianco);
+    box-shadow: inset 0 0 0 1px var(--nero);
+    color: var(--nero);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 200ms ease;
+  }
+
+  .contorno:hover {
+    background: var(--latte-sopra);
+  }
+
+  .contorno-dentro {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+  }
+
+  /* --- Tablet e computer: il riquadro come sulla tavola del computer --- */
+  @media (min-width: 600px) {
+    .dentro {
+      padding: var(--fascia) var(--margine);
+    }
+
+    .intro {
+      padding: 0;
+    }
+
+    .riquadro {
+      border-radius: var(--raggio-grande);
+    }
+
+    .testa {
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 30px 32px 24px;
+    }
+
+  }
+
+  /* --- Computer: introduzione a sinistra, ferma mentre si scorre --- */
+  @media (min-width: 960px) {
+    .dentro {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+      gap: clamp(40px, 4.4vw, 64px);
+    }
+
+    .intro {
+      position: sticky;
+      top: 120px;
+      padding: 8px 0 0;
+    }
+
+    .biglietto {
+      margin-top: 32px;
+      padding: 24px 26px 18px;
+    }
+
+    blockquote {
+      font-size: 20px;
+    }
+
+    .griglia {
+      gap: 4px;
+    }
+
+    .velo {
+      --velo-margine-x: 20px;
+      --velo-margine-y: 18px;
+    }
+
+    .velo-data {
+      font-size: 24px;
+    }
+
+    .cella :global(.multi) {
+      top: 12px;
+      right: 12px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .altri {
+      padding: 18px 24px 20px;
+    }
+  }
+</style>

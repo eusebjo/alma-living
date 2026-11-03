@@ -3,24 +3,47 @@ ruoli:
   sviluppo: [eusebjo]
   redazione: [martina-dimalta]
 proposte:
-  # Etichette di Sveltia per "In revisione" e "Pronta" (flusso editoriale, backend GitHub,
-  # prefisso predefinito `sveltia-cms/`). La bozza ha `sveltia-cms/draft` ed è una pull
-  # request draft: non conta come inviata. Verificato sulla documentazione di Sveltia 0.248.0
-  # (https://sveltiacms.app/en/docs/workflows/editorial#statuses).
-  stati_inviati: [sveltia-cms/pending_review, sveltia-cms/pending_publish]
+  # Etichette di Sveltia per "In revisione", "Pronta" e "In attesa di eliminazione"
+  # (flusso editoriale, backend GitHub, prefisso predefinito `sveltia-cms/`). Togliere
+  # un prodotto o un post dal pannello apre subito una proposta con `pending_deletion`,
+  # senza passare da "In revisione": è già inviata, e l'approvazione la completa.
+  # La bozza ha `sveltia-cms/draft` ed è una pull request draft: non conta come inviata.
+  # Verificato sulla documentazione di Sveltia 0.248.0
+  # (https://sveltiacms.app/en/docs/workflows/editorial#statuses) e sul pacchetto
+  # (`WORKFLOW_STATUSES`).
+  stati_inviati:
+    - sveltia-cms/pending_review
+    - sveltia-cms/pending_publish
+    - sveltia-cms/pending_deletion
 contenuti:
   negozio:
     file: src/content/negozio/negozio.json
     formato: json
     azioni: { crea: 0, modifica: 1, elimina: 0 }
     campi: { nome: 0, indirizzo: 0, descrizione: 1, telefono: 1, email: 1, orari: 1 }
-  pagine:
-    file: src/content/pagine/*.md
-    formato: markdown
+  # Prodotti degli scaffali e post: la redazione li crea, li modifica e li toglie,
+  # sempre con l'approvazione (livello 1).
+  prodotti:
+    file: src/content/prodotti/*.json
+    formato: json
+    azioni: { crea: 1, modifica: 1, elimina: 1 }
+    campi: { nome: 1, dettaglio: 1, categorie: 1, novita: 1, data: 1, foto: 1, secondaFoto: 1, colori: 1 }
+  post:
+    file: src/content/post/*.json
+    formato: json
+    azioni: { crea: 1, modifica: 1, elimina: 1 }
+    campi: { data: 1, testo: 1, foto: 1, soggetto: 1 }
+  # Le otto storie sono fisse (src/sito/contenuti.ts, ORDINE_STORIE): se ne
+  # cambia il contenuto, non il nome, e non se ne creano né se ne tolgono.
+  storie:
+    file: src/content/storie/*.json
+    formato: json
     azioni: { crea: 0, modifica: 1, elimina: 0 }
-    campi: { titolo: 1, descrizione: 1, immagine: 1, immagine_alt: 1, corpo: 1 }
+    campi: { nome: 0, data: 1, etichetta: 1, invito: 1, foto: 1 }
 media:
-  percorsi: [src/content/pagine/immagini/**]
+  # Le foto stanno su Cloudflare R2 (public/admin/config.yml): nessun file si
+  # carica nel repository, e un file che non è di una collection è fuori perimetro.
+  percorsi: []
   estensioni: [webp, jpg, jpeg, png, avif]  # niente svg né html: possono contenere codice
   dimensione_massima_kb: 1500
-  azioni: { carica: 1, elimina: 0 }
+  azioni: { carica: 0, elimina: 0 }

@@ -26,3 +26,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# foto originali (di Martina e di prova, in foto/prova): mai su GitHub, il
+# repository è pubblico. Alla build arrivano dal bucket R2.
+/foto/

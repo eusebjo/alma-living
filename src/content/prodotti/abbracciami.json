@@ -1,0 +1,40 @@
+{
+  "nome": "Plaid Abbracciami",
+  "dettaglio": "Pile ricamato con frange, verde o rosso",
+  "categorie": [
+    "natale",
+    "letto"
+  ],
+  "novita": true,
+  "data": "2026-10-27",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/abbracciami-verde.jpg",
+    "alt": "Plaid verde con la scritta Abbracciami ricamata e le frange",
+    "inquadratura": "centro-basso"
+  },
+  "secondaFoto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/abbracciami-rosso.jpg",
+    "alt": "Plaid rosso e marrone con la scritta Abbracciami, appesi",
+    "inquadratura": "centro-alto"
+  },
+  "colori": [
+    {
+      "nome": "verde",
+      "tinta": "#5e654f",
+      "foto": {
+        "src": "https://foto.almalivingviaricasoli.it/prova/abbracciami-verde.jpg",
+        "alt": "Plaid verde con la scritta Abbracciami ricamata e le frange",
+        "inquadratura": "centro-basso"
+      }
+    },
+    {
+      "nome": "rosso",
+      "tinta": "#b8263a",
+      "foto": {
+        "src": "https://foto.almalivingviaricasoli.it/prova/abbracciami-rosso.jpg",
+        "alt": "Plaid rosso e marrone con la scritta Abbracciami, appesi",
+        "inquadratura": "centro-alto"
+      }
+    }
+  ]
+}

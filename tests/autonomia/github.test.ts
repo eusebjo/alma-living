@@ -13,7 +13,14 @@ import {
   upsertReport,
 } from '../../scripts/autonomia/github';
 import { MARCATORE } from '../../scripts/autonomia/report';
-import { ETICHETTA_INVIATA, HOME, NEGOZIO, negozioJson, rules } from './fixtures';
+import {
+  ETICHETTA_INVIATA,
+  IMMAGINI,
+  NEGOZIO,
+  POST,
+  negozioJson,
+  regoleConNoteEImmagini,
+} from './fixtures';
 import {
   BASE_SHA,
   HEAD_SHA,
@@ -26,7 +33,11 @@ import {
 } from './octokitFinto';
 
 const ref = { owner: 'eusebjo', repo: 'alma-living', pullNumber: 7 };
-const FOTO = 'src/content/pagine/immagini/foto.webp';
+// Le regole vere più una cartella di immagini nel repository (regole di prova):
+// servono a provare che di un file dei media si legge solo la dimensione. Ruoli
+// e stati di invio sono quelli veri.
+const rules = regoleConNoteEImmagini;
+const FOTO = `${IMMAGINI}/foto.webp`;
 const GERGO = /branch|merge|commit/i;
 
 /** Proposta della redazione (`lei`) già inviata per la revisione. */
@@ -79,10 +90,10 @@ describe('fetchPullRequestInput', () => {
   it('legge `before` dal ramo di base e `after` dalla testata', async () => {
     const { octokit, chiamate } = creaOctokitFinto(
       dellaRedazione({
-        files: [{ filename: HOME, status: 'modified' }],
+        files: [{ filename: POST, status: 'modified' }],
         contenuti: {
-          [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-          [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+          [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+          [chiave(HEAD_SHA, POST)]: { testo: 'dopo' },
         },
       }),
     );
@@ -94,8 +105,8 @@ describe('fetchPullRequestInput', () => {
       .map((c) => c.params);
     expect(letture).toEqual(
       expect.arrayContaining([
-        { owner: 'eusebjo', repo: 'alma-living', path: HOME, ref: BASE_SHA, mediaType: { format: 'object' } },
-        { owner: 'eusebjo', repo: 'alma-living', path: HOME, ref: HEAD_SHA, mediaType: { format: 'object' } },
+        { owner: 'eusebjo', repo: 'alma-living', path: POST, ref: BASE_SHA, mediaType: { format: 'object' } },
+        { owner: 'eusebjo', repo: 'alma-living', path: POST, ref: HEAD_SHA, mediaType: { format: 'object' } },
       ]),
     );
     expect(letture).toHaveLength(2);
@@ -105,12 +116,12 @@ describe('fetchPullRequestInput', () => {
     const { octokit, chiamate } = creaOctokitFinto(
       dellaRedazione({
         files: [
-          { filename: 'src/content/pagine/nuova.md', status: 'added' },
-          { filename: HOME, status: 'removed' },
+          { filename: 'src/content/post/nuovo.json', status: 'added' },
+          { filename: POST, status: 'removed' },
         ],
         contenuti: {
-          [chiave(HEAD_SHA, 'src/content/pagine/nuova.md')]: { testo: 'nuova' },
-          [chiave(BASE_SHA, HOME)]: { testo: 'vecchia' },
+          [chiave(HEAD_SHA, 'src/content/post/nuovo.json')]: { testo: 'nuova' },
+          [chiave(BASE_SHA, POST)]: { testo: 'vecchia' },
         },
       }),
     );
@@ -124,17 +135,17 @@ describe('fetchPullRequestInput', () => {
       .filter((c) => c.metodo === 'repos.getContent')
       .map((c) => `${String(c.params.ref).slice(0, 1)}:${String(c.params.path)}`);
     expect(refLetti.sort()).toEqual(
-      [`a:src/content/pagine/nuova.md`, `b:${HOME}`].sort(),
+      [`a:src/content/post/nuovo.json`, `b:${POST}`].sort(),
     );
   });
 
   it('previousPath viene da previous_filename e before dal vecchio percorso', async () => {
-    const nuovo = 'src/content/pagine/chi-siamo.md';
+    const nuovo = 'src/content/post/2026-11-03.json';
     const { octokit } = creaOctokitFinto(
       dellaRedazione({
-        files: [{ filename: nuovo, status: 'renamed', previous_filename: HOME }],
+        files: [{ filename: nuovo, status: 'renamed', previous_filename: POST }],
         contenuti: {
-          [chiave(BASE_SHA, HOME)]: { testo: 'testo' },
+          [chiave(BASE_SHA, POST)]: { testo: 'testo' },
           [chiave(HEAD_SHA, nuovo)]: { testo: 'testo' },
         },
       }),
@@ -146,7 +157,7 @@ describe('fetchPullRequestInput', () => {
       {
         path: nuovo,
         status: 'renamed',
-        previousPath: HOME,
+        previousPath: POST,
         before: 'testo',
         after: 'testo',
         sizeBytes: 5,
@@ -233,12 +244,12 @@ describe('fetchPullRequestInput', () => {
       const { octokit, chiamate } = creaOctokitFinto(
         dellaRedazione({
           files: [
-            { filename: HOME, status: 'modified' },
+            { filename: POST, status: 'modified' },
             { filename: FOTO, status: 'added' },
           ],
           contenuti: {
-            [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-            [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+            [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+            [chiave(HEAD_SHA, POST)]: { testo: 'dopo' },
             [chiave(HEAD_SHA, FOTO)]: { size: 10 },
           },
         }),
@@ -285,12 +296,12 @@ describe('fetchPullRequestInput', () => {
         const { octokit } = creaOctokitFinto(
           dellaRedazione({
             files: [
-              { filename: HOME, status: 'modified' },
+              { filename: POST, status: 'modified' },
               { filename: FOTO, status: 'added' },
             ],
             contenuti: {
-              [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-              [chiave(HEAD_SHA, HOME)]: { tipo, testo: 'dopo' },
+              [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+              [chiave(HEAD_SHA, POST)]: { tipo, testo: 'dopo' },
               [chiave(HEAD_SHA, FOTO)]: { tipo, size: 20 },
             },
           }),
@@ -301,7 +312,7 @@ describe('fetchPullRequestInput', () => {
         expect(input.files[0]).toMatchObject({ before: 'prima', after: null });
         expect(input.files[0]?.sizeBytes).toBeUndefined();
         expect(input.files[1]?.sizeBytes).toBeUndefined();
-        expect(bloccati.map((b) => b.file)).toEqual([HOME, FOTO]);
+        expect(bloccati.map((b) => b.file)).toEqual([POST, FOTO]);
         for (const blocco of bloccati) {
           expect(blocco.azione).toBe('perimetro');
           expect(blocco.messaggio).toMatch(/collegamento|non è un file/i);
@@ -314,7 +325,7 @@ describe('fetchPullRequestInput', () => {
     // REPOSITORY, risponde con `type: "file"` e il contenuto della destinazione:
     // l'unica traccia è lo SHA del blob, diverso da quello di `listFiles`.
     it.each([
-      ['un file di contenuto', HOME, 'modified'],
+      ['un file di contenuto', POST, 'modified'],
       ['un file dei media', FOTO, 'added'],
     ] as const)(
       'un collegamento verso un file del repository (%s) è segnalato dallo SHA diverso',
@@ -349,22 +360,22 @@ describe('fetchPullRequestInput', () => {
     it('se pulls.listFiles non dà lo SHA del file, non si può escludere un collegamento', async () => {
       const { octokit } = creaOctokitFinto(
         dellaRedazione({
-          files: [{ filename: HOME, status: 'added', sha: null }],
-          contenuti: { [chiave(HEAD_SHA, HOME)]: { testo: 'x' } },
+          files: [{ filename: POST, status: 'added', sha: null }],
+          contenuti: { [chiave(HEAD_SHA, POST)]: { testo: 'x' } },
         }),
       );
 
       const { input, bloccati } = await fetchPullRequest(octokit, ref, rules);
 
-      expect(bloccati.map((b) => b.file)).toEqual([HOME]);
+      expect(bloccati.map((b) => b.file)).toEqual([POST]);
       expect(input.files[0]?.after).toBeNull();
     });
 
     it('gli SHA si confrontano senza distinguere maiuscole e minuscole', async () => {
       const { octokit } = creaOctokitFinto(
         dellaRedazione({
-          files: [{ filename: HOME, status: 'added', sha: shaDiFile(HOME).toUpperCase() }],
-          contenuti: { [chiave(HEAD_SHA, HOME)]: { testo: 'x' } },
+          files: [{ filename: POST, status: 'added', sha: shaDiFile(POST).toUpperCase() }],
+          contenuti: { [chiave(HEAD_SHA, POST)]: { testo: 'x' } },
         }),
       );
 
@@ -377,10 +388,10 @@ describe('fetchPullRequestInput', () => {
     it('un file normale non genera segnalazioni', async () => {
       const { octokit } = creaOctokitFinto(
         dellaRedazione({
-          files: [{ filename: HOME, status: 'modified' }],
+          files: [{ filename: POST, status: 'modified' }],
           contenuti: {
-            [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-            [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+            [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+            [chiave(HEAD_SHA, POST)]: { testo: 'dopo' },
           },
         }),
       );
@@ -457,8 +468,8 @@ describe('fetchPullRequestInput', () => {
     it('se un contenuto non esiste (404) lo segna come illeggibile e non fallisce', async () => {
       const { octokit } = creaOctokitFinto(
         dellaRedazione({
-          files: [{ filename: HOME, status: 'modified' }],
-          contenuti: { [chiave(BASE_SHA, HOME)]: { testo: 'prima' } },
+          files: [{ filename: POST, status: 'modified' }],
+          contenuti: { [chiave(BASE_SHA, POST)]: { testo: 'prima' } },
         }),
       );
 
@@ -470,10 +481,10 @@ describe('fetchPullRequestInput', () => {
     it('un errore diverso da 404 interrompe il controllo', async () => {
       const { octokit } = creaOctokitFinto(
         dellaRedazione({
-          files: [{ filename: HOME, status: 'modified' }],
+          files: [{ filename: POST, status: 'modified' }],
           contenuti: {
-            [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-            [chiave(HEAD_SHA, HOME)]: erroreHttp(403, 'rate limit'),
+            [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+            [chiave(HEAD_SHA, POST)]: erroreHttp(403, 'rate limit'),
           },
         }),
       );
@@ -486,10 +497,10 @@ describe('fetchPullRequestInput', () => {
     it('un file troppo grande per l’API (contenuto non incluso) vale come illeggibile', async () => {
       const { octokit } = creaOctokitFinto(
         dellaRedazione({
-          files: [{ filename: HOME, status: 'modified' }],
+          files: [{ filename: POST, status: 'modified' }],
           contenuti: {
-            [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-            [chiave(HEAD_SHA, HOME)]: { troppoGrande: true, size: 3_000_000 },
+            [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+            [chiave(HEAD_SHA, POST)]: { troppoGrande: true, size: 3_000_000 },
           },
         }),
       );
@@ -503,8 +514,8 @@ describe('fetchPullRequestInput', () => {
       const { octokit, chiamate } = creaOctokitFinto(
         dellaRedazione({
           autore: 'LEI',
-          files: [{ filename: HOME, status: 'added' }],
-          contenuti: { [chiave(HEAD_SHA, HOME)]: { testo: 'x' } },
+          files: [{ filename: POST, status: 'added' }],
+          contenuti: { [chiave(HEAD_SHA, POST)]: { testo: 'x' } },
         }),
       );
 
@@ -524,7 +535,7 @@ describe('fetchPullRequestInput', () => {
           dellaRedazione({
             ...scenario,
             files: [
-              { filename: HOME, status: 'modified' },
+              { filename: POST, status: 'modified' },
               { filename: FOTO, status: 'added' },
             ],
           }),
@@ -533,13 +544,13 @@ describe('fetchPullRequestInput', () => {
         const { files } = await fetchPullRequestInput(octokit, ref, rules);
 
         expect(quante(chiamate, 'repos.getContent')).toBe(0);
-        expect(files.map((f) => f.path)).toEqual([HOME, FOTO]);
+        expect(files.map((f) => f.path)).toEqual([POST, FOTO]);
       },
     );
 
     it('passa invariati gli stati che evaluate non conosce (copied, changed)', async () => {
       const { octokit } = creaOctokitFinto(
-        dellaRedazione({ files: [{ filename: HOME, status: 'copied' }] }),
+        dellaRedazione({ files: [{ filename: POST, status: 'copied' }] }),
       );
 
       const { files } = await fetchPullRequestInput(octokit, ref, rules);
@@ -572,26 +583,26 @@ describe('fetchPullRequestInput', () => {
       autore: 'eusebjo',
       etichette: [ETICHETTA_INVIATA],
       ramo,
-      files: [{ filename: HOME, status: 'modified' }],
+      files: [{ filename: POST, status: 'modified' }],
       contenuti: {
-        [chiave(BASE_SHA, HOME)]: { testo: 'prima' },
-        [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+        [chiave(BASE_SHA, POST)]: { testo: 'prima' },
+        [chiave(HEAD_SHA, POST)]: { testo: 'dopo' },
       },
     });
 
     it('legge before e after come per la redazione', async () => {
-      const { octokit, chiamate } = creaOctokitFinto(scenarioSviluppo('cms/pagine/home'));
+      const { octokit, chiamate } = creaOctokitFinto(scenarioSviluppo('cms/post/p1'));
 
       const caricata = await fetchPullRequest(octokit, ref, rules);
 
-      expect(caricata.ramo).toBe('cms/pagine/home');
+      expect(caricata.ramo).toBe('cms/post/p1');
       expect(caricata.input.files).toEqual([
-        { path: HOME, status: 'modified', before: 'prima', after: 'dopo', sizeBytes: 4 },
+        { path: POST, status: 'modified', before: 'prima', after: 'dopo', sizeBytes: 4 },
       ]);
       expect(quante(chiamate, 'repos.getContent')).toBe(2);
     });
 
-    it.each(['fase1/9-correzioni', 'main-fix', 'cmsx/pagine/home'])(
+    it.each(['fase1/9-correzioni', 'main-fix', 'cmsx/post/p1'])(
       'su un ramo di sviluppo (%s) non legge i contenuti',
       async (ramo) => {
         const { octokit, chiamate } = creaOctokitFinto(scenarioSviluppo(ramo));
@@ -606,7 +617,7 @@ describe('fetchPullRequestInput', () => {
     it('in bozza o senza etichetta di invio non legge i contenuti, come per la redazione', async () => {
       for (const extra of [{ bozza: true }, { etichette: [] }]) {
         const { octokit, chiamate } = creaOctokitFinto({
-          ...scenarioSviluppo('cms/pagine/home'),
+          ...scenarioSviluppo('cms/post/p1'),
           ...extra,
         });
 
@@ -618,7 +629,7 @@ describe('fetchPullRequestInput', () => {
 
     it('un fork resta respinto senza leggere nulla, anche con un ramo cms/', async () => {
       const { octokit, chiamate } = creaOctokitFinto({
-        ...scenarioSviluppo('cms/pagine/home'),
+        ...scenarioSviluppo('cms/post/p1'),
         repoTestata: 'altro/alma-living',
       });
 
@@ -639,11 +650,11 @@ describe('fetchPullRequestInput', () => {
     const scenarioMain = (extra: ScenarioFinto = {}): ScenarioFinto =>
       dellaRedazione({
         mergeBaseSha: MERGE_BASE,
-        files: [{ filename: HOME, status: 'modified' }],
+        files: [{ filename: POST, status: 'modified' }],
         contenuti: {
-          [chiave(MERGE_BASE, HOME)]: { testo: 'dal punto di partenza' },
-          [chiave(BASE_SHA, HOME)]: { testo: 'punta di main, cambiata nel frattempo' },
-          [chiave(HEAD_SHA, HOME)]: { testo: 'dopo' },
+          [chiave(MERGE_BASE, POST)]: { testo: 'dal punto di partenza' },
+          [chiave(BASE_SHA, POST)]: { testo: 'punta di main, cambiata nel frattempo' },
+          [chiave(HEAD_SHA, POST)]: { testo: 'dopo' },
         },
         ...extra,
       });
@@ -677,7 +688,7 @@ describe('fetchPullRequestInput', () => {
     });
 
     it('lo chiede una sola volta con più file, anche se si leggono in parallelo', async () => {
-      const piu = Array.from({ length: 5 }, (_, i) => `src/content/pagine/p${i}.md`);
+      const piu = Array.from({ length: 5 }, (_, i) => `src/content/post/p${i}.json`);
       const { octokit, chiamate } = creaOctokitFinto(
         scenarioMain({
           files: piu.map((filename) => ({ filename, status: 'modified' })),
@@ -697,12 +708,12 @@ describe('fetchPullRequestInput', () => {
     });
 
     it('un file rinominato legge before dal vecchio percorso, sempre dal punto di partenza', async () => {
-      const nuovo = 'src/content/pagine/chi-siamo.md';
+      const nuovo = 'src/content/post/2026-11-03.json';
       const { octokit } = creaOctokitFinto(
         scenarioMain({
-          files: [{ filename: nuovo, status: 'renamed', previous_filename: HOME }],
+          files: [{ filename: nuovo, status: 'renamed', previous_filename: POST }],
           contenuti: {
-            [chiave(MERGE_BASE, HOME)]: { testo: 'vecchio' },
+            [chiave(MERGE_BASE, POST)]: { testo: 'vecchio' },
             [chiave(HEAD_SHA, nuovo)]: { testo: 'nuovo' },
           },
         }),
@@ -733,8 +744,8 @@ describe('fetchPullRequestInput', () => {
     it('lo chiede anche per un file rimosso: serve sapere cosa si toglie', async () => {
       const { octokit, chiamate } = creaOctokitFinto(
         scenarioMain({
-          files: [{ filename: HOME, status: 'removed' }],
-          contenuti: { [chiave(MERGE_BASE, HOME)]: { testo: 'vecchia' } },
+          files: [{ filename: POST, status: 'removed' }],
+          contenuti: { [chiave(MERGE_BASE, POST)]: { testo: 'vecchia' } },
         }),
       );
 
@@ -748,11 +759,11 @@ describe('fetchPullRequestInput', () => {
       const { octokit, chiamate } = creaOctokitFinto(
         scenarioMain({
           files: [
-            { filename: 'src/content/pagine/nuova.md', status: 'added' },
+            { filename: 'src/content/post/nuovo.json', status: 'added' },
             { filename: FOTO, status: 'modified' },
           ],
           contenuti: {
-            [chiave(HEAD_SHA, 'src/content/pagine/nuova.md')]: { testo: 'x' },
+            [chiave(HEAD_SHA, 'src/content/post/nuovo.json')]: { testo: 'x' },
             [chiave(HEAD_SHA, FOTO)]: { testo: 'x', size: 10 },
           },
         }),
@@ -797,7 +808,7 @@ describe('fetchPullRequestInput', () => {
 
   describe('proposte che si respingono comunque: nessuna lettura dei file', () => {
     const file = [
-      { filename: HOME, status: 'modified' },
+      { filename: POST, status: 'modified' },
       { filename: FOTO, status: 'added' },
     ];
 
@@ -881,7 +892,7 @@ describe('fetchPullRequestInput', () => {
 describe('previewUrl', () => {
   it.each([
     ['fase1/2-anteprime', 'https://fase1-2-anteprime-alma-living.sebjomuho.workers.dev/'],
-    ['cms/pagine/home', 'https://cms-pagine-home-alma-living.sebjomuho.workers.dev/'],
+    ['cms/post/p1', 'https://cms-post-p1-alma-living.sebjomuho.workers.dev/'],
     ['Fase1/Titolo_Maiuscolo.v2', 'https://fase1-titolo-maiuscolo-v2-alma-living.sebjomuho.workers.dev/'],
     ['a///b__c..d', 'https://a-b-c-d-alma-living.sebjomuho.workers.dev/'],
     ['--bordi--', 'https://bordi-alma-living.sebjomuho.workers.dev/'],

@@ -1,0 +1,21 @@
+{
+  "nome": "Casette",
+  "data": "2026-10-24",
+  "invito": "whatsapp",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-rosso.jpg",
+      "alt": "Asciugamano rosso con una casetta di Natale ricamata",
+      "inquadratura": "centro",
+      "frase": "Asciugamani con la casetta ricamata: rosso per le feste.",
+      "soggetto": "l’asciugamano rosso con la casetta"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-verde.jpg",
+      "alt": "Asciugamano verde con una casetta ricamata",
+      "inquadratura": "centro",
+      "frase": "Verde per chi ama il bosco. E c’è anche il bianco, per tutto l’anno.",
+      "soggetto": "l’asciugamano verde con la casetta"
+    }
+  ]
+}

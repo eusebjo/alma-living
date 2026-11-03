@@ -1,0 +1,14 @@
+{
+  "nome": "Tovaglia con volant",
+  "dettaglio": "Effetto lino con profilo rosso",
+  "categorie": [
+    "tavola"
+  ],
+  "novita": false,
+  "data": "2026-10-23",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/tovaglia-volant.jpg",
+    "alt": "Tovaglia color lino con volant e profilo rosso",
+    "inquadratura": "centro"
+  }
+}

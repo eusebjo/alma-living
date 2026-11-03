@@ -21,4 +21,9 @@ describe('includiInSitemap', () => {
   it('il pannello è escluso anche se il sito sta in una sottocartella', () => {
     expect(includiInSitemap('https://x.dev/base/admin/')).toBe(false);
   });
+
+  it('non esclude più nulla di "prova": quelle pagine non esistono', () => {
+    expect(includiInSitemap('https://x.dev/prova/')).toBe(true);
+    expect(includiInSitemap('https://x.dev/provare/')).toBe(true);
+  });
 });
