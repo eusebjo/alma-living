@@ -1,0 +1,49 @@
+{
+  "nome": "Asciugamano con casetta",
+  "dettaglio": "Spugna ricamata · rosso, bianco o verde",
+  "categorie": [
+    "bagno",
+    "natale"
+  ],
+  "novita": true,
+  "data": "2026-10-24",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-rosso.jpg",
+    "alt": "Asciugamano rosso con una casetta di Natale ricamata",
+    "inquadratura": "centro"
+  },
+  "secondaFoto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-verde.jpg",
+    "alt": "Asciugamano verde con una casetta ricamata",
+    "inquadratura": "centro"
+  },
+  "colori": [
+    {
+      "nome": "rosso",
+      "tinta": "#a62630",
+      "foto": {
+        "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-rosso.jpg",
+        "alt": "Asciugamano rosso con una casetta di Natale ricamata",
+        "inquadratura": "centro"
+      }
+    },
+    {
+      "nome": "bianco",
+      "tinta": "#f4f1ea",
+      "foto": {
+        "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-bianco.jpg",
+        "alt": "Asciugamano bianco con una casetta ricamata",
+        "inquadratura": "centro"
+      }
+    },
+    {
+      "nome": "verde",
+      "tinta": "#2f5734",
+      "foto": {
+        "src": "https://foto.almalivingviaricasoli.it/prova/asciugamano-verde.jpg",
+        "alt": "Asciugamano verde con una casetta ricamata",
+        "inquadratura": "centro"
+      }
+    }
+  ]
+}

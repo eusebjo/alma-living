@@ -12,11 +12,61 @@
   "orari": [
     {
       "giorno": "lunedi",
-      "apertura": "09:00",
-      "chiusura": "12:30"
+      "apertura": "09:30",
+      "chiusura": "13:00"
     },
     {
       "giorno": "lunedi",
+      "apertura": "16:00",
+      "chiusura": "19:30"
+    },
+    {
+      "giorno": "martedi",
+      "apertura": "09:30",
+      "chiusura": "13:00"
+    },
+    {
+      "giorno": "martedi",
+      "apertura": "16:00",
+      "chiusura": "19:30"
+    },
+    {
+      "giorno": "mercoledi",
+      "apertura": "09:30",
+      "chiusura": "13:00"
+    },
+    {
+      "giorno": "mercoledi",
+      "apertura": "16:00",
+      "chiusura": "19:30"
+    },
+    {
+      "giorno": "giovedi",
+      "apertura": "09:30",
+      "chiusura": "13:00"
+    },
+    {
+      "giorno": "giovedi",
+      "apertura": "16:00",
+      "chiusura": "19:30"
+    },
+    {
+      "giorno": "venerdi",
+      "apertura": "09:30",
+      "chiusura": "13:00"
+    },
+    {
+      "giorno": "venerdi",
+      "apertura": "16:00",
+      "chiusura": "19:30"
+    },
+    {
+      "giorno": "sabato",
+      "apertura": "09:30",
+      "chiusura": "13:00"
+    },
+    {
+      "giorno": "sabato",
       "apertura": "16:00",
       "chiusura": "19:30"
     }

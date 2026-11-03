@@ -1,0 +1,17 @@
+{
+  "data": "2026-06-19",
+  "testo": "Un nuovo arrivo in negozio che sa di colazioni lente, domeniche in famiglia e chiacchiere attorno alla tavola.",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/ig-tavola-1.jpg",
+      "alt": "Tavola apparecchiata in negozio con piatti a spirale grigi e bicchieri, davanti agli scaffali",
+      "inquadratura": "centro"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/ig-tavola-2.jpg",
+      "alt": "Piatti con decoro a spirale grigio e una ciotola sul tavolo del negozio",
+      "inquadratura": "centro"
+    }
+  ],
+  "soggetto": "sui piatti per la tavola"
+}

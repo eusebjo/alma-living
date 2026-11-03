@@ -1,0 +1,22 @@
+{
+  "nome": "Arrivi",
+  "data": "2026-10-27",
+  "etichetta": "Nuovo",
+  "invito": "whatsapp",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/plaid-rosso.jpg",
+      "alt": "Plaid rosso con le frange e palline di Natale",
+      "inquadratura": "centro",
+      "frase": "Sono arrivati i plaid delle feste, rossi e verdi, con le frange lunghe.",
+      "soggetto": "i plaid delle feste"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/abbracciami-rosso.jpg",
+      "alt": "Plaid rosso e marrone con la scritta Abbracciami, appesi",
+      "inquadratura": "centro-alto",
+      "frase": "E gli Abbracciami in rosso e marrone: il regalo per chi sente sempre freddo.",
+      "soggetto": "gli Abbracciami rossi e marroni"
+    }
+  ]
+}

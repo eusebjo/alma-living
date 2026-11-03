@@ -1,0 +1,19 @@
+{
+  "nome": "Parure con volant",
+  "dettaglio": "Bianco e panna, copriletto a rilievo",
+  "categorie": [
+    "letto"
+  ],
+  "novita": false,
+  "data": "2026-10-25",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/volant.jpg",
+    "alt": "Lenzuola bianche e color panna con il volant",
+    "inquadratura": "centro"
+  },
+  "secondaFoto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/trapunta.jpg",
+    "alt": "Primo piano di un trapuntato bianco",
+    "inquadratura": "centro"
+  }
+}

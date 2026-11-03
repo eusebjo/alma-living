@@ -1,0 +1,21 @@
+{
+  "nome": "Tavola",
+  "data": "2026-10-18",
+  "invito": "whatsapp",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/tovaglia-volant.jpg",
+      "alt": "Tovaglia color lino con volant e profilo rosso",
+      "inquadratura": "centro",
+      "frase": "La tovaglia color lino con il volant e il profilo rosso.",
+      "soggetto": "la tovaglia con il volant"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/tavola.jpg",
+      "alt": "Tavola apparecchiata con tovaglia bianca e sedie bianche",
+      "inquadratura": "centro",
+      "frase": "E la tavola delle domeniche lunghe, quando nessuno ha fretta di alzarsi.",
+      "soggetto": "la tavola delle domeniche"
+    }
+  ]
+}

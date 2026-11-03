@@ -1,6 +1,12 @@
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { makePaginaSchema, negozioSchema } from './content/schemas';
+import {
+  makePaginaSchema,
+  negozioSchema,
+  postSchema,
+  prodottoSchema,
+  storiaSchema,
+} from './content/schemas';
 
 // Un solo oggetto JSON piatto: il loader `glob` ricava l'id della voce dal nome
 // del file, quindi `negozio.json` diventa la voce `negozio`.
@@ -18,4 +24,21 @@ const pagine = defineCollection({
   schema: ({ image }) => makePaginaSchema(image),
 });
 
-export const collections = { negozio, pagine };
+// Un file JSON per voce: il nome del file è l'id (`sabbia.json` → `sabbia`).
+// Le foto sono indirizzi del bucket, non file del repository (vedi `foto.ts`).
+const prodotti = defineCollection({
+  loader: glob({ pattern: '*.json', base: './src/content/prodotti' }),
+  schema: prodottoSchema,
+});
+
+const post = defineCollection({
+  loader: glob({ pattern: '*.json', base: './src/content/post' }),
+  schema: postSchema,
+});
+
+const storie = defineCollection({
+  loader: glob({ pattern: '*.json', base: './src/content/storie' }),
+  schema: storiaSchema,
+});
+
+export const collections = { negozio, pagine, prodotti, post, storie };

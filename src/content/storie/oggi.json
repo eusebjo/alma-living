@@ -1,0 +1,22 @@
+{
+  "nome": "Oggi",
+  "data": "2026-10-28",
+  "etichetta": "Oggi",
+  "invito": "whatsapp",
+  "foto": [
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/scaffale.jpg",
+      "alt": "Uno scaffale del negozio con plaid e cuscini in pelo bianchi, rosa e grigi",
+      "inquadratura": "centro",
+      "frase": "La parete dei plaid è pronta: bianchi, rosa e grigi, con i cuscini in pelo.",
+      "soggetto": "la parete dei plaid"
+    },
+    {
+      "src": "https://foto.almalivingviaricasoli.it/prova/camera-rosa.jpg",
+      "alt": "Camera romantica con testiera capitonné e copriletto trapuntato rosa",
+      "inquadratura": "centro",
+      "frase": "Nell’angolo romantico è arrivato il copriletto trapuntato rosa, con i cuscini abbinati.",
+      "soggetto": "il copriletto trapuntato rosa"
+    }
+  ]
+}
