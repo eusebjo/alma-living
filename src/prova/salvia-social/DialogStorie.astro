@@ -15,7 +15,8 @@
 // - Il link (un tocco, o un trascinamento in su che parte da lui o dalla foto)
 //   apre sul posto la scheda degli inviti della foto attuale, su un velo che
 //   sfoca la foto: miniatura, soggetto, i tre link (per primo, pieno, quello
-//   della storia) e "Torna alla storia".
+//   della storia) e "Torna alla storia". La chiude anche un tocco in un punto
+//   qualsiasi del velo, tranne sul gruppo dei tre link (`data-storia-invito-resta`).
 // - Sopra la foto, fino alla fascia, la zona dei tocchi, un `div` trasparente
 //   fuori dal tab e dai lettori di schermo: il quarto di sinistra torna indietro,
 //   il resto va avanti; tenendo premuto la storia si ferma e poi l'interfaccia
@@ -134,7 +135,7 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
                 <div class="centro">
                   <Foto scatto={foto} alt="" larghezze={[112]} sizes="56px" />
                   <p class="soggetto">{foto.soggetto}</p>
-                  <div class="link">
+                  <div class="link" data-storia-invito-resta>
                     {invitiDi(storia, foto).map((invito, k) => (
                       <a class={k === 0 ? 'pieno' : 'bordato'} href={invito.href}>
                         <Icona nome={invito.icona} misura={18} />
@@ -690,7 +691,8 @@ function invitiDi(storia: Storia, foto: FotoStoria) {
   }
 
   /* Una scheda per foto (lo script mostra quella della foto attuale), alta
-     quanto la scena: un trascinamento che parte ovunque sulla scheda la chiude.
+     quanto la scena: un trascinamento in giù che parte ovunque sulla scheda la
+     chiude, e così un tocco ovunque fuori dal gruppo dei link.
      In alto il posto per barre e testata; in basso "Torna alla storia", dove
      sta il link "Chiedi informazioni"; in mezzo, centrati, miniatura, soggetto e link. */
   .invito {

@@ -851,6 +851,10 @@ describe('Salvia social (/prova/salvia-social/)', () => {
           soloTesto(e.contenuto),
         );
         expect(testi, dove).toEqual(attesi.map((k) => TESTI[k]));
+        // Un tocco sul velo chiude la scheda, ma non sul gruppo dei tre link: lì la scheda resta.
+        const resta = elementiDove(schede[i]!.contenuto, (a) => quanti(a, 'data-storia-invito-resta') > 0);
+        expect(resta, dove).toHaveLength(1);
+        expect(tagIn(resta[0]!.contenuto, 'a', 'href'), dove).toEqual(link);
         const chiudi = elementiDove(schede[i]!.contenuto, (a) => quanti(a, 'data-storia-invito-chiudi') > 0);
         expect(chiudi, dove).toHaveLength(1);
         expect(chiudi[0]!.apertura).toMatch(/^<button\b/);

@@ -136,6 +136,7 @@ Sulla tela (dodicesima proposta, versione 55) ha scelto la versione 7, "Scheda a
 - **La frase** è centrata, a 16 px, a 48 px dai bordi. Chiusa sta in 2 righe: se è più lunga lo script la accorcia a parole intere e la chiude con "… altro" sulla stessa riga, come nella tavola. Il testo intero resta per i lettori di schermo.
 - **Sotto la frase**, nella fascia scura, al posto della pillola "Chiedi, chiama, vieni" c'è il link "Chiedi informazioni": icona del messaggio e testo sottolineato, senza fondo. Apre la stessa scheda a richiesta di prima, anche trascinando in su.
 - **La pausa** non si vede più: resta solo per chi usa la tastiera, e compare quando riceve il focus.
+- **Chiudere la scheda toccando fuori** (chiesto da eusebjo lo stesso giorno: viene spontaneo). Un tocco in un punto qualsiasi del velo chiude la scheda e fa ripartire la storia: sopra e sotto, ai lati, sulla miniatura e sul soggetto. Non chiudono i tre link e gli spazi tra loro (chi manca di poco un link non perde la scheda), né la X. Un trascinamento non vale come tocco. Con la scheda aperta, un tocco sulle strisce scure ai lati della scena (telefono in orizzontale) chiude solo la scheda, come Esc. "Torna alla storia" resta per la tastiera e i lettori di schermo.
 
 ## 1. Intento
 
