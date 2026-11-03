@@ -40,7 +40,7 @@ Negli script npm non usare la sintassi `VAR=x comando` (non funziona su Windows)
 ## Indirizzi
 
 - **Produzione:** https://almalivingviaricasoli.it (Worker `alma-living`, ramo `main`). È un Custom Domain del Worker, collegato dal dashboard Cloudflare il 2026-11-02: `wrangler.jsonc` non ha `routes`, quindi i deploy non lo tolgono. `http://` e `www.` portano al dominio principale con un 301, percorso e parametri compresi (Always Use HTTPS e una Redirect Rule della zona). Resta attivo anche https://alma-living.sebjomuho.workers.dev; dal lancio del 2026-11-03 canonical, Open Graph, `llms.txt` e sitemap puntano al dominio (vedi "Stato di lancio").
-- **Dominio:** registrato su IONOS (Cloudflare Registrar non vende `.it`), DNS su Cloudflare (piano Free). Nella zona il Bot Preference Sync resta spento: aggiungerebbe a `robots.txt` righe che non vengono dal sito (prima del lancio avrebbe annullato anche il `Disallow: /`). I record della posta (MX, SPF, `autodiscover`, `_dmarc`) sono quelli di IONOS: l'uso dell'email è ancora da decidere.
+- **Dominio:** registrato su IONOS (Cloudflare Registrar non vende `.it`), DNS su Cloudflare (piano Free). Nella zona il Bot Preference Sync resta spento: aggiungerebbe a `robots.txt` righe che non vengono dal sito (prima del lancio avrebbe annullato anche il `Disallow: /`). I record della posta (MX, SPF, `autodiscover`, `_dmarc`) sono quelli di IONOS: l'uso dell'email è ancora da decidere. Il record TXT `google-site-verification=…` sul dominio verifica la proprietà "Dominio" di Google Search Console (aggiunto il 2026-11-03 con l'autorizzazione automatica da Cloudflare, sitemap `https://almalivingviaricasoli.it/sitemap-index.xml` inviata): non va tolto, altrimenti Search Console perde la verifica.
 - **Foto:** https://foto.almalivingviaricasoli.it, dominio personalizzato del bucket R2 `alma-living-prova` (vedi "Foto del sito").
 - **Repository:** https://github.com/eusebjo/alma-living (pubblico)
 - **Anteprima di un branch:** `https://<branch con "/" sostituito da "-">-alma-living.sebjomuho.workers.dev`, per esempio il branch `fase1/2-anteprime` diventa `https://fase1-2-anteprime-alma-living.sebjomuho.workers.dev`. Il link affidabile è nei dettagli del controllo Cloudflare della pull request.
@@ -91,12 +91,12 @@ La chiave resta nelle preferenze del pannello di quel browser (le toglie «Cance
 **CORS del bucket** (dashboard Cloudflare, a cura di eusebjo, salvato e verificato il 2026-11-03):
 
 ```json
-[{ "AllowedOrigins": ["https://almalivingviaricasoli.it", "https://alma-living.sebjomuho.workers.dev", "https://fase2-2-produzione-alma-living.sebjomuho.workers.dev", "http://localhost:4321"],
+[{ "AllowedOrigins": ["https://almalivingviaricasoli.it", "https://alma-living.sebjomuho.workers.dev", "http://localhost:4321"],
    "AllowedMethods": ["GET", "PUT", "HEAD"], "AllowedHeaders": ["*"],
    "ExposeHeaders": ["ETag"], "MaxAgeSeconds": 3000 }]
 ```
 
-Niente `DELETE`, apposta: una foto cancellata dal pannello mentre un prodotto o un post la usa farebbe fallire ogni build successiva, quindi le cancellazioni dal browser sono bloccate (il pannello mostra un errore) e le foto da togliere le toglie eusebjo dal dashboard. L'anteprima del ramo `fase2/2-produzione` e `localhost` ci sono per provare il pannello prima dell'unione; dopo l'unione l'origine dell'anteprima si può togliere. Per caricare, il pannello contatta anche l'API di R2 (`<account_id>.r2.cloudflarestorage.com`) e l'indirizzo delle foto.
+Niente `DELETE`, apposta: una foto cancellata dal pannello mentre un prodotto o un post la usa farebbe fallire ogni build successiva, quindi le cancellazioni dal browser sono bloccate (il pannello mostra un errore) e le foto da togliere le toglie eusebjo dal dashboard. `localhost` serve per provare il pannello sul computer; le anteprime dei rami non sono nell'elenco, quindi lì il caricamento delle foto non funziona (l'origine dell'anteprima di `fase2/2-produzione`, usata per il collaudo, è stata tolta il 2026-11-03 dopo l'unione). Per provare un caricamento su un'anteprima si aggiunge la sua origine e la si toglie dopo. Per caricare, il pannello contatta anche l'API di R2 (`<account_id>.r2.cloudflarestorage.com`) e l'indirizzo delle foto.
 
 ## Stato di lancio
 
