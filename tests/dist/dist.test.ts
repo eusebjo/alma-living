@@ -971,6 +971,22 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(html()).not.toContain('id="collezioni"');
   });
 
+  it('il negozio: niente etichette in fondo, e da Google il voto, le stelle e il link senza il numero di recensioni', () => {
+    const negozio = decodifica(contenutiCon(html(), 'id', 'negozio')[0] ?? '');
+    // Sotto il titolo un invito semplice, non la descrizione degli scaffali.
+    expect(normalizza(negozio)).toContain(
+      'Siamo al 51-53, nell’isola pedonale del centro di Livorno. Passa a trovarci, ti aspettiamo.',
+    );
+    expect(negozio).not.toContain('scaffali bianchi');
+    expect(negozio).not.toContain('Confezioni regalo con spago e cartellino');
+    expect(negozio).not.toContain('Attività di proprietà di donne');
+    expect(negozio).not.toMatch(/\d+\s+recensioni/);
+    expect(negozio).toContain('Su Google');
+    expect(negozio).toContain('5,0');
+    expect(negozio).toContain('aria-label="5 stelle su 5"');
+    expect(negozio).toContain('Leggi le recensioni');
+  });
+
   it("header, menu del telefono e piè di pagina elencano le sezioni nell'ordine della pagina", () => {
     const ancore = sezioni.map((s) => s.href);
     const elenchi = [...html().matchAll(/<nav\b[\s\S]*?<\/nav>/g)]
@@ -991,7 +1007,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('il diario dà la data dell’ultimo post (28 ottobre) e la pagina non promette un ritmo settimanale', () => {
     const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
     expect(diario).toContain('Aggiornato il 28 ottobre');
-    expect(diario).toContain('l’ultimo il 28 ottobre');
+    expect(diario).toContain('L’ultimo post è del 28 ottobre');
     expect(decodifica(html())).not.toMatch(/ogni settimana/i);
   });
 
@@ -1000,8 +1016,18 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(pagina).not.toContain('del 8 ');
     expect(pagina).not.toContain('del 11 ');
     // Il pulsante del post e il suo dialog dicono "dell’8 luglio" (p6, p7) e "dell’11 ottobre" (p3).
-    expect(pagina).toContain('Apri il post dell’8 luglio, Arrivi');
-    expect(pagina).toContain('Post dell’11 ottobre, In vetrina');
+    expect(pagina).toContain('Apri il post dell’8 luglio');
+    expect(pagina).toContain('aria-label="Post dell’11 ottobre"');
+  });
+
+  it('i post non hanno etichette come "Arrivi": nel feed restano anche quelli vecchi', () => {
+    const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
+    for (const etichetta of ['Arrivi', 'In vetrina', 'Dettagli', 'Dietro il banco']) {
+      expect(diario).not.toContain(`>${etichetta}<`);
+      expect(diario).not.toMatch(new RegExp(`aria-label="[^"]*${etichetta}`));
+    }
+    // Nella griglia, sul velo, solo la data; nel nome del pulsante data e numero di foto.
+    expect(diario).toMatch(/aria-label="Apri il post del 28 ottobre, \d+ foto"/);
   });
 
   it('la pagina parla come Alma Living: niente "Martina", niente carattere a mano', () => {
@@ -1009,14 +1035,19 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(html()).not.toMatch(/beth[- ]ellen/i);
   });
 
-  it('il diario è "del negozio", con il testo al plurale', () => {
+  it('la sezione dei post parla di post, non di diario, e dà del tu', () => {
     const apertura = /<section\b[^>]*\sid="diario"[^>]*>/.exec(html())?.[0] ?? '';
-    expect(valore(apertura, 'aria-label')).toBe('Dal negozio, il diario');
+    expect(valore(apertura, 'aria-label')).toBe('Dal negozio: post e foto');
     const diario = normalizza(contenutiCon(html(), 'id', 'diario')[0] ?? '');
-    expect(diario).toContain('>Il diario del negozio<');
+    expect(diario).toContain('>Post e foto<');
+    expect(diario).toMatch(/<h2\b[^>]*>Dal negozio<\/h2>/);
+    expect(diario).toContain('Il feed del negozio: qui trovi tutti i nostri post.');
     expect(diario).toContain(
-      'Fotografiamo quello che succede in Via Ricasoli: gli arrivi, la vetrina che cambia, le confezioni preparate al banco. Tocca una foto per aprirla.',
+      '“Se vedi qualcosa che ti piace, scrivici: ti mandiamo altre foto e te lo teniamo da parte.”',
     );
+    // Il biglietto vale sempre: la firma non ha una data.
+    expect(diario).toMatch(/>Alma Living<\/span> · Via Ricasoli<\/span>/);
+    expect(diario.replace(/<[^>]*>/g, ' ')).not.toMatch(/diario/i);
   });
 
   it('un solo lettore di storie', () => {
@@ -1043,17 +1074,12 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(negozio).toBeGreaterThan(fascia!);
     const contenuto = decodifica(contenutiCon(pagina, 'id', 'instagram')[0] ?? '');
     expect(contenuto).toMatch(/<h2\b[^>]*\sid="instagram-titolo"[^>]*>Seguici anche su Instagram<\/h2>/);
-    expect(contenuto).toContain('@almaliving.viaricasoli');
-    expect(contenuto).toContain('Le foto di ogni giorno sono anche lì.');
     expect(contenuto).toContain('aria-label="Apri Instagram: @almaliving.viaricasoli"');
     expect(contenuto).not.toMatch(/<(?:img|picture)\b/);
-    // Per i lettori di schermo: tolto ciò che è `aria-hidden` (il puntino) e i tag,
-    // nome e frase restano separati da uno spazio vero, non da quello del separatore.
+    // Sotto il titolo solo il nome del profilo: la frase sulle foto di ogni giorno non c'è più.
     const riga = /<p\b[^>]*>([\s\S]*?)<\/p>/.exec(contenuto)?.[1] ?? '';
-    const letto = riga
-      .replace(/<span\b[^>]*\saria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, '')
-      .replace(/<[^>]*>/g, '');
-    expect(letto).toMatch(/@almaliving\.viaricasoli\s+Le foto/);
+    expect(riga.replace(/<[^>]*>/g, '').trim()).toBe('@almaliving.viaricasoli');
+    expect(contenuto).not.toContain('Le foto di ogni giorno');
   });
 
   it('storie e post propongono di chiamare il negozio, non Instagram', () => {
@@ -1198,7 +1224,11 @@ describe('Salvia social (/prova/salvia-social/)', () => {
 
     // La foto sta prima del testo: la finestra comincia dal suo `<li>`.
     const scaffale = griglia.slice(griglia.lastIndexOf('<li', finestra));
-    expect(scaffale).toContain('In negozio c’è molto di più di quello che vedi qui.');
+    // Un invito semplice: il pulsante dice già come scrivere.
+    expect(scaffale).toMatch(/<h3\b[^>]*>Chiedi pure a noi\.<\/h3>/);
+    expect(scaffale).toContain('Raccontaci cosa cerchi: saremo felici di aiutarti.');
+    expect(scaffale).not.toContain('molto di più');
+    expect(scaffale).not.toContain('per quale stanza');
     expect(scaffale).toContain(`alt="${fotoFinestra.scaffale.alt}"`);
     expect(scaffale).toContain(
       `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggi.cerco)}"`,

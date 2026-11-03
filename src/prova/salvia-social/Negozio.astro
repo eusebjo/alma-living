@@ -27,9 +27,8 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
       <p class="occhiello">Il negozio</p>
       <h2 id="negozio-titolo">Vieni a trovarci in Via Ricasoli</h2>
       <p class="descrizione">
-        {negozio.indirizzo}, nell’isola pedonale del centro. Dentro trovi gli scaffali bianchi fino al
-        soffitto<span class="solo-largo">, la parete verde salvia e la biancheria piegata per colore</span
-        ><span class="solo-stretto"> e la parete verde salvia</span>.
+        Siamo al {negozio.civico}, nell’isola pedonale del centro di {negozio.citta}. Passa a trovarci, ti
+        aspettiamo.
       </p>
     </div>
 
@@ -47,7 +46,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
             {Array.from({ length: 5 }, () => <Icona nome="stella" misura={17} />)}
           </span>
         </div>
-        <p class="google-quante">{negozio.google.recensioni} recensioni</p>
         <a class="google-link" href={negozio.recensioniUrl}>Leggi le recensioni</a>
       </div>
     </div>
@@ -71,10 +69,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
         <a class="pieno" href={negozio.mappeUrl}><Icona nome="luogo" />Indicazioni</a>
         <a class="filo" href={negozio.telefonoHref}><Icona nome="telefono" />Chiama {negozio.telefono}</a>
       </div>
-      <ul class="note" role="list">
-        <li>Confezioni regalo con spago e cartellino</li>
-        <li>Attività di proprietà di donne</li>
-      </ul>
     </div>
   </div>
 </section>
@@ -143,10 +137,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
     text-wrap: pretty;
   }
 
-  .solo-largo {
-    display: none;
-  }
-
   /* --- Foto e stelle di Google --- */
   .foto {
     grid-area: foto;
@@ -206,12 +196,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
   .stelle :global(svg) {
     width: 15px;
     height: 15px;
-  }
-
-  .google-quante {
-    margin: 6px 0 0;
-    font-size: 13px;
-    color: var(--grigio-testo);
   }
 
   .google-link {
@@ -336,22 +320,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
     background: var(--vetro-sopra);
   }
 
-  .note {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 18px 0 0;
-    padding: 0;
-    list-style: none;
-    font-size: 13px;
-  }
-
-  .note li {
-    padding: 7px 12px;
-    border-radius: var(--pillola);
-    background: var(--vetro-chiaro);
-  }
-
   /* --- Tablet: foto meno alta, orari e azioni come sul computer --- */
   @media (min-width: 600px) {
     .foto {
@@ -395,14 +363,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
       font-size: 18px;
     }
 
-    .solo-largo {
-      display: inline;
-    }
-
-    .solo-stretto {
-      display: none;
-    }
-
     .foto {
       align-self: center;
       margin-top: 0;
@@ -437,11 +397,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
       height: 17px;
     }
 
-    .google-quante {
-      margin-top: 8px;
-      font-size: 14px;
-    }
-
     .stato {
       display: inline-flex;
       margin-top: 22px;
@@ -474,15 +429,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
     .azioni a {
       display: inline-flex;
       min-height: 54px;
-    }
-
-    .note {
-      margin-top: 22px;
-      font-size: 14px;
-    }
-
-    .note li {
-      padding: 8px 14px;
     }
   }
 

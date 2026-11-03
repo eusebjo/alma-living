@@ -37,7 +37,7 @@
   --velo-scheda: rgb(24 28 22 / 0.55);
   --velo-post: rgb(28 33 26 / 0.62);
   --velo-post-alto: rgb(28 33 26 / 0.12);
-  /* Sotto rubrica e data di un post: sopra il velo del riquadro (almeno 0,12)
+  /* Sotto la data di un post: sopra il velo del riquadro (almeno 0,12)
      arriva ad almeno 0,62, cioè 4,6:1 per il bianco anche su una foto bianca. */
   --velo-post-testo: rgb(28 33 26 / 0.57);
   /* Il lettore delle storie (tavola StorieRichiesta): un fondo pieno, i veli a

@@ -17,8 +17,9 @@
   - senza il riquadro profilo (nome Instagram, bio, indirizzo e stato, "Segui su Instagram", "Scrivici") e senza storie in evidenza;
   - il riquadro bianco tiene l'intestazione "Post dal negozio" con la data dell'ultimo aggiornamento, la griglia 3 x 3 e "Mostra altri post";
   - nel post aperto l'autore è "Alma Living";
-  - in storie e post "Vedi su Instagram" diventa "Chiama il negozio".
-- **Fascia Instagram:** dopo il diario e prima della sezione del negozio, una fascia propria, bianca tra due linee sottili e senza foto. Contiene il simbolo, "Seguici anche su Instagram", "@almaliving.viaricasoli · Le foto di ogni giorno sono anche lì." e il pulsante; sul telefono è centrata. Restano l'icona di Instagram nell'header e la riga nel footer.
+  - in storie e post "Vedi su Instagram" diventa "Chiama il negozio";
+  - *aggiornamento del 2026-11-03:* sulla pagina la parola "diario" non c'è più, perché a destra si parla di post. A sinistra: occhiello "Post e foto", titolo "Dal negozio" (come la voce del menu), testo "Il feed del negozio: qui trovi tutti i nostri post.", il biglietto con il tu ("Se vedi qualcosa che ti piace, scrivici: ti mandiamo altre foto e te lo teniamo da parte.", un servizio vero confermato da eusebjo) e la firma senza data, in fondo "L'ultimo post è del 28 ottobre". I post non hanno più etichette ("Arrivi", "In vetrina", "Dettagli", "Dietro il banco"), né nella griglia né nel post aperto: le avevamo assegnate noi nella prova, e nel feed restano anche i post vecchi, per cui "Arrivi · 8 luglio" confonde. Restano data e testo, come su Instagram.
+- **Fascia Instagram:** dopo il diario e prima della sezione del negozio, una fascia propria, bianca tra due linee sottili e senza foto. Contiene il simbolo, "Seguici anche su Instagram", "@almaliving.viaricasoli" e il pulsante; sul telefono è centrata. (*Aggiornamento del 2026-11-03:* tolta la frase "Le foto di ogni giorno sono anche lì.", che per eusebjo non serve.) Restano l'icona di Instagram nell'header e la riga nel footer.
 
 - **Post del diario veri:** il 2026-11-01 eusebjo ha scelto di riempire il diario con i post veri del profilo Instagram: 13 su 14, tutti tranne la partita di calcio, che è un post in collaborazione con un altro account. Le didascalie restano quelle originali, senza emoji e senza le promozioni scadute. Le foto restano fuori da git, come le altre foto di prova, e si caricano nel bucket con un comando (`npm run foto:carica`). È un contenuto di prova: i post definitivi si decidono con il pannello (§12).
 
@@ -59,6 +60,8 @@ Le tavole intermedie (`SalviaSocial2.dc.html`, la versione 2) spiegano le prime 
 - sul telefono il suo "Scrivici" compariva insieme a quello della barra dei contatti.
 
 Così l'ordine sullo schermo è anche quello di lettori di schermo e tastiera.
+
+**Aggiornamento del 2026-11-03:** i testi della finestra diventano un invito semplice, scelto da eusebjo: occhiello "Non lo trovi qui?", titolo "Chiedi pure a noi.", testo "Raccontaci cosa cerchi: saremo felici di aiutarti.". Prima titolo e testo ("In negozio c'è molto di più di quello che vedi qui.", "Dicci cosa cerchi, per quale stanza e in che colore: ti rispondiamo con le foto su WhatsApp.") davano troppi dettagli; il pulsante "Scrivici su WhatsApp" dice già come contattare il negozio.
 
 **Aggiornamento del 2026-11-02, secondo: l'apertura.** Dopo tre giri sulla tela (decima e undicesima proposta), eusebjo ha scelto una nuova apertura: "La foto grande", nella tavola `FotoGrande2.dc.html` (pagina "Apertura scelta", versione 53). Le note sono in `research_notes/Design UI/decima/` e `undicesima/`.
 
@@ -251,7 +254,7 @@ Le tavole della tela sono il disegno di riferimento. I sorgenti sono in `researc
   - nomi e dettagli degli articoli, collezioni e rubriche;
   - post con date e didascalie nella voce del negozio;
   - storie, la frase del profilo Instagram e la firma "Martina, dal negozio".
-- Dati veri: indirizzo, telefono, orari, link a Instagram e a Google Maps. Le stelle Google (5,0 su 5 recensioni) sono il dato attuale, scritto nei dati di esempio.
+- Dati veri: indirizzo, telefono, orari, link a Instagram e a Google Maps. Le stelle Google (5,0 su 5 recensioni) sono il dato attuale, scritto nei dati di esempio. *Aggiornamento del 2026-11-03:* sulla pagina restano il voto, le stelle e "Leggi le recensioni", senza il numero delle recensioni (per eusebjo è un numero piccolo: meglio puntare sulle stelle); in fondo al negozio non ci sono più le etichette "Confezioni regalo con spago e cartellino" e "Attività di proprietà di donne". Sotto "Vieni a trovarci in Via Ricasoli" il testo non descrive più scaffali e pareti (a chi deve venire non servono): è un invito semplice, scelto da eusebjo, "Siamo al 51-53, nell'isola pedonale del centro di Livorno. Passa a trovarci, ti aspettiamo." L'indirizzo completo resta nel menu e in fondo alla pagina.
 - Nessun prezzo, nessuna recensione inventata, nessun contatore social.
 
 ## 10. Qualità

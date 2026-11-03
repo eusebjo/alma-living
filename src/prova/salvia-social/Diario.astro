@@ -1,7 +1,8 @@
 ---
-// Il diario del negozio: a sinistra l'introduzione con il biglietto; a
-// destra il riquadro "Post dal negozio" (griglia 3 x 3 di post che si aprono,
-// "Mostra altri post"). Sul telefono le due parti si impilano.
+// Il diario del negozio (sulla pagina "Post e foto", "Dal negozio": il feed di
+// tutti i post, senza la parola diario): a sinistra l'introduzione con il
+// biglietto; a destra il riquadro "Post dal negozio" (griglia 3 x 3 di post che
+// si aprono, "Mostra altri post"). Sul telefono le due parti si impilano.
 import { Image } from 'astro:assets';
 import type { DatiNegozio } from '../comune/negozio';
 import logo from '../comune/logo/alma-nero.png';
@@ -17,29 +18,26 @@ interface Props {
 const { negozio } = Astro.props;
 ---
 
-<section id="diario" class="diario" aria-label="Dal negozio, il diario">
+<section id="diario" class="diario" aria-label="Dal negozio: post e foto">
   <div class="dentro">
     <div class="intro">
-      <p class="occhiello">Il diario del negozio</p>
+      <p class="occhiello">Post e foto</p>
       <h2>Dal negozio</h2>
-      <p class="presentazione">
-        Fotografiamo quello che succede in Via Ricasoli: gli arrivi, la vetrina
-        che cambia, le confezioni preparate al banco. Tocca una foto per aprirla.
-      </p>
+      <p class="presentazione">Il feed del negozio: qui trovi tutti i nostri post.</p>
       <figure class="biglietto">
         <div class="biglietto-autore">
           <span class="avatar-piccolo" aria-hidden="true">
             <Image src={logo} alt="" widths={[48, 72]} sizes="24px" />
           </span>
-          <span><span class="forte">{negozio.nome}</span> · {negozio.via} · 28 ottobre</span>
+          <span><span class="forte">{negozio.nome}</span> · {negozio.via}</span>
         </div>
         <blockquote>
-          “Se vedete qualcosa che vi piace, scriveteci: vi mandiamo altre foto e ve lo teniamo da
+          “Se vedi qualcosa che ti piace, scrivici: ti mandiamo altre foto e te lo teniamo da
           parte.”
         </blockquote>
       </figure>
       <p class="frequenza">
-        <Icona nome="orologio" />Nuovi post dal negozio · l’ultimo il {post[0]!.data}
+        <Icona nome="orologio" />L’ultimo post è {delData(post[0]!.data)}
       </p>
     </div>
 
@@ -62,7 +60,7 @@ const { negozio } = Astro.props;
                 data-post-apri={voce.id}
                 data-altro={piegato ? 'post' : undefined}
                 hidden={piegato}
-                aria-label={`Apri il post ${delData(voce.data)}, ${voce.rubrica}${quante > 1 ? `, ${quante} foto` : ''}`}
+                aria-label={`Apri il post ${delData(voce.data)}${quante > 1 ? `, ${quante} foto` : ''}`}
               >
                 <Foto
                   scatto={prima}
@@ -72,7 +70,6 @@ const { negozio } = Astro.props;
                 {quante > 1 && <Icona nome="multi" class="multi" />}
                 <span class="velo">
                   <span class="velo-testo">
-                    <span class="velo-rubrica">{voce.rubrica}</span>
                     <span class="velo-data">{voce.data}</span>
                   </span>
                 </span>
@@ -280,7 +277,8 @@ const { negozio } = Astro.props;
     filter: drop-shadow(var(--ombra-icona));
   }
 
-  /* Al passaggio (o con il focus) la rubrica e la data del post. */
+  /* Al passaggio (o con il focus) la data del post. Niente etichette come
+     "Arrivi": nel feed restano anche i post vecchi, e invecchierebbero male. */
   .velo {
     --velo-margine-x: 12px;
     --velo-margine-y: 10px;
@@ -304,8 +302,8 @@ const { negozio } = Astro.props;
     gap: 2px;
   }
 
-  /* Sotto il testo, alto quanto serve (sul telefono rubrica e data possono
-     andare a capo), un secondo velo pieno che sfuma verso l'alto: la sfumatura
+  /* Sotto il testo, alto quanto serve (sul telefono la data può andare a
+     capo), un secondo velo pieno che sfuma verso l'alto: la sfumatura
      del riquadro da sola, a metà altezza, non basta per 4,5:1 su una foto chiara. */
   .velo-testo::before {
     content: '';
@@ -313,14 +311,6 @@ const { negozio } = Astro.props;
     z-index: -1;
     inset: -24px calc(-1 * var(--velo-margine-x)) calc(-1 * var(--velo-margine-y));
     background: linear-gradient(to bottom, transparent, var(--velo-post-testo) 24px);
-  }
-
-  .velo-rubrica {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    line-height: 1.3;
-    text-transform: uppercase;
   }
 
   .velo-data {

@@ -23,7 +23,7 @@ const { negozio } = Astro.props;
       <div class="testi">
         <h2 id="instagram-titolo">Seguici anche su Instagram</h2>
         <p>
-          <span class="nome">{negozio.instagram.handle}</span> <span class="separatore" aria-hidden="true">·</span> <span class="frase">Le foto di ogni giorno sono anche lì.</span>
+          <span class="nome">{negozio.instagram.handle}</span>
         </p>
       </div>
       <a
@@ -105,19 +105,6 @@ const { negozio } = Astro.props;
     color: var(--nero);
   }
 
-  /* Sul telefono nome e frase stanno su due righe: il separatore non serve. */
-  .separatore {
-    display: none;
-  }
-
-  .frase {
-    display: block;
-    margin-top: 2px;
-    font-size: 15px;
-    line-height: 1.45;
-    color: var(--grigio-testo);
-  }
-
   .apri {
     display: flex;
     align-items: center;
@@ -176,19 +163,12 @@ const { negozio } = Astro.props;
     p {
       font-size: 17px;
       line-height: 1.5;
-      color: var(--grigio-testo);
     }
 
-    .nome,
-    .frase {
+    .nome {
       display: inline;
-      margin: 0;
       font-size: inherit;
       line-height: inherit;
-    }
-
-    .separatore {
-      display: inline;
     }
 
     .apri {

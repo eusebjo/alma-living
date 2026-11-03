@@ -183,7 +183,7 @@ export const storie: Storia[] = [
       fotoStoria(
         'scaffale',
         '50% 45%',
-        'Buongiorno da Via Ricasoli. La parete dei plaid è pronta: bianchi, rosa e grigi, con i cuscini in pelo.',
+        'La parete dei plaid è pronta: bianchi, rosa e grigi, con i cuscini in pelo.',
         'la parete dei plaid',
       ),
       fotoStoria(
@@ -579,7 +579,6 @@ export interface Post {
   /** Unico nella pagina: lo usano il pulsante della griglia e il suo dialog. */
   id: string;
   data: string;
-  rubrica: string;
   /**
    * Di che cosa parla il post, nel messaggio WhatsApp: comincia con la
    * preposizione articolata ("sui cuscini di Natale"), che si legge dopo la data
@@ -597,7 +596,6 @@ export const post: Post[] = [
   {
     id: 'p1',
     data: '28 ottobre',
-    rubrica: 'Arrivi',
     chiedi: 'sui cuscini di Natale',
     testo:
       'Sono arrivati i cuscini di Natale. Brinì, in jacquard con gli alberelli in punto spugna: copricuscino 45 x 45 in rosso, bianco, beige e verde, oppure cuscino imbottito 30 x 50. Meid, con baite innevate e boschi, negli stessi due formati, in rosso, beige e verde. E per chi ama i gatti, Zigrì: cotone stampato fronte e retro.',
@@ -611,7 +609,6 @@ export const post: Post[] = [
   {
     id: 'p2',
     data: '27 ottobre',
-    rubrica: 'Arrivi',
     chiedi: 'sulle nuove parure',
     testo:
       'Nuove parure copripiumino matrimoniali in puro cotone: Vara in percallino; Rudy, maculata, in grigio o marrone; i quadri in cotone tinto in filo; il motivo geometrico in grigio, blu e tortora. E Antigua, il copripiumino in jersey che non si stira, in nove colori: bianco, naturale, fumo, salvia, sabbia, grigio, ottanio, bordeaux e blu.',
@@ -626,7 +623,6 @@ export const post: Post[] = [
   {
     id: 'p3',
     data: '11 ottobre',
-    rubrica: 'In vetrina',
     chiedi: 'sui plaid',
     testo:
       'L’inverno è alle porte e torna la voglia di casa. Soffici, caldi, avvolgenti: abbiamo scelto quattro plaid per le serate sul divano. Vi aspettiamo in negozio per scegliere il vostro.',
@@ -635,7 +631,6 @@ export const post: Post[] = [
   {
     id: 'p4',
     data: '31 agosto',
-    rubrica: 'Arrivi',
     chiedi: 'sulle novità d’autunno',
     testo:
       'È bello cominciare a sognare un po’ in anticipo. A metà settembre arrivano tante novità per vestire la casa con le sfumature calde dell’autunno, e le prime idee per le feste.',
@@ -644,7 +639,6 @@ export const post: Post[] = [
   {
     id: 'p5',
     data: '15 luglio',
-    rubrica: 'Arrivi',
     chiedi: 'sulla linea Beach Therapy',
     testo:
       'La collezione Beach Therapy si allarga: oltre al verde menta ci sono il grigio chiaro e il beige. Potete prendere il set da tre pezzi o i singoli articoli.',
@@ -653,7 +647,6 @@ export const post: Post[] = [
   {
     id: 'p6',
     data: '8 luglio',
-    rubrica: 'Arrivi',
     chiedi: 'sulle essenze per il bucato',
     testo:
       'Sono arrivate le essenze concentrate per il bucato di Erbolinea Prestige Fragrances: profumi intensi che durano giorni e riempiono la casa di fresco. Tante fragranze e diversi formati, per lavatrice, asciugatrice e lavaggio a mano. Passate a provarle.',
@@ -662,7 +655,6 @@ export const post: Post[] = [
   {
     id: 'p7',
     data: '8 luglio',
-    rubrica: 'Dettagli',
     chiedi: 'sul tris di asciugamani',
     testo:
       'Il tris di asciugamani, ospite, viso e telo, con la balza in puro lino. Fatto in Toscana, in tante sfumature: celeste, rosa, verde salvia, grigio.',
@@ -671,7 +663,6 @@ export const post: Post[] = [
   {
     id: 'p8',
     data: '3 luglio',
-    rubrica: 'Dettagli',
     chiedi: 'sulla tavola d’estate',
     testo:
       'Voglia d’estate anche a tavola? Legno caldo e ceramiche decorate, per rinnovare la tavola dei pranzi estivi.',
@@ -680,7 +671,6 @@ export const post: Post[] = [
   {
     id: 'p9',
     data: '19 giugno',
-    rubrica: 'Arrivi',
     chiedi: 'sui piatti per la tavola',
     testo:
       'Un nuovo arrivo in negozio che sa di colazioni lente, domeniche in famiglia e chiacchiere attorno alla tavola.',
@@ -689,7 +679,6 @@ export const post: Post[] = [
   {
     id: 'p10',
     data: '15 giugno',
-    rubrica: 'Dietro il banco',
     chiedi: 'sui prodotti per i più piccoli',
     testo: 'Un piccolo angolo dedicato anche ai più piccoli.',
     foto: [scatto('ig-angolo-bimbi')],
@@ -697,7 +686,6 @@ export const post: Post[] = [
   {
     id: 'p11',
     data: '10 giugno',
-    rubrica: 'Dietro il banco',
     chiedi: 'sugli scaffali del negozio',
     testo:
       'Ogni dettaglio sta prendendo il suo posto. Un piccolo spoiler di quello che vi aspetta da Alma Living. Ci vediamo sabato.',
@@ -706,7 +694,6 @@ export const post: Post[] = [
   {
     id: 'p12',
     data: '28 maggio',
-    rubrica: 'Dettagli',
     chiedi: 'sulle conchiglie in ceramica',
     testo:
       'Ogni pezzo è una storia unica: le conchiglie artigianali di Ceramica Viva racchiudono la bellezza del design fatto a mano. Noi stiamo sistemando gli ultimi dettagli per l’apertura, voi cominciate a scegliere la vostra preferita.',
@@ -715,7 +702,6 @@ export const post: Post[] = [
   {
     id: 'p13',
     data: '30 aprile',
-    rubrica: 'Dietro il banco',
     chiedi: 'su quello che sta arrivando',
     testo:
       'Un assaggio di ciò che sta arrivando: dettagli che fanno casa, atmosfere da vivere. Quasi pronti ad accogliervi.',
