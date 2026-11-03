@@ -47,3 +47,48 @@ export function eIndirizzoFoto(valore: string): boolean {
     !nome.includes('..')
   );
 }
+
+/**
+ * Le inquadrature che la redazione sceglie dal pannello: ogni nome è un
+ * `object-position` CSS. Si decide solo il punto verticale da tenere in vista
+ * quando la foto è tagliata (in orizzontale resta al centro).
+ */
+export const INQUADRATURE = {
+  alto: '50% 20%',
+  'centro-alto': '50% 35%',
+  centro: '50% 50%',
+  'centro-basso': '50% 65%',
+  basso: '50% 80%',
+} as const;
+
+export type Inquadratura = keyof typeof INQUADRATURE;
+
+// La percentuale verticale di un `object-position` scritto come `X% Y%`.
+const POSIZIONE_CON_PERCENTUALI = /^\s*[-+]?\d*\.?\d+%\s+([-+]?\d*\.?\d+)%\s*$/;
+
+function percentualeVerticale(posizione: string): number | undefined {
+  const testo = POSIZIONE_CON_PERCENTUALI.exec(posizione)?.[1];
+  return testo === undefined ? undefined : Number(testo);
+}
+
+// Le inquadrature con la loro percentuale verticale, dalla più centrale: a parità
+// di distanza vince la prima, cioè quella più vicina al centro.
+const PUNTI_VERTICALI = (Object.keys(INQUADRATURE) as Inquadratura[])
+  .map((nome) => ({ nome, y: percentualeVerticale(INQUADRATURE[nome]) ?? 50 }))
+  .sort((a, b) => Math.abs(a.y - 50) - Math.abs(b.y - 50));
+
+/**
+ * L'inquadratura la cui percentuale verticale è la più vicina a quella di
+ * `posizione` (per esempio `40% 68%` → `centro-basso`). A metà strada tra due
+ * inquadrature vince quella più vicina al centro. Se `posizione` non ha una
+ * percentuale verticale leggibile, è `centro`.
+ */
+export function inquadraturaVicina(posizione: string): Inquadratura {
+  const voluta = percentualeVerticale(posizione);
+  if (voluta === undefined) return 'centro';
+  return PUNTI_VERTICALI.reduce(
+    (migliore, punto) =>
+      Math.abs(punto.y - voluta) < Math.abs(migliore.y - voluta) ? punto : migliore,
+    { nome: 'centro' as Inquadratura, y: 50 },
+  ).nome;
+}

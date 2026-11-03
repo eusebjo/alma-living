@@ -12,6 +12,26 @@ export const LIMITI = {
     descrizione: { min: 50, max: 160 },
     immagine_alt: { min: 5, max: 150 },
   },
+  // Testo alternativo di ogni foto di prodotti, post e storie.
+  foto: {
+    alt: { min: 5, max: 150 },
+  },
+  prodotto: {
+    nome: { max: 60 },
+    dettaglio: { max: 90 },
+    colori: { max: 6 },
+    colore: { max: 30 },
+  },
+  post: {
+    testo: { max: 1000 },
+    foto: { max: 10 },
+    soggetto: { max: 60 },
+  },
+  storia: {
+    frase: { max: 200 },
+    soggetto: { max: 60 },
+    foto: { max: 10 },
+  },
 } as const;
 
 export const GIORNI = [

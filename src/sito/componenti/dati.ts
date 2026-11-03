@@ -9,6 +9,8 @@
 // ogni scatto porta l'indirizzo completo (`src`, vedi `src/content/foto.ts`): i
 // componenti lo passano a `<Picture>`, che lo scarica e lo ottimizza alla build.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
+import { CATEGORIE } from '../../content/categorie';
+import type { Categoria } from '../../content/categorie';
 import { indirizzoFoto } from '../../content/foto';
 import type { RegolaLimite } from '../comune/limite';
 
@@ -336,18 +338,12 @@ export const storie: Storia[] = [
 
 // --- Categorie degli articoli ---
 
-export type Categoria = 'letto' | 'bagno' | 'bimbi' | 'tavola' | 'profumi' | 'natale' | 'mare';
+// L'elenco sta in `src/content/categorie.ts` (lo leggono anche gli schemi dei
+// contenuti): qui si riesporta con i nomi che usano i componenti.
+export type { Categoria };
 
 /** Le categorie, nell'ordine dei filtri della selezione. */
-export const categorie: { id: Categoria; nome: string }[] = [
-  { id: 'letto', nome: 'Letto' },
-  { id: 'bagno', nome: 'Bagno' },
-  { id: 'bimbi', nome: 'Bimbi' },
-  { id: 'tavola', nome: 'Tavola e cucina' },
-  { id: 'profumi', nome: 'Profumi per la casa' },
-  { id: 'natale', nome: 'Natale e regali' },
-  { id: 'mare', nome: 'Mare' },
-];
+export const categorie = CATEGORIE;
 
 // --- Selezione dal negozio ---
 
