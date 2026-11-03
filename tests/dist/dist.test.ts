@@ -2,12 +2,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
+import { negozioSchema, postSchema, prodottoSchema, storiaSchema } from '../../src/content/schemas';
 import { messaggioDisponibilita } from '../../src/sito/comune/contatti';
-import { ORARI_PROVA } from '../../src/sito/comune/orari';
 import { durataFoto } from '../../src/sito/comune/sequenza';
 import {
-  articoli,
-  categorie,
+  delData,
   fotoFinestra,
   idSchedaRapida,
   LIMITI_SELEZIONE,
@@ -16,13 +15,17 @@ import {
   messaggioStoria,
   nomeConColore,
   occhielloArticolo,
-  post,
   POST_VISIBILI,
   sezioni,
-  storie,
   testoColori,
   vetrina,
 } from '../../src/sito/componenti/dati';
+import {
+  categorieVisibili,
+  elencoArticoli,
+  elencoPost,
+  elencoStorie,
+} from '../../src/sito/contenuti';
 import { VARIANTI } from '../../src/sito/varianti';
 
 // Questi test guardano la build locale (`npm run build` senza SITE_LAUNCHED né
@@ -46,6 +49,41 @@ function paginePerFile(cartella = 'dist'): string[] {
 }
 
 const pagine = paginePerFile();
+
+// Prodotti, post, storie e orari del negozio li cambia la redazione dal pannello,
+// e questi test girano su ogni sua proposta: i loro valori non si fissano qui.
+// Si leggono i file JSON delle collection come li legge la build (lo schema mette
+// i valori predefiniti) e si traducono con gli stessi adattatori della pagina
+// (`src/sito/contenuti.ts`): le attese vengono da lì. I valori scritti nei test
+// restano solo per ciò che sta nel codice (sezioni, testi fissi, vetrina, foto
+// fisse) e per i campi del negozio che il pannello non lascia cambiare.
+const CONTENUTI = join('src', 'content');
+
+/**
+ * Le voci di una collection: l'id è il nome del file senza `.json`, come lo dà il
+ * loader `glob` di Astro per i nomi in minuscolo, senza spazi né accenti.
+ */
+function vociDi<T>(cartella: string, schema: { parse(dati: unknown): T }): { id: string; data: T }[] {
+  const dove = join(CONTENUTI, cartella);
+  return readdirSync(dove)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => ({
+      id: file.slice(0, -'.json'.length),
+      data: schema.parse(JSON.parse(readFileSync(join(dove, file), 'utf8'))),
+    }));
+}
+
+const articoli = elencoArticoli(vociDi('prodotti', prodottoSchema));
+const post = elencoPost(vociDi('post', postSchema));
+const storie = elencoStorie(vociDi('storie', storiaSchema));
+const orariDelNegozio = negozioSchema.parse(
+  JSON.parse(readFileSync(join(CONTENUTI, 'negozio', 'negozio.json'), 'utf8')),
+).orari;
+
+/** Un testo della redazione da cercare alla lettera dentro un'espressione regolare. */
+function allaLettera(testo: string): string {
+  return testo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // Il pannello dei contenuti (/admin/) è una pagina Astro a sé, senza il
 // BaseLayout del sito: ha le sue regole (vedi "pannello dei contenuti").
@@ -680,11 +718,18 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   const gruppiPicture = () =>
     [...html().matchAll(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi)].map((m) => m[1]!);
 
+  /**
+   * Le foto che la pagina ha sempre, qualunque cosa scriva la redazione: la
+   * vetrina, i filtri "Tutto" e "Mare", le due finestre e il negozio. Le altre
+   * dipendono da prodotti, post e storie.
+   */
+  const FOTO_FISSE = vetrina.length + 2 + 2 + 1;
+
   it('ogni foto ha due <source> (AVIF e WebP) e un <img> di ripiego in JPEG, non PNG', () => {
     // Le foto sono remote: Astro, da sé, ripiegherebbe su PNG (molto più pesante).
     // `Foto.astro` lo evita con `formatoDiRipiego`: questo test lo tiene fermo.
     const gruppi = gruppiPicture();
-    expect(gruppi.length).toBeGreaterThan(100);
+    expect(gruppi.length).toBeGreaterThanOrEqual(FOTO_FISSE);
     for (const dentro of gruppi) {
       const tipi = [...dentro.matchAll(/<source\b[^>]*\stype="([^"]*)"/gi)].map((m) => m[1]);
       expect(tipi, dentro).toEqual(['image/avif', 'image/webp']);
@@ -697,7 +742,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     // Come per le foto importate, Astro non deve offrire `1000w` di una foto
     // larga 896 px: la larghezza dell'`<img>` è quella dell'originale.
     const gruppi = gruppiPicture();
-    expect(gruppi.length).toBeGreaterThan(100);
+    expect(gruppi.length).toBeGreaterThanOrEqual(FOTO_FISSE);
     for (const dentro of gruppi) {
       const originale = Number(/\swidth="(\d+)"/.exec(dentro)?.[1]);
       expect(originale, dentro).toBeGreaterThan(0);
@@ -748,6 +793,57 @@ describe('Salvia social (/prova/salvia-social/)', () => {
         new RegExp(`<dialog\\b[^>]*\\s${attributo}(?=[\\s=>])[^>]*>([\\s\\S]*?)<\\/dialog>`, 'gi'),
       ),
     ].map((m) => ({ apertura: m[0].slice(0, m[0].indexOf('>') + 1), contenuto: m[1]! }));
+
+  /**
+   * I testi che scrive la redazione (prodotti, post, storie), così come sono e
+   * come stanno in un link WhatsApp. Dal più lungo: un testo che ne contiene un
+   * altro si toglie intero.
+   */
+  const TESTI_DELLA_REDAZIONE = [
+    ...articoli.flatMap((a) => [
+      a.nome,
+      a.dettaglio,
+      ...a.scatti.map((s) => s.alt),
+      ...(a.colori ?? []).flatMap((c) => [c.nome, c.foto?.alt ?? '']),
+    ]),
+    ...post.flatMap((p) => [p.testo, p.chiedi ?? '', ...p.foto.map((f) => f.alt)]),
+    ...storie.flatMap((s) => s.foto.flatMap((f) => [f.testo, f.soggetto, f.alt])),
+  ]
+    .filter((testo) => testo.trim() !== '')
+    .flatMap((testo) => [testo, encodeURIComponent(testo)])
+    .sort((a, b) => b.length - a.length);
+
+  let testiDellaPagina: string | undefined;
+
+  /**
+   * I testi e i valori degli attributi di `frammento` (decodificati; senza
+   * `frammento`, di tutta la pagina), senza i testi della redazione: quello che
+   * resta lo scrive il codice. Serve ai controlli "la pagina non dice…", che non
+   * devono dipendere da quello che la redazione scrive in un post o in un prodotto.
+   */
+  const testiDelCodice = (frammento?: string): string => {
+    if (frammento === undefined) return (testiDellaPagina ??= testiDelCodice(html()));
+    const tag = new RegExp(`<\\/?[a-z][a-z0-9-]*\\b${ATTRIBUTI}>`, 'gi');
+    const valori = [...frammento.matchAll(tag)].flatMap((m) =>
+      [...m[0].matchAll(/\s[^\s=>]+=(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)].map(
+        (a) => a[1] ?? a[2] ?? a[3] ?? '',
+      ),
+    );
+    return [...frammento.split(tag), ...valori]
+      .map((pezzo) =>
+        TESTI_DELLA_REDAZIONE.reduce((resto, testo) => resto.split(testo).join(' '), decodifica(pezzo)),
+      )
+      .join('\n');
+  };
+
+  it('i controlli sul testo del codice ignorano i testi della redazione, non il resto', () => {
+    // Le storie ci sono sempre (otto, fisse), e ogni foto ha la sua frase.
+    const testo = storie[0]!.foto[0]!.testo;
+    expect(testiDelCodice(`<p>${testo}</p><a href="?text=${encodeURIComponent(testo)}">Vedi</a>`)).not.toContain(
+      testo.slice(0, 20),
+    );
+    expect(testiDelCodice(`<p title="Ogni settimana">Ogni settimana</p>`).match(/Ogni settimana/g)).toHaveLength(2);
+  });
 
   it('esiste e il body porta data-variante="salvia-social"', () => {
     expect(existsSync(FILE)).toBe(true);
@@ -1080,39 +1176,43 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('il diario non è più un profilo: niente storie, un riquadro "Post dal negozio"', () => {
     const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
     expect(diario).not.toMatch(/\sdata-storia-apri=/);
-    expect(diario).not.toContain('Storie in evidenza');
+    expect(testiDelCodice(contenutiCon(html(), 'id', 'diario')[0] ?? '')).not.toContain('Storie in evidenza');
     expect(diario).toMatch(/<h3\b[^>]*>Post dal negozio<\/h3>/);
-    expect(diario).toContain(`Aggiornato il ${post[0]!.data}`);
   });
 
-  it('il diario dà la data dell’ultimo post (28 ottobre) e la pagina non promette un ritmo settimanale', () => {
+  it('il diario dà la data dell’ultimo post e la pagina non promette un ritmo settimanale', () => {
     const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
-    expect(diario).toContain('Aggiornato il 28 ottobre');
-    expect(diario).toContain('L’ultimo post è del 28 ottobre');
-    expect(decodifica(html())).not.toMatch(/ogni settimana/i);
+    expect(diario).toContain(`Aggiornato il ${post[0]!.data}`);
+    expect(diario).toContain(`L’ultimo post è ${delData(post[0]!.data)}`);
+    expect(testiDelCodice()).not.toMatch(/ogni settimana/i);
   });
 
-  it('"del" davanti alle date dell’8 e dell’11 è elisio in tutta la pagina', () => {
-    const pagina = decodifica(html());
-    expect(pagina).not.toContain('del 8 ');
-    expect(pagina).not.toContain('del 11 ');
-    // Il pulsante del post e il suo dialog dicono "dell’8 luglio" (p6, p7) e "dell’11 ottobre" (p3).
-    expect(pagina).toContain('Apri il post dell’8 luglio');
-    expect(pagina).toContain('aria-label="Post dell’11 ottobre"');
+  it('ogni post, nel pulsante e nel dialog, ha la data con "del" (eliso con 8 e 11: vedi delData)', () => {
+    expect(testiDelCodice()).not.toMatch(/\bdel (?:8|11) /);
+    const pulsanti = new Map(tagCon('button', 'data-post-apri').map((t) => [valore(t, 'data-post-apri'), t]));
+    const dialog = new Map(dialogCon('data-post').map(({ apertura }) => [valore(apertura, 'data-post'), apertura]));
+    for (const voce of post) {
+      const quante = voce.foto.length;
+      // Nel nome del pulsante la data e, se sono più di una, il numero di foto.
+      expect(valore(pulsanti.get(voce.id) ?? '', 'aria-label'), voce.id).toBe(
+        `Apri il post ${delData(voce.data)}${quante > 1 ? `, ${quante} foto` : ''}`,
+      );
+      expect(valore(dialog.get(voce.id) ?? '', 'aria-label'), voce.id).toBe(`Post ${delData(voce.data)}`);
+    }
   });
 
   it('i post non hanno etichette come "Arrivi": nel feed restano anche quelli vecchi', () => {
-    const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
+    const diario = contenutiCon(html(), 'id', 'diario')[0] ?? '';
     for (const etichetta of ['Arrivi', 'In vetrina', 'Dettagli', 'Dietro il banco']) {
-      expect(diario).not.toContain(`>${etichetta}<`);
-      expect(diario).not.toMatch(new RegExp(`aria-label="[^"]*${etichetta}`));
+      expect(testiDelCodice(diario)).not.toContain(etichetta);
     }
-    // Nella griglia, sul velo, solo la data; nel nome del pulsante data e numero di foto.
-    expect(diario).toMatch(/aria-label="Apri il post del 28 ottobre, \d+ foto"/);
+    // Nella griglia, sul velo, solo la data.
+    const celle = elementiDove(diario, (a) => /^<button\b/i.test(a) && quanti(a, 'data-post-apri') > 0);
+    expect(celle.map((c) => soloTesto(c.contenuto))).toEqual(post.map((voce) => voce.data));
   });
 
   it('la pagina parla come Alma Living: niente "Martina", niente carattere a mano', () => {
-    expect(decodifica(html())).not.toMatch(/martina/i);
+    expect(testiDelCodice()).not.toMatch(/martina/i);
     expect(html()).not.toMatch(/beth[- ]ellen/i);
   });
 
@@ -1165,7 +1265,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
 
   it('storie e post propongono di chiamare il negozio, non Instagram', () => {
     const testo = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    expect(decodifica(html())).not.toContain('Vedi su Instagram');
+    expect(testiDelCodice()).not.toContain('Vedi su Instagram');
     const chiama = [...html().matchAll(/<a\b[^>]*\shref="tel:\+393345205451"[^>]*>([\s\S]*?)<\/a>/g)]
       .map((m) => testo(m[1]!))
       .filter((t) => t === 'Chiama il negozio');
@@ -1173,7 +1273,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const fotoDelleStorie = storie.reduce((somma, storia) => somma + storia.foto.length, 0);
     expect(chiama).toHaveLength(fotoDelleStorie + post.length);
     for (const { contenuto } of [...dialogCon('data-storie'), ...dialogCon('data-post')]) {
-      expect(contenuto).not.toContain('almaliving.viaricasoli');
+      expect(testiDelCodice(contenuto)).not.toContain('almaliving.viaricasoli');
     }
   });
 
@@ -1188,23 +1288,22 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
-  it(`griglia dei post: ${POST_VISIBILI} post visibili, gli altri piegati, ognuno con il suo dialog`, () => {
+  it(`griglia dei post: al più ${POST_VISIBILI} post visibili, gli altri piegati, ognuno con il suo dialog`, () => {
     const pulsanti = tagCon('button', 'data-post-apri');
     const visibili = pulsanti.filter((t) => !/\sdata-altro=/.test(t));
     const piegati = pulsanti.filter((t) => /\sdata-altro=/.test(t));
-    expect(visibili).toHaveLength(POST_VISIBILI);
+    expect(visibili).toHaveLength(Math.min(post.length, POST_VISIBILI));
     for (const tag of visibili) expect(tag).not.toMatch(/\shidden(?=[\s=>])/);
-    expect(piegati).toHaveLength(post.length - POST_VISIBILI);
-    expect(piegati.length).toBeGreaterThan(0);
+    expect(piegati).toHaveLength(Math.max(0, post.length - POST_VISIBILI));
     for (const tag of piegati) expect(tag).toMatch(/\shidden(?=[\s=>])/);
 
-    // Il pulsante "Mostra altri" apre proprio il gruppo dei post piegati.
-    const gruppiAltri = new Set(piegati.map((t) => valore(t, 'data-altro')));
-    expect(gruppiAltri.size).toBe(1);
+    // Il pulsante "Mostra altri" apre proprio il gruppo dei post piegati; senza
+    // post piegati non c'è.
     const mostra = tagCon('button', 'data-mostra-altri').map((t) =>
       valore(t, 'data-mostra-altri'),
     );
-    expect(mostra).toEqual([...gruppiAltri]);
+    expect(mostra).toEqual(piegati.length > 0 ? ['post'] : []);
+    for (const tag of piegati) expect(valore(tag, 'data-altro')).toBe('post');
 
     expect(pulsanti.map((t) => valore(t, 'data-post-apri'))).toEqual(post.map((p) => p.id));
     // Anche le schede rapide degli articoli sono dialog `data-post`: qui contano solo i post.
@@ -1231,13 +1330,14 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       'selezione',
     ]);
     const filtri = tagCon('button', 'data-filtro');
+    const visibili = categorieVisibili(articoli);
     expect(filtri.map((t) => valore(t, 'data-filtro'))).toEqual([
       'tutti',
-      ...categorie.map((c) => c.id),
+      ...visibili.map((c) => c.id),
     ]);
     expect(filtri.map((t) => valore(t, 'aria-pressed'))).toEqual([
       'true',
-      ...categorie.map(() => 'false'),
+      ...visibili.map(() => 'false'),
     ]);
 
     const vuoto = tagCon('[a-z]+', 'data-filtro-vuoto');
@@ -1270,19 +1370,28 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(html()).not.toMatch(/\sdata-carosello/);
   });
 
-  it('ogni filtro ha il cerchietto foto, decorativo; Mare dice che non ha articoli', () => {
+  it('ogni filtro ha il cerchietto foto, decorativo, e il numero di articoli; solo Mare può non averne', () => {
     const filtri = [
       ...html().matchAll(/<button\b[^>]*\sdata-filtro="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g),
     ];
-    expect(filtri.map((m) => m[1])).toEqual(['tutti', ...categorie.map((c) => c.id)]);
+    expect(filtri.map((m) => m[1])).toEqual(['tutti', ...categorieVisibili(articoli).map((c) => c.id)]);
+    // Mare c'è sempre: senza articoli mostra la sua finestra.
+    expect(filtri.map((m) => m[1])).toContain('mare');
     for (const [, id, dentro] of filtri) {
       const img = dentro!.match(/<img\b[^>]*>/g) ?? [];
       expect(img, id).toHaveLength(1);
       expect(img[0], id).toMatch(/\salt(?:="")?(?=[\s/>])/);
+      const quanti =
+        id === 'tutti' ? articoli.length : articoli.filter((a) => (a.categorie as string[]).includes(id!)).length;
+      const testo = soloTesto(dentro!);
+      if (quanti === 0) {
+        expect(testo, id).toContain(', nessun articolo adesso');
+        // Le altre categorie senza articoli spariscono dai filtri.
+        expect(['tutti', 'mare'], id).toContain(id);
+      } else {
+        expect(testo, id).toContain(`${quanti} ${quanti === 1 ? 'articolo' : 'articoli'}`);
+      }
     }
-    expect(decodifica(filtri.find((m) => m[1] === 'mare')![2]!)).toContain(
-      ', nessun articolo adesso',
-    );
   });
 
   it('nella griglia: le schede, "Mostra tutti", poi le due finestre, ognuna con la foto vera e il suo WhatsApp', () => {
@@ -1331,8 +1440,8 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('la fila delle storie si vede solo sul telefono, senza invito ai post', () => {
     const css = cssDellaPagina();
     expect(css).toMatch(/@media \(width ?> ?767px\)\{[^}]*\.storie\[[^\]]*\]\{display:none\}/);
-    expect(decodifica(html())).not.toContain('Vedi i post');
-    expect(decodifica(html())).not.toContain('Le storie del negozio');
+    expect(testiDelCodice()).not.toContain('Vedi i post');
+    expect(testiDelCodice()).not.toContain('Le storie del negozio');
   });
 
   it("la griglia non riordina nulla a vista: la finestra resta in fondo, come nel DOM", () => {
@@ -1375,7 +1484,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       expect(valore(interruttore, 'aria-pressed')).toBe('false');
       expect(valore(interruttore, 'aria-label')).toBe(`Seconda foto: ${articolo.nome}`);
       expect(scheda).toContain(`>${occhielloArticolo(articolo)}</p>`);
-      expect(scheda).toMatch(new RegExp(`<h3\\b[^>]*>${articolo.nome}</h3>`));
+      expect(scheda).toMatch(new RegExp(`<h3\\b[^>]*>${allaLettera(articolo.nome)}</h3>`));
       expect(scheda).toContain(articolo.dettaglio);
     });
     expect(html()).not.toMatch(/\sdata-chiedi(?:-pannello)?=/);
@@ -1399,7 +1508,9 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       const testo = decodifica(contenuto);
       const [titolo, nome] = (valore(apertura, 'aria-labelledby') ?? '').split(' ');
       expect(testo, articolo.id).toMatch(new RegExp(`<p\\b[^>]*\\sid="${titolo}"[^>]*>Chiedi disponibilità</p>`));
-      expect(testo, articolo.id).toMatch(new RegExp(`<h2\\b[^>]*\\sid="${nome}"[^>]*>${articolo.nome}</h2>`));
+      expect(testo, articolo.id).toMatch(
+        new RegExp(`<h2\\b[^>]*\\sid="${nome}"[^>]*>${allaLettera(articolo.nome)}</h2>`),
+      );
       expect(testo).toContain(`>${occhielloArticolo(articolo)}</p>`);
       expect(testo).toContain(articolo.dettaglio);
       // Almeno i due scatti; con il Task 5 la casetta ne ha tre, uno per colore.
@@ -1456,11 +1567,11 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     }
   });
 
-  it('lo stato del negozio porta gli orari della prova, e la tabella ha i sette giorni', () => {
+  it('lo stato del negozio porta gli orari di negozio.json, e la tabella ha i sette giorni', () => {
     const stati = tagCon('[a-z]+', 'data-stato-negozio');
     expect(stati.length).toBeGreaterThan(0);
     for (const tag of stati) {
-      expect(JSON.parse(valore(tag, 'data-orari') ?? '')).toEqual(ORARI_PROVA);
+      expect(JSON.parse(valore(tag, 'data-orari') ?? '')).toEqual(orariDelNegozio);
     }
     expect(
       tagCon('[a-z]+', 'data-orario-giorno').map((t) => valore(t, 'data-orario-giorno')),

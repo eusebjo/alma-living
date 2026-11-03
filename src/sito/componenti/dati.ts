@@ -1,12 +1,12 @@
-// Contenuti della variante Salvia social. Storie e selezione sono esempi
-// trascritti da `renderVals()` della tavola `SalviaSocial.dc.html` (tela di Claude
-// Design) e aggiornati alla versione 3, la tavola `DiarioFascia.dc.html` (messaggi
-// dei post con la preposizione articolata, diario dopo la selezione). La vetrina
-// dell'apertura è la sequenza fissa della tavola `FotoGrande2.dc.html` ("La foto
-// grande", 2 novembre 2026). I post del diario sono invece i 13 post veri del
-// profilo Instagram di Alma Living (didascalie senza emoji né promozioni scadute).
-// Le foto sono indicate per nome (`prova/<nome>.jpg` nel bucket delle foto) e
-// ogni scatto porta l'indirizzo completo (`src`, vedi `src/content/foto.ts`): i
+// I dati fissi della pagina e i tipi che usano i componenti. Prodotti, post e
+// storie non stanno più qui: sono le collection `prodotti`, `post` e `storie`
+// (`src/content/`), che la redazione cambia dal pannello; la pagina le legge e
+// le traduce in `Articolo`, `Post` e `Storia` con `src/sito/contenuti.ts`.
+// Restano nel codice la vetrina dell'apertura (la sequenza fissa della tavola
+// `FotoGrande2.dc.html`, "La foto grande", 2 novembre 2026), le foto dei filtri,
+// delle finestre e del negozio, le sezioni e i messaggi già scritti.
+// Le foto fisse sono indicate per nome (`prova/<nome>.jpg` nel bucket delle foto)
+// e ogni scatto porta l'indirizzo completo (`src`, vedi `src/content/foto.ts`): i
 // componenti lo passano a `<Picture>`, che lo scarica e lo ottimizza alla build.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
 import { CATEGORIE } from '../../content/categorie';
@@ -14,7 +14,7 @@ import type { Categoria } from '../../content/categorie';
 import { indirizzoFoto } from '../../content/foto';
 import type { RegolaLimite } from '../comune/limite';
 
-/** Testo alternativo di ogni foto di prova, come sulla tavola. */
+/** Testo alternativo di ogni foto fissa della pagina, come sulla tavola. */
 const ALT = {
   scaffale: 'Uno scaffale del negozio con plaid e cuscini in pelo bianchi, rosa e grigi',
   'righe-rosa': 'Letto con lenzuola e copriletto a righe rosa in una camera luminosa',
@@ -23,51 +23,18 @@ const ALT = {
   'bagno-prodotti': 'Mobile di legno con saponi e profumi per la casa, alla luce del giorno',
   'lenzuola-beige': 'Lenzuola color sabbia in primo piano',
   volant: 'Lenzuola bianche e color panna con il volant',
-  trapunta: 'Primo piano di un trapuntato bianco',
   'tovaglia-volant': 'Tovaglia color lino con volant e profilo rosso',
   tavola: 'Tavola apparecchiata con tovaglia bianca e sedie bianche',
   coperta: 'Coperta in maglia grigia arrotolata, chiusa con fiocco e bottone',
   'abbracciami-verde': 'Plaid verde con la scritta Abbracciami ricamata e le frange',
-  'abbracciami-rosso': 'Plaid rosso e marrone con la scritta Abbracciami, appesi',
-  'plaid-rosso': 'Plaid rosso con le frange e palline di Natale',
-  'plaid-verde': 'Plaid verde con decorazioni natalizie',
   'copriletto-rosso': 'Copriletto rosso con volant e cuscini natalizi, all’aperto',
   'asciugamano-rosso': 'Asciugamano rosso con una casetta di Natale ricamata',
-  'asciugamano-bianco': 'Asciugamano bianco con una casetta ricamata',
-  'asciugamano-verde': 'Asciugamano verde con una casetta ricamata',
   neonato: 'Accappatoi da bimbo con cappuccio e orsetto ricamato',
   'accappatoi-appesi': 'Accappatoi da bimbo appesi, rosa, bianco e azzurro',
-  'asciugamani-bimbo': 'Asciugamani e accappatoi da bimbo con l’orsetto ricamato',
   candele: 'Candele in ciotole di legno legate con lo spago, con il cartellino',
-  cuori: 'Cuori dorati su basi di legno con stelle rosse di stoffa',
   gnomi: 'Gnomi di stoffa natalizi su un’alzata bianca',
   mare: 'Lenzuola e plaid piegati in riva al mare',
-  // Le foto dei post veri di Alma Living (profilo Instagram del negozio).
-  'ig-assaggio':
-    'Camera con testiera capitonné e copriletto rosa con balza di pizzo, una donna legge sul letto',
-  'ig-conchiglie': 'Vasi in ceramica a forma di conchiglia con piante grasse, su un tavolo di legno',
-  'ig-spoiler':
-    'Scaffali del negozio con biancheria piegata, tovaglie a quadretti e diffusori per la casa',
-  'ig-angolo-bimbi':
-    'Scaffale del negozio con cuscini a righe, biancheria rosa e prodotti per i più piccoli',
-  'ig-tavola-1':
-    'Tavola apparecchiata in negozio con piatti a spirale grigi e bicchieri, davanti agli scaffali',
-  'ig-tavola-2': 'Piatti con decoro a spirale grigio e una ciotola sul tavolo del negozio',
-  'ig-tavola-estate': 'Ciotole di legno decorate, vassoi con piastrelle blu e posate di legno',
-  'ig-erbolinea':
-    'Flaconi di essenze per il bucato su un vassoio di legno, davanti a una finestra ad arco',
-  'ig-beach-therapy': 'Telo mare a righe verde menta e borsa Beach Therapy sulla spiaggia',
-  'ig-autunno':
-    'Camera con testiera capitonné bianca, copriletto trapuntato rosa cipria e carta da parati a fiori',
-  'ig-parure-1': 'Letto matrimoniale con parure copripiumino a piccole macchie su fondo beige',
-  'ig-parure-2': 'Letto matrimoniale con parure copripiumino maculata nei toni del marrone',
-  'ig-parure-3': 'Letto con parure copripiumino a quadri beige, panna e rosso',
-  'ig-parure-4': 'Letto con parure copripiumino a motivo geometrico blu e bianco',
-  'ig-parure-5': 'Letto con copripiumino in jersey di cotone verde',
   'ig-cuscini-1': 'Divano con cuscini natalizi rossi, bianchi e verdi con alberelli in rilievo',
-  'ig-cuscini-2': 'Divano con cuscini natalizi ad alberelli e un plaid rosso con fiocchi di neve',
-  'ig-cuscini-3': 'Sei cuscini con gattini natalizi stampati',
-  'ig-cuscini-4': 'Cuscini con baite innevate e boschi di abeti su un divano chiaro',
 } as const;
 
 export type NomeFoto = keyof typeof ALT;
@@ -141,7 +108,7 @@ export const vetrina: ProdottoInVetrina[] = [
   inVetrina('Saponi e profumi', 'bagno-prodotti', '50% 62%', '50% 78%', true),
 ];
 
-// --- Storie ---
+// --- Storie (dalla collection `storie`, vedi `src/sito/contenuti.ts`) ---
 
 /** L'invito che la scheda di una storia mette in evidenza: WhatsApp, telefono o indicazioni. */
 export type InvitoStoria = 'whatsapp' | 'chiama' | 'indicazioni';
@@ -166,175 +133,6 @@ export interface Storia {
   invito: InvitoStoria;
   foto: FotoStoria[];
 }
-
-function fotoStoria(
-  foto: NomeFoto,
-  posizione: string,
-  testo: string,
-  soggetto: string,
-): FotoStoria {
-  return { ...scatto(foto, posizione), testo, soggetto };
-}
-
-/** Le storie della fila sotto l'header. */
-export const storie: Storia[] = [
-  {
-    id: 'oggi',
-    nome: 'Oggi',
-    etichetta: 'Oggi',
-    data: '28 ottobre',
-    invito: 'whatsapp',
-    foto: [
-      fotoStoria(
-        'scaffale',
-        '50% 45%',
-        'La parete dei plaid è pronta: bianchi, rosa e grigi, con i cuscini in pelo.',
-        'la parete dei plaid',
-      ),
-      fotoStoria(
-        'camera-rosa',
-        '50% 50%',
-        'Nell’angolo romantico è arrivato il copriletto trapuntato rosa, con i cuscini abbinati.',
-        'il copriletto trapuntato rosa',
-      ),
-    ],
-  },
-  {
-    id: 'arrivi',
-    nome: 'Arrivi',
-    etichetta: 'Nuovo',
-    data: '27 ottobre',
-    invito: 'whatsapp',
-    foto: [
-      fotoStoria(
-        'plaid-rosso',
-        '50% 45%',
-        'Sono arrivati i plaid delle feste, rossi e verdi, con le frange lunghe.',
-        'i plaid delle feste',
-      ),
-      fotoStoria(
-        'abbracciami-rosso',
-        '50% 40%',
-        'E gli Abbracciami in rosso e marrone: il regalo per chi sente sempre freddo.',
-        'gli Abbracciami rossi e marroni',
-      ),
-    ],
-  },
-  {
-    id: 'vetrina',
-    nome: 'Vetrina',
-    data: '25 ottobre',
-    invito: 'indicazioni',
-    foto: [
-      fotoStoria(
-        'gnomi',
-        '50% 50%',
-        'In vetrina sono comparsi gli gnomi di stoffa. Ognuno ha la sua faccia e il suo cappello.',
-        'gli gnomi di stoffa',
-      ),
-      fotoStoria(
-        'cuori',
-        '50% 45%',
-        'Accanto, i cuori dorati sulle basi di legno e le stelle rosse.',
-        'i cuori dorati',
-      ),
-    ],
-  },
-  {
-    id: 'casette',
-    nome: 'Casette',
-    data: '24 ottobre',
-    invito: 'whatsapp',
-    foto: [
-      fotoStoria(
-        'asciugamano-rosso',
-        '50% 50%',
-        'Asciugamani con la casetta ricamata: rosso per le feste.',
-        'l’asciugamano rosso con la casetta',
-      ),
-      fotoStoria(
-        'asciugamano-verde',
-        '50% 50%',
-        'Verde per chi ama il bosco. E c’è anche il bianco, per tutto l’anno.',
-        'l’asciugamano verde con la casetta',
-      ),
-    ],
-  },
-  {
-    id: 'candele',
-    nome: 'Candele',
-    data: '22 ottobre',
-    invito: 'indicazioni',
-    foto: [
-      fotoStoria(
-        'candele',
-        '50% 55%',
-        'Candele alla vaniglia nelle ciotole di legno, con lo spago e il cartellino.',
-        'le candele alla vaniglia',
-      ),
-    ],
-  },
-  {
-    id: 'bimbi',
-    nome: 'Bimbi',
-    data: '20 ottobre',
-    invito: 'chiama',
-    foto: [
-      fotoStoria(
-        'neonato',
-        '50% 40%',
-        'Accappatoi con il cappuccio e l’orsetto ricamato, per i più piccoli di casa.',
-        'gli accappatoi con l’orsetto',
-      ),
-      fotoStoria(
-        'accappatoi-appesi',
-        '50% 40%',
-        'In rosa, bianco e azzurro. Belli anche da regalare per una nascita.',
-        'gli accappatoi rosa, bianchi e azzurri',
-      ),
-    ],
-  },
-  {
-    id: 'tavola',
-    nome: 'Tavola',
-    data: '18 ottobre',
-    invito: 'whatsapp',
-    foto: [
-      fotoStoria(
-        'tovaglia-volant',
-        '50% 50%',
-        'La tovaglia color lino con il volant e il profilo rosso.',
-        'la tovaglia con il volant',
-      ),
-      fotoStoria(
-        'tavola',
-        '40% 50%',
-        'E la tavola delle domeniche lunghe, quando nessuno ha fretta di alzarsi.',
-        'la tavola delle domeniche',
-      ),
-    ],
-  },
-  {
-    id: 'lenzuola',
-    nome: 'Lenzuola',
-    data: '15 ottobre',
-    invito: 'whatsapp',
-    foto: [
-      fotoStoria(
-        'lenzuola-beige',
-        '50% 45%',
-        'Lenzuola color sabbia: stanno bene con il bianco e con il rosa cipria.',
-        'le lenzuola color sabbia',
-      ),
-      fotoStoria(
-        'volant',
-        '50% 50%',
-        'E le parure bianche con il volant, piegate per colore sugli scaffali.',
-        'le parure con il volant',
-      ),
-    ],
-  },
-];
 
 // --- Categorie degli articoli ---
 
@@ -414,11 +212,6 @@ export interface Articolo {
   colori?: readonly Colore[];
 }
 
-/** Il secondo scatto come dettaglio ingrandito di `base`, che ne tiene la posizione. */
-function ingrandito(base: Scatto, origine: string, alt: string): ScattoArticolo {
-  return { ...base, alt, ingrandimento: { scala: SCALA_DETTAGLIO, origine } };
-}
-
 /** L'occhiello della scheda: «Novità» al posto della categoria, se l'articolo è nuovo. */
 export function occhielloArticolo(articolo: Articolo): string {
   if (articolo.novita) return 'Novità';
@@ -462,117 +255,7 @@ export const LIMITI_SELEZIONE: readonly RegolaLimite[] = [
   { media: '(max-width: 1023px)', limite: 6 },
 ];
 
-export const articoli: Articolo[] = [
-  {
-    id: 'sabbia',
-    nome: 'Lenzuola color sabbia',
-    dettaglio: 'Cotone con balza bianca · matrimoniale',
-    categorie: ['letto'],
-    novita: true,
-    scatti: [
-      scatto('lenzuola-beige', '50% 40%'),
-      ingrandito(
-        scatto('lenzuola-beige', '50% 40%'),
-        '40% 68%',
-        'Dettaglio della balza bianca sulle lenzuola color sabbia',
-      ),
-    ],
-  },
-  {
-    id: 'abbracciami',
-    nome: 'Plaid Abbracciami',
-    dettaglio: 'Pile ricamato con frange, verde o rosso',
-    categorie: ['natale', 'letto'],
-    novita: true,
-    scatti: [scatto('abbracciami-verde', '50% 58%'), scatto('abbracciami-rosso', '50% 40%')],
-    colori: [
-      { nome: 'verde', tinta: '#5e654f', foto: scatto('abbracciami-verde', '50% 58%') },
-      { nome: 'rosso', tinta: '#b8263a', foto: scatto('abbracciami-rosso', '50% 40%') },
-    ],
-  },
-  {
-    id: 'orsetto',
-    nome: 'Accappatoio con orsetto',
-    dettaglio: 'Con cappuccio · rosa, sabbia o azzurro',
-    categorie: ['bimbi', 'bagno'],
-    novita: false,
-    scatti: [scatto('neonato', '50% 40%'), scatto('accappatoi-appesi', '50% 30%')],
-    // Senza una foto per colore: la scheda rapida tiene i due scatti.
-    colori: [
-      { nome: 'rosa', tinta: '#ddb3b8' },
-      { nome: 'sabbia', tinta: '#cdb896' },
-      { nome: 'azzurro', tinta: '#a9c7e0' },
-    ],
-  },
-  {
-    id: 'volant',
-    nome: 'Parure con volant',
-    dettaglio: 'Bianco e panna, copriletto a rilievo',
-    categorie: ['letto'],
-    novita: false,
-    scatti: [scatto('volant'), scatto('trapunta')],
-  },
-  {
-    id: 'casetta',
-    nome: 'Asciugamano con casetta',
-    dettaglio: 'Spugna ricamata · rosso, bianco o verde',
-    categorie: ['bagno', 'natale'],
-    novita: true,
-    scatti: [scatto('asciugamano-rosso'), scatto('asciugamano-verde')],
-    colori: [
-      { nome: 'rosso', tinta: '#a62630', foto: scatto('asciugamano-rosso') },
-      { nome: 'bianco', tinta: '#f4f1ea', foto: scatto('asciugamano-bianco') },
-      { nome: 'verde', tinta: '#2f5734', foto: scatto('asciugamano-verde') },
-    ],
-  },
-  {
-    id: 'tovaglia',
-    nome: 'Tovaglia con volant',
-    dettaglio: 'Effetto lino con profilo rosso',
-    categorie: ['tavola'],
-    novita: false,
-    scatti: [
-      scatto('tovaglia-volant'),
-      ingrandito(
-        scatto('tovaglia-volant'),
-        '63% 48%',
-        'Dettaglio del volant e del profilo rosso della tovaglia',
-      ),
-    ],
-  },
-  {
-    id: 'coperta',
-    nome: 'Coperta in maglia',
-    dettaglio: 'Grigia, chiusa con fiocco e bottone',
-    categorie: ['letto', 'natale'],
-    novita: false,
-    scatti: [
-      scatto('coperta'),
-      ingrandito(
-        scatto('coperta'),
-        '54% 45%',
-        'Dettaglio del fiocco e del cartellino sulla coperta in maglia',
-      ),
-    ],
-  },
-  {
-    id: 'saponi',
-    nome: 'Saponi e profumi',
-    dettaglio: 'Saponette e diffusori per la casa',
-    categorie: ['profumi', 'bagno'],
-    novita: false,
-    scatti: [
-      scatto('bagno-prodotti', '50% 72%'),
-      ingrandito(
-        scatto('bagno-prodotti', '50% 72%'),
-        '70% 64%',
-        'Dettaglio del cesto di saponi legato con lo spago e il cartellino',
-      ),
-    ],
-  },
-];
-
-// --- Post del diario: i post veri di Alma Living, dal più recente ---
+// --- Post del diario (dalla collection `post`, vedi `src/sito/contenuti.ts`) ---
 
 export interface Post {
   /** Unico nella pagina: lo usano il pulsante della griglia e il suo dialog. */
@@ -581,132 +264,16 @@ export interface Post {
   /**
    * Di che cosa parla il post, nel messaggio WhatsApp: comincia con la
    * preposizione articolata ("sui cuscini di Natale"), che si legge dopo la data
-   * ("…il vostro post del 28 ottobre sui cuscini di Natale").
+   * ("…il vostro post del 28 ottobre sui cuscini di Natale"). Senza, il messaggio
+   * dice solo la data.
    */
-  chiedi: string;
+  chiedi?: string;
   testo: string;
   foto: Scatto[];
 }
 
 /** Quanti post si vedono nella griglia prima di "Mostra altri post". */
 export const POST_VISIBILI = 9;
-
-export const post: Post[] = [
-  {
-    id: 'p1',
-    data: '28 ottobre',
-    chiedi: 'sui cuscini di Natale',
-    testo:
-      'Sono arrivati i cuscini di Natale. Brinì, in jacquard con gli alberelli in punto spugna: copricuscino 45 x 45 in rosso, bianco, beige e verde, oppure cuscino imbottito 30 x 50. Meid, con baite innevate e boschi, negli stessi due formati, in rosso, beige e verde. E per chi ama i gatti, Zigrì: cotone stampato fronte e retro.',
-    foto: [
-      scatto('ig-cuscini-1'),
-      scatto('ig-cuscini-2'),
-      scatto('ig-cuscini-3'),
-      scatto('ig-cuscini-4'),
-    ],
-  },
-  {
-    id: 'p2',
-    data: '27 ottobre',
-    chiedi: 'sulle nuove parure',
-    testo:
-      'Nuove parure copripiumino matrimoniali in puro cotone: Vara in percallino; Rudy, maculata, in grigio o marrone; i quadri in cotone tinto in filo; il motivo geometrico in grigio, blu e tortora. E Antigua, il copripiumino in jersey che non si stira, in nove colori: bianco, naturale, fumo, salvia, sabbia, grigio, ottanio, bordeaux e blu.',
-    foto: [
-      scatto('ig-parure-1'),
-      scatto('ig-parure-2'),
-      scatto('ig-parure-3'),
-      scatto('ig-parure-4'),
-      scatto('ig-parure-5'),
-    ],
-  },
-  {
-    id: 'p3',
-    data: '11 ottobre',
-    chiedi: 'sui plaid',
-    testo:
-      'L’inverno è alle porte e torna la voglia di casa. Soffici, caldi, avvolgenti: abbiamo scelto quattro plaid per le serate sul divano. Vi aspettiamo in negozio per scegliere il vostro.',
-    foto: [scatto('scaffale'), scatto('copriletto-rosso'), scatto('mare'), scatto('coperta')],
-  },
-  {
-    id: 'p4',
-    data: '31 agosto',
-    chiedi: 'sulle novità d’autunno',
-    testo:
-      'È bello cominciare a sognare un po’ in anticipo. A metà settembre arrivano tante novità per vestire la casa con le sfumature calde dell’autunno, e le prime idee per le feste.',
-    foto: [scatto('ig-autunno')],
-  },
-  {
-    id: 'p5',
-    data: '15 luglio',
-    chiedi: 'sulla linea Beach Therapy',
-    testo:
-      'La collezione Beach Therapy si allarga: oltre al verde menta ci sono il grigio chiaro e il beige. Potete prendere il set da tre pezzi o i singoli articoli.',
-    foto: [scatto('ig-beach-therapy')],
-  },
-  {
-    id: 'p6',
-    data: '8 luglio',
-    chiedi: 'sulle essenze per il bucato',
-    testo:
-      'Sono arrivate le essenze concentrate per il bucato di Erbolinea Prestige Fragrances: profumi intensi che durano giorni e riempiono la casa di fresco. Tante fragranze e diversi formati, per lavatrice, asciugatrice e lavaggio a mano. Passate a provarle.',
-    foto: [scatto('ig-erbolinea')],
-  },
-  {
-    id: 'p7',
-    data: '8 luglio',
-    chiedi: 'sul tris di asciugamani',
-    testo:
-      'Il tris di asciugamani, ospite, viso e telo, con la balza in puro lino. Fatto in Toscana, in tante sfumature: celeste, rosa, verde salvia, grigio.',
-    foto: [scatto('bagno')],
-  },
-  {
-    id: 'p8',
-    data: '3 luglio',
-    chiedi: 'sulla tavola d’estate',
-    testo:
-      'Voglia d’estate anche a tavola? Legno caldo e ceramiche decorate, per rinnovare la tavola dei pranzi estivi.',
-    foto: [scatto('ig-tavola-estate')],
-  },
-  {
-    id: 'p9',
-    data: '19 giugno',
-    chiedi: 'sui piatti per la tavola',
-    testo:
-      'Un nuovo arrivo in negozio che sa di colazioni lente, domeniche in famiglia e chiacchiere attorno alla tavola.',
-    foto: [scatto('ig-tavola-1'), scatto('ig-tavola-2')],
-  },
-  {
-    id: 'p10',
-    data: '15 giugno',
-    chiedi: 'sui prodotti per i più piccoli',
-    testo: 'Un piccolo angolo dedicato anche ai più piccoli.',
-    foto: [scatto('ig-angolo-bimbi')],
-  },
-  {
-    id: 'p11',
-    data: '10 giugno',
-    chiedi: 'sugli scaffali del negozio',
-    testo:
-      'Ogni dettaglio sta prendendo il suo posto. Un piccolo spoiler di quello che vi aspetta da Alma Living. Ci vediamo sabato.',
-    foto: [scatto('ig-spoiler')],
-  },
-  {
-    id: 'p12',
-    data: '28 maggio',
-    chiedi: 'sulle conchiglie in ceramica',
-    testo:
-      'Ogni pezzo è una storia unica: le conchiglie artigianali di Ceramica Viva racchiudono la bellezza del design fatto a mano. Noi stiamo sistemando gli ultimi dettagli per l’apertura, voi cominciate a scegliere la vostra preferita.',
-    foto: [scatto('ig-conchiglie')],
-  },
-  {
-    id: 'p13',
-    data: '30 aprile',
-    chiedi: 'su quello che sta arrivando',
-    testo:
-      'Un assaggio di ciò che sta arrivando: dettagli che fanno casa, atmosfere da vivere. Quasi pronti ad accogliervi.',
-    foto: [scatto('ig-assaggio')],
-  },
-];
 
 // --- Messaggi WhatsApp già scritti (quello di disponibilità è in `comune/contatti.ts`) ---
 
@@ -734,6 +301,8 @@ export function delData(data: string): string {
   return giorno === '8' || giorno === '11' ? `dell’${data}` : `del ${data}`;
 }
 
+/** Il messaggio WhatsApp di un post: la data e, se c'è, di che cosa parla. */
 export function messaggioPost(voce: Post): string {
-  return `Buongiorno, ho visto sul sito il vostro post ${delData(voce.data)} ${voce.chiedi}. Mi date qualche informazione in più?`;
+  const argomento = voce.chiedi ? ` ${voce.chiedi}` : '';
+  return `Buongiorno, ho visto sul sito il vostro post ${delData(voce.data)}${argomento}. Mi date qualche informazione in più?`;
 }

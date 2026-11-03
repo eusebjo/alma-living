@@ -4,9 +4,10 @@
 // salvia, storie sotto l'header solo sul telefono, apertura con le foto dei
 // prodotti che scorrono da sole, selezione, diario del negozio con griglia di post
 // e fascia Instagram.
-// Componenti e dati in src/sito/componenti/.
+// Componenti e dati fissi in src/sito/componenti/; prodotti, post e storie dalle
+// collection (src/content/), tradotti per i componenti da src/sito/contenuti.ts.
 import { getImage } from 'astro:assets';
-import { getEntry } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import Interazioni from '../../../sito/comune/Interazioni.astro';
 import LayoutProva from '../../../sito/comune/LayoutProva.astro';
 import { CARATTERI_PER_VARIANTE } from '../../../sito/comune/caratteri';
@@ -22,12 +23,16 @@ import Negozio from '../../../sito/componenti/Negozio.astro';
 import Piede from '../../../sito/componenti/Piede.astro';
 import Selezione from '../../../sito/componenti/Selezione.astro';
 import Testata from '../../../sito/componenti/Testata.astro';
-import { storie } from '../../../sito/componenti/dati';
 import '../../../sito/componenti/tema.css';
+import { elencoArticoli, elencoPost, elencoStorie } from '../../../sito/contenuti';
 
 const voce = await getEntry('negozio', 'negozio');
 if (!voce) throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
 const negozio = datiNegozio(voce.data);
+
+const articoli = elencoArticoli(await getCollection('prodotti'));
+const post = elencoPost(await getCollection('post'));
+const storie = elencoStorie(await getCollection('storie'));
 
 // La grana delle fasce salvia, come sulla tavola: una tessera ripetuta in CSS.
 const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
@@ -41,11 +46,11 @@ const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
 >
   <div class="pagina" id="inizio" style={`--grana: url('${tessera.src}')`}>
     <Testata negozio={negozio} />
-    <FilaStorie />
+    <FilaStorie storie={storie} />
     <main>
       <Apertura />
-      <Selezione negozio={negozio} />
-      <Diario negozio={negozio} />
+      <Selezione articoli={articoli} negozio={negozio} />
+      <Diario post={post} negozio={negozio} />
       <FasciaInstagram negozio={negozio} />
       <Negozio negozio={negozio} />
     </main>

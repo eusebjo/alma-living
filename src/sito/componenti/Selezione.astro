@@ -22,32 +22,37 @@
 // Ogni scheda apre la sua scheda rapida "Chiedi disponibilità" (scelta 5,
 // `SchedaRapida.astro`): un dialog per articolo, dopo la griglia, come i post del
 // diario.
+//
+// Gli articoli sono i prodotti della collection `prodotti`, già in ordine (dal
+// più recente): li passa la pagina. I filtri sono solo le categorie che hanno
+// almeno un articolo, più Mare, che c'è sempre (`categorieVisibili`).
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
+import { categorieVisibili } from '../contenuti';
 import Finestra from './Finestra.astro';
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
 import SchedaArticolo from './SchedaArticolo.astro';
 import SchedaRapida from './SchedaRapida.astro';
 import {
-  articoli,
-  categorie,
   fotoDeiFiltri,
   fotoFinestra,
   LIMITI_SELEZIONE,
   messaggi,
+  type Articolo,
   type Categoria,
 } from './dati';
 
 interface Props {
+  articoli: Articolo[];
   negozio: DatiNegozio;
 }
 
-const { negozio } = Astro.props;
+const { articoli, negozio } = Astro.props;
 
 const filtri: { id: 'tutti' | Categoria; nome: string; quanti: number }[] = [
   { id: 'tutti', nome: 'Tutto', quanti: articoli.length },
-  ...categorie.map(({ id, nome }) => ({
+  ...categorieVisibili(articoli).map(({ id, nome }) => ({
     id,
     nome,
     quanti: articoli.filter((a) => a.categorie.includes(id)).length,

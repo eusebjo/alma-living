@@ -9,7 +9,10 @@ export type Giorno = (typeof GIORNI)[number];
 /** Una fascia di apertura; gli orari sono `HH:MM` (24 ore). */
 export type Fascia = { giorno: Giorno; apertura: string; chiusura: string };
 
-/** Orari di esempio della prova: lunedì-sabato 9:30-13:00 e 16:00-19:30, domenica chiuso. */
+/**
+ * Orari di esempio: lunedì-sabato 9:30-13:00 e 16:00-19:30, domenica chiuso. Li
+ * usano i test di questa logica; la pagina mostra quelli di `negozio.json`.
+ */
 export const ORARI_PROVA: Fascia[] = (
   ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato'] as const
 ).flatMap((giorno) => [

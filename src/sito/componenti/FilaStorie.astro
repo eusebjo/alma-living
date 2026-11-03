@@ -2,9 +2,16 @@
 // La fila delle storie sotto l'header: si vede solo sul telefono, fino a 767 px.
 // Da 768 px in su la sezione è nascosta (`display: none`), quindi non c'è
 // nemmeno per i lettori di schermo. Sul computer e sul tablet le foto stanno
-// nell'apertura e nel diario.
+// nell'apertura e nel diario. Le storie (collection `storie`, nell'ordine fisso)
+// le passa la pagina.
 import CerchioStoria from './CerchioStoria.astro';
-import { storie } from './dati';
+import type { Storia } from './dati';
+
+interface Props {
+  storie: Storia[];
+}
+
+const { storie } = Astro.props;
 ---
 
 <section class="storie" aria-label="Storie dal negozio">

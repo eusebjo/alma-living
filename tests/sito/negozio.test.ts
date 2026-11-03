@@ -67,7 +67,9 @@ describe('datiNegozio', () => {
     );
   });
 
-  it('gli orari sono quelli della prova, non quelli del negozio', () => {
-    expect(dati.orari).toBe(ORARI_PROVA);
+  it('gli orari sono quelli scritti nel pannello, non quelli di esempio della prova', () => {
+    expect(dati.orari).toEqual([{ giorno: 'lunedi', apertura: '09:00', chiusura: '12:30' }]);
+    expect(dati.orari).not.toEqual(ORARI_PROVA);
+    expect(datiNegozio({ ...negozio, orari: [] }).orari).toEqual([]);
   });
 });

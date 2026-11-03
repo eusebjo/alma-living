@@ -3,19 +3,21 @@
 // tutti i post, senza la parola diario): a sinistra l'introduzione con il
 // biglietto; a destra il riquadro "Post dal negozio" (griglia 3 x 3 di post che
 // si aprono, "Mostra altri post"). Sul telefono le due parti si impilano.
+// I post sono quelli della collection `post`, dal più recente: li passa la pagina.
 import { Image } from 'astro:assets';
 import type { DatiNegozio } from '../comune/negozio';
 import logo from '../comune/logo/alma-nero.png';
 import DialogPost from './DialogPost.astro';
 import Foto from './Foto.astro';
 import Icona from './Icona.astro';
-import { delData, post, POST_VISIBILI } from './dati';
+import { delData, POST_VISIBILI, type Post } from './dati';
 
 interface Props {
+  post: Post[];
   negozio: DatiNegozio;
 }
 
-const { negozio } = Astro.props;
+const { post, negozio } = Astro.props;
 ---
 
 <section id="diario" class="diario" aria-label="Dal negozio: post e foto">
@@ -79,11 +81,17 @@ const { negozio } = Astro.props;
         }
       </div>
 
-      <div class="altri">
-        <button type="button" class="contorno mostra" data-mostra-altri="post">
-          <span class="contorno-dentro">Mostra altri post<Icona nome="giu" misura={18} /></span>
-        </button>
-      </div>
+      {
+        // Solo se ci sono post piegati: lo script non nasconde il pulsante quando
+        // non ha niente da mostrare.
+        post.length > POST_VISIBILI && (
+          <div class="altri">
+            <button type="button" class="contorno mostra" data-mostra-altri="post">
+              <span class="contorno-dentro">Mostra altri post<Icona nome="giu" misura={18} /></span>
+            </button>
+          </div>
+        )
+      }
     </div>
   </div>
 

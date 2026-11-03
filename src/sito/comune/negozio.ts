@@ -1,9 +1,9 @@
-// I dati del negozio come li mostrano le pagine di prova. Nome, indirizzo e
-// telefono vengono dalla voce `negozio`; orari, Instagram, mappe, stelle Google e
-// frase del marchio sono i valori di esempio della prova (non sono nel pannello).
+// I dati del negozio come li mostra la pagina. Nome, indirizzo, telefono e orari
+// vengono dalla voce `negozio` (`src/content/negozio/negozio.json`, nel pannello);
+// Instagram, mappe, stelle Google e frase del marchio restano nel codice.
 import type { Negozio } from '../../content/schemas';
 import { linkTelefono, linkWhatsApp, numeroInternazionale } from './contatti';
-import { ORARI_PROVA, type Fascia } from './orari';
+import type { Fascia } from './orari';
 
 export interface DatiNegozio {
   nome: string;
@@ -55,6 +55,6 @@ export function datiNegozio(negozio: Negozio): DatiNegozio {
     google: { media: '5,0', recensioni: 5 },
     frase:
       'Rendiamo la tua casa ancora più casa. Biancheria, profumi e dettagli che scaldano l’ambiente.',
-    orari: ORARI_PROVA,
+    orari: negozio.orari,
   };
 }
