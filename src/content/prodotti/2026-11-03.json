@@ -1,0 +1,14 @@
+{
+  "nome": "Prova pannello",
+  "dettaglio": "Prodotto di prova, da togliere",
+  "categorie": [
+    "bagno"
+  ],
+  "novita": false,
+  "data": "2026-11-03",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/cms/asciugamani-bimbo-599934e3.webp",
+    "alt": "Asciugamani con cappuccio per bambini",
+    "inquadratura": "centro"
+  }
+}
