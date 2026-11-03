@@ -124,5 +124,6 @@ Lo stesso commento dice se la modifica rispetta le regole. Se non le rispetta (p
 
 - **Non usare la sezione "File Multimediali" del pannello** (la trovi nel menu): non cancellare né rinominare le foto, non premere "Sostituisci" lì dentro (cambierebbe una foto già online senza che nessuno la controlli) e non creare cartelle. Cancellare e rinominare sono comunque bloccati e danno un errore; le foto da togliere le toglie eusebjo.
 - **Carica le foto solo dal campo "Foto"** del prodotto, del post o della storia. Per cambiare una foto, caricane una nuova da lì.
+- **Non incollare un'immagine nel campo della foto**, né con Ctrl+V né con il pulsante "Incolla Immagine": un'immagine incollata non si può salvare. Usa sempre "Sfoglia" e poi "Carica", come in "Caricare una foto".
 - Non modificare niente direttamente su GitHub: tutto passa dal pannello.
 - Se compare un errore che non capisci, non ripetere l'operazione più volte: fai una foto dello schermo e avvisa eusebjo.

@@ -731,4 +731,27 @@ describe('docs/onboarding-redazione.md: prodotti, post, storie e chiave delle fo
     expect(testo()).toContain('"Sostituisci"');
     expect(testo()).toMatch(/non creare cartelle/);
   });
+
+  it('dice di non incollare un\'immagine nel campo della foto, con le parole del pannello', () => {
+    // Le parole che la guida cita sono quelle della traduzione italiana di Sveltia.
+    const parole = JSON.parse(leggiTesto('node_modules/@sveltia/cms/locales/it.json')) as Record<
+      string,
+      string
+    >;
+    const incolla = parole.paste_image!;
+    const sfoglia = parole.browse!;
+    expect(incolla).toBe('Incolla Immagine');
+    expect(sfoglia).toBe('Sfoglia');
+    const divieto = testo()
+      .split('\n')
+      .find((riga) => /^- .*non incollare/i.test(riga));
+    expect(divieto, 'manca la voce di "Cosa non fare" sulle immagini incollate').toBeDefined();
+    expect(divieto).toContain('Ctrl+V');
+    expect(divieto).toContain(`"${incolla}"`);
+    expect(divieto).toContain(`"${sfoglia}"`);
+    expect(divieto).toMatch(/non si può salvare/);
+    // E sta davvero tra le cose da non fare.
+    const sezione = testo().split(/^## /m).find((parte) => parte.startsWith('Cosa non fare')) ?? '';
+    expect(sezione).toContain(divieto!);
+  });
 });
