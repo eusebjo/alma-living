@@ -175,14 +175,16 @@ describe('dati di Salvia social', () => {
     );
   });
 
-  it('"del" davanti a una data si elide con 8 e 11: dell’8 luglio, dell’11 ottobre', () => {
+  it('"del" davanti a una data si elide con 1, 8 e 11: dell’1 ottobre, dell’8 luglio, dell’11 ottobre', () => {
+    expect(delData('1 ottobre')).toBe('dell’1 ottobre');
     expect(delData('8 luglio')).toBe('dell’8 luglio');
     expect(delData('11 ottobre')).toBe('dell’11 ottobre');
     expect(delData('28 ottobre')).toBe('del 28 ottobre');
-    expect(delData('1 giugno')).toBe('del 1 giugno');
-    // Gli altri giorni che cominciano per 1 si leggono con la consonante: non si elidono.
+    // Gli altri giorni che cominciano per 1 o per 8 si leggono con la consonante: non si elidono.
     expect(delData('18 giugno')).toBe('del 18 giugno');
     expect(delData('10 giugno')).toBe('del 10 giugno');
+    expect(delData('12 giugno')).toBe('del 12 giugno');
+    expect(delData('31 agosto')).toBe('del 31 agosto');
   });
 
   it('il messaggio WhatsApp elide "del" con le date dell’8 e dell’11', () => {

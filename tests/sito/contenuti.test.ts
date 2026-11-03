@@ -89,7 +89,8 @@ describe('dataBreve', () => {
     expect(dataBreve('2026-12-31')).toBe('31 dicembre');
   });
 
-  it('con delData dà "dell’8" e "dell’11", come oggi', () => {
+  it('con delData dà "dell’1", "dell’8" e "dell’11"', () => {
+    expect(delData(dataBreve('2026-10-01'))).toBe('dell’1 ottobre');
     expect(delData(dataBreve('2026-07-08'))).toBe('dell’8 luglio');
     expect(delData(dataBreve('2026-10-11'))).toBe('dell’11 ottobre');
     expect(delData(dataBreve('2026-06-18'))).toBe('del 18 giugno');

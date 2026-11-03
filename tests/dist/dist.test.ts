@@ -3,7 +3,12 @@ import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
 import { negozioSchema, postSchema, prodottoSchema, storiaSchema } from '../../src/content/schemas';
-import { messaggioDisponibilita } from '../../src/sito/comune/contatti';
+import {
+  linkTelefono,
+  linkWhatsApp,
+  messaggioDisponibilita,
+  numeroInternazionale,
+} from '../../src/sito/comune/contatti';
 import { durataFoto } from '../../src/sito/comune/sequenza';
 import {
   delData,
@@ -60,25 +65,47 @@ const pagine = paginePerFile();
 const CONTENUTI = join('src', 'content');
 
 /**
- * Le voci di una collection: l'id è il nome del file senza `.json`, come lo dà il
- * loader `glob` di Astro per i nomi in minuscolo, senza spazi né accenti.
+ * Il nome (senza `.json`) di un file delle collection che questi test sanno
+ * leggere: lettere minuscole senza accenti, cifre e trattini. Il loader `glob` di
+ * Astro ricava l'id della voce dal nome del file e lo trasforma (minuscole, spazi
+ * in trattini…); per questi nomi l'id è il nome stesso.
  */
+const NOME_FILE_CONTENUTO = /^[a-z0-9-]+$/;
+
+/** Le voci di una collection: l'id è il nome del file senza `.json`. */
 function vociDi<T>(cartella: string, schema: { parse(dati: unknown): T }): { id: string; data: T }[] {
   const dove = join(CONTENUTI, cartella);
   return readdirSync(dove)
     .filter((file) => file.endsWith('.json'))
-    .map((file) => ({
-      id: file.slice(0, -'.json'.length),
-      data: schema.parse(JSON.parse(readFileSync(join(dove, file), 'utf8'))),
-    }));
+    .map((file) => {
+      const id = file.slice(0, -'.json'.length);
+      if (!NOME_FILE_CONTENUTO.test(id)) {
+        throw new Error(
+          `Il file src/content/${cartella}/${file} ha un nome non valido: usa solo lettere minuscole senza accenti, cifre e trattini (Astro ne ricava l'id della voce).`,
+        );
+      }
+      return { id, data: schema.parse(JSON.parse(readFileSync(join(dove, file), 'utf8'))) };
+    });
 }
 
 const articoli = elencoArticoli(vociDi('prodotti', prodottoSchema));
 const post = elencoPost(vociDi('post', postSchema));
 const storie = elencoStorie(vociDi('storie', storiaSchema));
-const orariDelNegozio = negozioSchema.parse(
+const voceNegozio = negozioSchema.parse(
   JSON.parse(readFileSync(join(CONTENUTI, 'negozio', 'negozio.json'), 'utf8')),
-).orari;
+);
+const orariDelNegozio = voceNegozio.orari;
+
+/** Il telefono del negozio come lo scrive la pagina: lo cambia la redazione. */
+const TELEFONO = voceNegozio.telefono;
+
+/** Il link `tel:` del negozio, composto come nella pagina (`linkTelefono`). */
+const LINK_TELEFONO = linkTelefono(TELEFONO);
+
+/** Il link WhatsApp del negozio, con il messaggio già scritto se c'è. */
+function whatsapp(messaggio?: string): string {
+  return linkWhatsApp(numeroInternazionale(TELEFONO), messaggio);
+}
 
 /** Un testo della redazione da cercare alla lettera dentro un'espressione regolare. */
 function allaLettera(testo: string): string {
@@ -89,6 +116,16 @@ function allaLettera(testo: string): string {
 // BaseLayout del sito: ha le sue regole (vedi "pannello dei contenuti").
 const PANNELLO = join('dist', 'admin', 'index.html');
 const pagineDelSito = pagine.filter((file) => file !== PANNELLO);
+
+describe('nomi dei file delle collection', () => {
+  it.each(['p1', 'p13', 'sabbia', '2026-11-03-cuscini'])('%s va bene', (nome) => {
+    expect(NOME_FILE_CONTENUTO.test(nome)).toBe(true);
+  });
+
+  it.each(['P1', 'nuovo post', 'caffè', 'a_b', 'a.b', ''])('"%s" è rifiutato', (nome) => {
+    expect(NOME_FILE_CONTENUTO.test(nome)).toBe(false);
+  });
+});
 
 describe('build statica: dist/index.html', () => {
   it('la home esiste ed è in italiano', () => {
@@ -968,7 +1005,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('in ogni storia una scheda degli inviti per foto: i tre link, il primo quello della storia, e "Torna alla storia"', () => {
     const gruppi = gruppiStorie();
     const resto = ['indicazioni', 'whatsapp', 'chiama'] as const;
-    const WHATSAPP = 'https://wa.me/393345205451?text=';
+    const WHATSAPP = `${whatsapp()}?text=`;
     for (const storia of storie) {
       const { contenuto } = gruppi.get(storia.id) ?? { contenuto: '' };
       const schede = elementiDove(contenuto, (a) => quanti(a, 'data-storia-invito') > 0);
@@ -987,7 +1024,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
         expect(decodeURIComponent(indirizzi[tipi.indexOf('whatsapp')]!.slice(WHATSAPP.length)), dove).toBe(
           messaggioStoria(storia, foto),
         );
-        expect(indirizzi[tipi.indexOf('chiama')], dove).toBe('tel:+393345205451');
+        expect(indirizzi[tipi.indexOf('chiama')], dove).toBe(LINK_TELEFONO);
         expect(indirizzi[tipi.indexOf('indicazioni')], dove).toBe(MAPPE);
         // Il primo è pieno, gli altri bordati.
         expect(link.map((t) => /\sclass="pieno[\s"]/.test(t)), dove).toEqual([true, false, false]);
@@ -1107,8 +1144,8 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(voci.map((t) => valore(t, 'href'))).toEqual(sezioni.map((s) => s.href));
     const azioni = link.filter((t) => !/\sclass="menu-voce[\s"]/.test(t)).map((t) => valore(t, 'href') ?? '');
     expect(azioni).toHaveLength(2);
-    expect(azioni[0]).toMatch(/^https:\/\/wa\.me\/393345205451/);
-    expect(azioni[1]).toBe('tel:+393345205451');
+    expect(azioni[0]).toMatch(new RegExp(`^${allaLettera(whatsapp())}(?:\\?|$)`));
+    expect(azioni[1]).toBe(LINK_TELEFONO);
     expect(menu).toContain('data-stato-negozio');
     expect(decodifica(menu)).toContain('Via Ricasoli 51-53, 57125 Livorno');
     // Le voci un gradino sotto i titoli della pagina, non grandi quanto l'h1.
@@ -1173,22 +1210,29 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     for (const elenco of elenchi) expect(elenco).toEqual(ancore);
   });
 
-  it('il diario non è più un profilo: niente storie, un riquadro "Post dal negozio"', () => {
+  it('il diario non è più un profilo: niente storie, un riquadro "Post dal negozio" (se ci sono post)', () => {
     const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
     expect(diario).not.toMatch(/\sdata-storia-apri=/);
     expect(testiDelCodice(contenutiCon(html(), 'id', 'diario')[0] ?? '')).not.toContain('Storie in evidenza');
-    expect(diario).toMatch(/<h3\b[^>]*>Post dal negozio<\/h3>/);
+    // Senza post il riquadro non c'è (vedi tests/sito/diario.test.ts).
+    expect(/<h3\b[^>]*>Post dal negozio<\/h3>/.test(diario)).toBe(post.length > 0);
   });
 
-  it('il diario dà la data dell’ultimo post e la pagina non promette un ritmo settimanale', () => {
+  it('il diario dà la data dell’ultimo post, se c’è, e la pagina non promette un ritmo settimanale', () => {
     const diario = decodifica(contenutiCon(html(), 'id', 'diario')[0] ?? '');
-    expect(diario).toContain(`Aggiornato il ${post[0]!.data}`);
-    expect(diario).toContain(`L’ultimo post è ${delData(post[0]!.data)}`);
+    const ultimo = post[0];
+    if (ultimo) {
+      expect(diario).toContain(`Aggiornato il ${ultimo.data}`);
+      expect(diario).toContain(`L’ultimo post è ${delData(ultimo.data)}`);
+    } else {
+      expect(diario).not.toContain('Aggiornato il');
+      expect(diario).not.toContain('L’ultimo post è');
+    }
     expect(testiDelCodice()).not.toMatch(/ogni settimana/i);
   });
 
-  it('ogni post, nel pulsante e nel dialog, ha la data con "del" (eliso con 8 e 11: vedi delData)', () => {
-    expect(testiDelCodice()).not.toMatch(/\bdel (?:8|11) /);
+  it('ogni post, nel pulsante e nel dialog, ha la data con "del" (eliso con 1, 8 e 11: vedi delData)', () => {
+    expect(testiDelCodice()).not.toMatch(/\bdel (?:1|8|11) /);
     const pulsanti = new Map(tagCon('button', 'data-post-apri').map((t) => [valore(t, 'data-post-apri'), t]));
     const dialog = new Map(dialogCon('data-post').map(({ apertura }) => [valore(apertura, 'data-post'), apertura]));
     for (const voce of post) {
@@ -1266,7 +1310,11 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('storie e post propongono di chiamare il negozio, non Instagram', () => {
     const testo = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     expect(testiDelCodice()).not.toContain('Vedi su Instagram');
-    const chiama = [...html().matchAll(/<a\b[^>]*\shref="tel:\+393345205451"[^>]*>([\s\S]*?)<\/a>/g)]
+    const chiama = [
+      ...html().matchAll(
+        new RegExp(`<a\\b[^>]*\\shref="${allaLettera(LINK_TELEFONO)}"[^>]*>([\\s\\S]*?)<\\/a>`, 'g'),
+      ),
+    ]
       .map((m) => testo(m[1]!))
       .filter((t) => t === 'Chiama il negozio');
     // Nelle storie un link per foto (nella scheda degli inviti), nei post uno per post.
@@ -1283,7 +1331,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       const contenuto = dialog.get(voce.id) ?? '';
       expect(contenuto, voce.id).toMatch(/>Alma Living</);
       expect(contenuto, voce.id).toContain(
-        `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggioPost(voce))}"`,
+        `href="${whatsapp(messaggioPost(voce))}"`,
       );
     }
   });
@@ -1409,7 +1457,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(vuota).toContain('Il mare torna in primavera');
     expect(vuota).toContain(`alt="${fotoFinestra.mare.alt}"`);
     expect(vuota).toContain(
-      `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggi.mare)}"`,
+      `href="${whatsapp(messaggi.mare)}"`,
     );
 
     // La foto sta prima del testo: la finestra comincia dal suo `<li>`.
@@ -1421,7 +1469,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(scaffale).not.toContain('per quale stanza');
     expect(scaffale).toContain(`alt="${fotoFinestra.scaffale.alt}"`);
     expect(scaffale).toContain(
-      `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggi.cerco)}"`,
+      `href="${whatsapp(messaggi.cerco)}"`,
     );
   });
 
@@ -1461,7 +1509,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     for (const { nome } of articoli) {
       const messaggio = `Buongiorno, ho visto sul sito «${nome}». È disponibile? Misura o colore: …`;
       expect(html(), nome).toContain(
-        `href="https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}"`,
+        `href="${whatsapp(messaggio)}"`,
       );
     }
   });
@@ -1473,9 +1521,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       const scheda = decodifica(schede[i]!);
       const primo = /<(?:a|button)\b[^>]*>/.exec(scheda)?.[0] ?? '';
       expect(primo, articolo.id).toMatch(/^<a\b/);
-      expect(valore(primo, 'href')).toBe(
-        `https://wa.me/393345205451?text=${encodeURIComponent(messaggioDisponibilita(articolo.nome))}`,
-      );
+      expect(valore(primo, 'href')).toBe(whatsapp(messaggioDisponibilita(articolo.nome)));
       expect(valore(primo, 'aria-label')).toBe(`Chiedi disponibilità: ${articolo.nome}`);
       expect(scheda.match(/<img\b/g) ?? [], articolo.id).toHaveLength(2);
       for (const s of articolo.scatti) expect(scheda, articolo.id).toContain(`alt="${s.alt}"`);
@@ -1494,9 +1540,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     const link = tagCon('a', 'data-post-apri');
     expect(link.map((t) => valore(t, 'data-post-apri'))).toEqual(articoli.map(idSchedaRapida));
     articoli.forEach((articolo, i) => {
-      expect(valore(link[i]!, 'href')).toBe(
-        `https://wa.me/393345205451?text=${encodeURIComponent(messaggioDisponibilita(articolo.nome))}`,
-      );
+      expect(valore(link[i]!, 'href')).toBe(whatsapp(messaggioDisponibilita(articolo.nome)));
       expect(link[i]).not.toMatch(/\saria-haspopup=/); // lo aggiunge lo script
     });
   });
@@ -1518,9 +1562,13 @@ describe('Salvia social (/prova/salvia-social/)', () => {
       const messaggio = messaggioDisponibilita(articolo.nome);
       expect(testo).toContain(messaggio);
       expect(testo).toContain('Il messaggio è già scritto: puoi cambiarlo prima di inviarlo.');
-      expect(contenuto).toContain(`href="https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}"`);
+      expect(contenuto).toContain(`href="${whatsapp(messaggio)}"`);
       expect(testo).toContain('Invia su WhatsApp');
-      expect(testo).toMatch(/<a\b[^>]*\shref="tel:\+393345205451"[^>]*>Preferisci chiamare\? 334 520 5451<\/a>/);
+      expect(testo).toMatch(
+        new RegExp(
+          `<a\\b[^>]*\\shref="${allaLettera(LINK_TELEFONO)}"[^>]*>Preferisci chiamare\\? ${allaLettera(TELEFONO)}</a>`,
+        ),
+      );
       const chiudi = tagIn(contenuto, 'button', 'data-post-chiudi');
       expect(chiudi).toHaveLength(1);
       expect(valore(chiudi[0]!, 'aria-label')).toBe('Chiudi');
@@ -1543,7 +1591,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
         expect(valore(t, 'data-colore-nome')).toBe(nomeConColore(articolo.nome, colore));
         expect(valore(t, 'data-colore-testo')).toBe(colore.nome);
         expect(valore(t, 'data-colore-messaggio')).toBe(messaggio);
-        expect(valore(t, 'data-colore-href')).toBe(`https://wa.me/393345205451?text=${encodeURIComponent(messaggio)}`);
+        expect(valore(t, 'data-colore-href')).toBe(whatsapp(messaggio));
         expect(valore(t, 'data-colore-foto')).toBe(colore.foto ? String(i) : undefined);
       });
       if (colori.length === 0) continue;
@@ -1580,8 +1628,8 @@ describe('Salvia social (/prova/salvia-social/)', () => {
 
   it('telefono, WhatsApp, Instagram e le sezioni sono link nel piè di pagina, anche senza JavaScript', () => {
     const piede = /<footer\b[\s\S]*?<\/footer>/.exec(html())?.[0] ?? '';
-    expect(piede).toContain('href="tel:+393345205451"');
-    expect(piede).toMatch(/href="https:\/\/wa\.me\/393345205451(?:\?text=[^"]*)?"/);
+    expect(piede).toContain(`href="${LINK_TELEFONO}"`);
+    expect(piede).toMatch(new RegExp(`href="${allaLettera(whatsapp())}(?:\\?text=[^"]*)?"`));
     expect(piede).toContain('href="https://www.instagram.com/almaliving.viaricasoli/"');
     for (const ancora of ['#diario', '#selezione', '#negozio']) {
       expect(piede, ancora).toContain(`href="${ancora}"`);

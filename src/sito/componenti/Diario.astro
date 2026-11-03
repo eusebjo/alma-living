@@ -4,6 +4,8 @@
 // biglietto; a destra il riquadro "Post dal negozio" (griglia 3 x 3 di post che
 // si aprono, "Mostra altri post"). Sul telefono le due parti si impilano.
 // I post sono quelli della collection `post`, dal più recente: li passa la pagina.
+// Senza post (la redazione può cancellarli tutti) restano l'introduzione e il
+// biglietto: spariscono la riga "L’ultimo post è …" e tutto il riquadro.
 import { Image } from 'astro:assets';
 import type { DatiNegozio } from '../comune/negozio';
 import logo from '../comune/logo/alma-nero.png';
@@ -18,6 +20,9 @@ interface Props {
 }
 
 const { post, negozio } = Astro.props;
+
+/** Il post più recente, che dà la data a "L’ultimo post è …" e "Aggiornato il …". */
+const ultimo = post[0];
 ---
 
 <section id="diario" class="diario" aria-label="Dal negozio: post e foto">
@@ -38,61 +43,69 @@ const { post, negozio } = Astro.props;
           parte.”
         </blockquote>
       </figure>
-      <p class="frequenza">
-        <Icona nome="orologio" />L’ultimo post è {delData(post[0]!.data)}
-      </p>
-    </div>
-
-    <div class="riquadro">
-      <div class="testa">
-        <h3>Post dal negozio</h3>
-        <p class="aggiornato">Aggiornato il {post[0]!.data}</p>
-      </div>
-
-      <div class="griglia">
-        {
-          post.map((voce, i) => {
-            const prima = voce.foto[0]!;
-            const piegato = i >= POST_VISIBILI;
-            const quante = voce.foto.length;
-            return (
-              <button
-                type="button"
-                class="cella"
-                data-post-apri={voce.id}
-                data-altro={piegato ? 'post' : undefined}
-                hidden={piegato}
-                aria-label={`Apri il post ${delData(voce.data)}${quante > 1 ? `, ${quante} foto` : ''}`}
-              >
-                <Foto
-                  scatto={prima}
-                  larghezze={[200, 300, 400, 600]}
-                  sizes="(min-width: 960px) 22vw, 33vw"
-                />
-                {quante > 1 && <Icona nome="multi" class="multi" />}
-                <span class="velo">
-                  <span class="velo-testo">
-                    <span class="velo-data">{voce.data}</span>
-                  </span>
-                </span>
-              </button>
-            );
-          })
-        }
-      </div>
-
       {
-        // Solo se ci sono post piegati: lo script non nasconde il pulsante quando
-        // non ha niente da mostrare.
-        post.length > POST_VISIBILI && (
-          <div class="altri">
-            <button type="button" class="contorno mostra" data-mostra-altri="post">
-              <span class="contorno-dentro">Mostra altri post<Icona nome="giu" misura={18} /></span>
-            </button>
-          </div>
+        ultimo && (
+          <p class="frequenza">
+            <Icona nome="orologio" />L’ultimo post è {delData(ultimo.data)}
+          </p>
         )
       }
     </div>
+
+    {
+      ultimo && (
+        <div class="riquadro">
+          <div class="testa">
+            <h3>Post dal negozio</h3>
+            <p class="aggiornato">Aggiornato il {ultimo.data}</p>
+          </div>
+
+          <div class="griglia">
+            {
+              post.map((voce, i) => {
+                const prima = voce.foto[0]!;
+                const piegato = i >= POST_VISIBILI;
+                const quante = voce.foto.length;
+                return (
+                  <button
+                    type="button"
+                    class="cella"
+                    data-post-apri={voce.id}
+                    data-altro={piegato ? 'post' : undefined}
+                    hidden={piegato}
+                    aria-label={`Apri il post ${delData(voce.data)}${quante > 1 ? `, ${quante} foto` : ''}`}
+                  >
+                    <Foto
+                      scatto={prima}
+                      larghezze={[200, 300, 400, 600]}
+                      sizes="(min-width: 960px) 22vw, 33vw"
+                    />
+                    {quante > 1 && <Icona nome="multi" class="multi" />}
+                    <span class="velo">
+                      <span class="velo-testo">
+                        <span class="velo-data">{voce.data}</span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })
+            }
+          </div>
+
+          {
+            // Solo se ci sono post piegati: lo script non nasconde il pulsante quando
+            // non ha niente da mostrare.
+            post.length > POST_VISIBILI && (
+              <div class="altri">
+                <button type="button" class="contorno mostra" data-mostra-altri="post">
+                  <span class="contorno-dentro">Mostra altri post<Icona nome="giu" misura={18} /></span>
+                </button>
+              </div>
+            )
+          }
+        </div>
+      )
+    }
   </div>
 
   {post.map((voce) => <DialogPost post={voce} negozio={negozio} />)}

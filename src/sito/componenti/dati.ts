@@ -291,14 +291,18 @@ export function messaggioStoria(storia: Storia, foto: FotoStoria): string {
   return `Buongiorno, ho visto la storia «${storia.nome}» sul sito: ${foto.soggetto}. `;
 }
 
+/** I giorni che si leggono con una vocale: uno, otto, undici. */
+const GIORNI_CON_VOCALE = new Set(['1', '8', '11']);
+
 /**
- * La data preceduta da "del": "del 28 ottobre", ma "dell’8 luglio" e "dell’11
- * ottobre", perché otto e undici cominciano con una vocale. `data` comincia con il
- * giorno ("8 luglio"); gli altri giorni (1, 18, 28…) si leggono con la consonante.
+ * La data preceduta da "del": "del 28 ottobre", ma "dell’1 ottobre", "dell’8
+ * luglio" e "dell’11 ottobre", perché uno, otto e undici cominciano con una
+ * vocale. `data` comincia con il giorno ("8 luglio"); gli altri giorni (10, 18,
+ * 28…) si leggono con la consonante.
  */
 export function delData(data: string): string {
-  const giorno = data.split(' ')[0];
-  return giorno === '8' || giorno === '11' ? `dell’${data}` : `del ${data}`;
+  const giorno = data.split(' ')[0] ?? '';
+  return GIORNI_CON_VOCALE.has(giorno) ? `dell’${data}` : `del ${data}`;
 }
 
 /** Il messaggio WhatsApp di un post: la data e, se c'è, di che cosa parla. */
