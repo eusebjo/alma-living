@@ -92,8 +92,9 @@ Caricare una foto non la mette sul sito: ci va solo quando la proposta è approv
 
 ## Togliere un prodotto o un post
 
-1. Apri la voce e premi il pulsante delle opzioni accanto a "Salva" ("Mostra Opzioni Editor"), poi "Elimina" e conferma.
-2. La voce non sparisce subito: resta nell'elenco con la scritta "In Attesa di Eliminazione" finché la cancellazione non viene confermata. Avvisa eusebjo, che la completa.
+1. Apri la voce e premi il pulsante delle opzioni accanto a "Salva" ("Mostra Opzioni Editor"), poi "Elimina". Il pannello ti chiede di confermare ("Elimina Voce"): premi "Elimina".
+2. Non devi inviare altro: la richiesta di eliminazione parte subito, viene controllata in automatico e aspetta l'approvazione di eusebjo, come le altre modifiche.
+3. Finché non è approvata, la voce resta nell'elenco con la scritta "In Attesa di Eliminazione" e sul sito si vede ancora. Quando eusebjo approva, sparisce anche dal sito.
 
 Le storie non si tolgono.
 

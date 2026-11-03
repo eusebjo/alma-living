@@ -22,8 +22,10 @@ backend:
 
 # Ogni modifica passa da un ramo `cms/<collection>/<id>` e da una pull request,
 # mai da un commit diretto su main. Gli stati sono le etichette
-# `sveltia-cms/draft`, `sveltia-cms/pending_review` e `sveltia-cms/pending_publish`;
-# la bozza è una pull request draft. Pubblicare spetta agli admin (`publish: false`).
+# `sveltia-cms/draft`, `sveltia-cms/pending_review`, `sveltia-cms/pending_publish`
+# e, per un prodotto o un post tolto, `sveltia-cms/pending_deletion` ("In Attesa di
+# Eliminazione", senza passare da "In Revisione"); la bozza è una pull request
+# draft. Pubblicare spetta agli admin (`publish: false`).
 publish_mode: editorial_workflow
 
 output:

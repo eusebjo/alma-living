@@ -101,6 +101,86 @@ describe('evaluate, autore e ruolo', () => {
   });
 });
 
+// Togliere un prodotto o un post dal pannello (flusso editoriale): Sveltia apre
+// la proposta con lo stato «In Attesa di Eliminazione», cioè l'etichetta
+// `sveltia-cms/pending_deletion`, senza passare da «In revisione». È già inviata:
+// l'approvazione di eusebjo è quella che la completa.
+describe('evaluate, eliminazione dal pannello (pending_deletion)', () => {
+  const ELIMINAZIONE = 'sveltia-cms/pending_deletion';
+  const RAMO_POST = 'cms/post/p1';
+  const RAMO_PRODOTTO = 'cms/prodotti/sabbia';
+  const eliminazione = (
+    files: ChangedFile[],
+    ramo: string | null,
+    altro: Partial<Parameters<typeof proposta>[1]> = {},
+  ) => evaluate(proposta(files, { labels: [ELIMINAZIONE], ...altro }), rules, { ramo });
+
+  it('lei toglie un post con l\'etichetta di eliminazione: consentito, livello 1, non in bozza', () => {
+    expect(eliminazione([rimosso(POST, postJson())], RAMO_POST)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('lei toglie un prodotto con l\'etichetta di eliminazione: consentito, livello 1', () => {
+    expect(eliminazione([rimosso(PRODOTTO, prodottoJson())], RAMO_PRODOTTO)).toEqual({
+      ruolo: 'redazione',
+      esito: 'consentito',
+      livello: 1,
+      violazioni: [],
+    });
+  });
+
+  it('anche sul ramo del pannello aperto da chi è nello sviluppo vale il livello 1', () => {
+    const verdetto = eliminazione([rimosso(POST, postJson())], RAMO_POST, { author: 'eusebjo' });
+    expect(verdetto).toMatchObject({ ruolo: 'redazione', esito: 'consentito', livello: 1 });
+  });
+
+  it('l\'etichetta di eliminazione non dà nessun potere in più: un campo vietato resta respinto', () => {
+    const verdetto = eliminazione(
+      [
+        rimosso(POST, postJson()),
+        modificato(
+          NEGOZIO,
+          negozioJson(),
+          negozioJson((n) => {
+            n.nome = 'Altro nome';
+          }),
+        ),
+      ],
+      RAMO_POST,
+    );
+    expect(verdetto.esito).toBe('respinto');
+    expect(verdetto.violazioni).toEqual([
+      expect.objectContaining({ file: NEGOZIO, campo: 'nome', azione: 'modifica' }),
+    ]);
+  });
+
+  it('con l\'etichetta di eliminazione una storia non si toglie, un file fuori perimetro nemmeno', () => {
+    const storia = eliminazione([rimosso(STORIA, storiaJson())], 'cms/storie/oggi');
+    expect(storia.esito).toBe('respinto');
+    expect(storia.violazioni.map((v) => [v.file, v.azione])).toEqual([[STORIA, 'elimina']]);
+
+    const fuori = eliminazione([rimosso('src/pages/index.astro', 'a')], RAMO_POST);
+    expect(fuori.esito).toBe('respinto');
+    expect(fuori.violazioni.map((v) => v.azione)).toEqual(['perimetro']);
+  });
+
+  it('un\'eliminazione in bozza resta in bozza, e un altro file aggiunto con la stessa etichetta passa per le regole', () => {
+    const bozza = eliminazione([rimosso(POST, postJson())], RAMO_POST, { draft: true });
+    expect(bozza.esito).toBe('in_bozza');
+
+    const crea = eliminazione(
+      [aggiunto('src/content/storie/nuova.json', storiaJson())],
+      'cms/storie/nuova',
+    );
+    expect(crea.esito).toBe('respinto');
+    expect(crea.violazioni.map((v) => v.azione)).toEqual(['crea']);
+  });
+});
+
 describe('evaluate, stato della proposta (focus 4)', () => {
   const modificaValida = modificato(
     NEGOZIO,

@@ -540,6 +540,23 @@ describe('CLAUDE.md', () => {
     expect(testo).toMatch(/account che non sono in `autonomia.yml` sono sempre respinte/);
   });
 
+  it('cita gli stati inviati di autonomia.yml, eliminazione compresa', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    const rules = parse(leggiTesto('autonomia.yml')) as {
+      proposte: { stati_inviati: string[] };
+    };
+    expect(rules.proposte.stati_inviati).toContain('sveltia-cms/pending_deletion');
+    expect(testo).toContain('sveltia-cms/pending_review');
+    expect(testo).toContain('pending_deletion');
+    expect(testo).toContain('In Attesa di Eliminazione');
+  });
+
+  it('dice che i limiti delle foto su R2 non sono coperti dall\'approvazione', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).toMatch(/non\*\* quelli delle foto su R2/);
+    expect(testo).toMatch(/uno script può anche eliminare oggetti del bucket/);
+  });
+
   it('non descrive più la prova di design né le foto preparate dagli script', () => {
     const testo = leggiTesto('CLAUDE.md');
     expect(testo).not.toMatch(/src\/prova|foto:carica|foto-prova|Prova delle varianti|LayoutProva/);
@@ -611,8 +628,8 @@ describe('docs/onboarding-redazione.md', () => {
     expect(testo()).toMatch(/campo "Foto"/);
   });
 
-  it('è in italiano e senza gergo di Git (branch, merge, commit)', () => {
-    expect(testo()).not.toMatch(/\b(branch|merge|commit)\b/i);
+  it('è in italiano e senza gergo di Git (branch, merge, commit, pull request, repository, push, fork)', () => {
+    expect(testo()).not.toMatch(/\b(branch|merge|commit|pull request|repository|push|fork)\b/i);
   });
 });
 
@@ -648,9 +665,21 @@ describe('AGENTS.md: prodotti, post e storie', () => {
     expect(testo()).not.toMatch(/src\/content\/pagine|immagini\//);
   });
 
-  it.each(['prodotti', 'post', 'storie'])('descrive ogni campo del pannello di %s', (nome) => {
+  // La sezione di AGENTS.md di ogni collection, dal suo titolo al titolo seguente.
+  const sezione = (titolo: string): string =>
+    testo()
+      .split(/^## /m)
+      .find((parte) => parte.startsWith(titolo)) ?? '';
+
+  it.each([
+    ['prodotti', 'Prodotti'],
+    ['post', 'Post'],
+    ['storie', 'Storie'],
+  ])('descrive ogni campo del pannello di %s nella sua sezione', (nome, titolo) => {
+    const parte = sezione(titolo);
+    expect(parte, titolo).not.toBe('');
     for (const campo of campiDi(nome)) {
-      expect(testo(), `${nome}.${campo.name}`).toContain(`\`${campo.name}\``);
+      expect(parte, `${nome}.${campo.name}`).toContain(`| \`${campo.name}\` |`);
     }
   });
 
@@ -688,6 +717,13 @@ describe('docs/onboarding-redazione.md: prodotti, post, storie e chiave delle fo
     expect(testo()).toContain('"Chiavi API dei Servizi di Cloud Storage"');
     expect(testo()).toContain('"Cloudflare R2"');
     expect(testo()).toContain('"Inserisci la tua Secret Access Key per Cloudflare R2."');
+  });
+
+  it('spiega che togliere una voce aspetta l\'approvazione, senza altri invii', () => {
+    expect(testo()).toMatch(/## Togliere un prodotto o un post/);
+    expect(testo()).toContain('"Elimina Voce"');
+    expect(testo()).toContain('"In Attesa di Eliminazione"');
+    expect(testo()).toMatch(/Non devi inviare altro/);
   });
 
   it('dice di non cancellare, rinominare, sostituire né creare cartelle nella libreria', () => {

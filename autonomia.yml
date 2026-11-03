@@ -3,11 +3,18 @@ ruoli:
   sviluppo: [eusebjo]
   redazione: [martina-dimalta]
 proposte:
-  # Etichette di Sveltia per "In revisione" e "Pronta" (flusso editoriale, backend GitHub,
-  # prefisso predefinito `sveltia-cms/`). La bozza ha `sveltia-cms/draft` ed è una pull
-  # request draft: non conta come inviata. Verificato sulla documentazione di Sveltia 0.248.0
-  # (https://sveltiacms.app/en/docs/workflows/editorial#statuses).
-  stati_inviati: [sveltia-cms/pending_review, sveltia-cms/pending_publish]
+  # Etichette di Sveltia per "In revisione", "Pronta" e "In attesa di eliminazione"
+  # (flusso editoriale, backend GitHub, prefisso predefinito `sveltia-cms/`). Togliere
+  # un prodotto o un post dal pannello apre subito una proposta con `pending_deletion`,
+  # senza passare da "In revisione": è già inviata, e l'approvazione la completa.
+  # La bozza ha `sveltia-cms/draft` ed è una pull request draft: non conta come inviata.
+  # Verificato sulla documentazione di Sveltia 0.248.0
+  # (https://sveltiacms.app/en/docs/workflows/editorial#statuses) e sul pacchetto
+  # (`WORKFLOW_STATUSES`).
+  stati_inviati:
+    - sveltia-cms/pending_review
+    - sveltia-cms/pending_publish
+    - sveltia-cms/pending_deletion
 contenuti:
   negozio:
     file: src/content/negozio/negozio.json

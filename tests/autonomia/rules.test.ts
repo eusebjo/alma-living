@@ -39,6 +39,7 @@ describe('loadRules', () => {
     expect(rules.proposte.stati_inviati).toEqual([
       'sveltia-cms/pending_review',
       'sveltia-cms/pending_publish',
+      'sveltia-cms/pending_deletion',
     ]);
     expect(Object.keys(rules.contenuti)).toEqual(['negozio', 'prodotti', 'post', 'storie']);
     expect(rules.contenuti.negozio).toMatchObject({
