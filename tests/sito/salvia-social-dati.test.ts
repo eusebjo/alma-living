@@ -21,7 +21,7 @@ import {
   testoColori,
   type Scatto,
   vetrina,
-} from '../../src/prova/salvia-social/dati';
+} from '../../src/sito/componenti/dati';
 
 // I contenuti di esempio di Salvia social: le foto devono esistere tra quelle
 // della prova e gli id usati dai protocolli dello script comune devono essere
@@ -355,7 +355,7 @@ function sorgenti(cartella: string): string[] {
 
 describe('la voce del sito', () => {
   it('nessun file della variante, dello script comune o delle pagine di prova nomina Martina', () => {
-    const file = [...sorgenti('src/prova'), ...sorgenti('src/pages/prova')];
+    const file = [...sorgenti('src/sito'), ...sorgenti('src/pages/prova')];
     expect(file.length).toBeGreaterThan(20);
     for (const f of file) expect(readFileSync(f, 'utf8'), f).not.toMatch(/martina/i);
   });

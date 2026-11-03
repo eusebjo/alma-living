@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fraseTagliata, paroleCheStanno } from '../../src/prova/comune/frase';
+import { fraseTagliata, paroleCheStanno } from '../../src/sito/comune/frase';
 
 describe('fraseTagliata', () => {
   const testo = "Nell'angolo romantico è arrivato il copriletto, morbido e caldo.";

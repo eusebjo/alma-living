@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filtra } from '../../src/prova/comune/filtra';
+import { filtra } from '../../src/sito/comune/filtra';
 
 const voci = [
   { nome: 'Lenzuola', categorie: ['letto'] },

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CARATTERI_PER_VARIANTE } from '../src/prova/comune/caratteri';
-import { VARIANTI } from '../src/prova/varianti';
+import { CARATTERI_PER_VARIANTE } from '../src/sito/comune/caratteri';
+import { VARIANTI } from '../src/sito/varianti';
 
 // La configurazione di Astro legge le variabili d'ambiente quando viene
 // caricata: per provarla con valori diversi la si reimporta ogni volta.

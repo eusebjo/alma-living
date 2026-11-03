@@ -5,7 +5,7 @@
 // dell'apertura è la sequenza fissa della tavola `FotoGrande2.dc.html` ("La foto
 // grande", 2 novembre 2026). I post del diario sono invece i 13 post veri del
 // profilo Instagram di Alma Living (didascalie senza emoji né promozioni scadute).
-// Le foto sono indicate per nome (`src/prova/foto/<nome>.jpg`, vedi
+// Le foto sono indicate per nome (`src/sito/foto/<nome>.jpg`, vedi
 // `scripts/foto-prova/elenco.json`); i componenti le passano a `foto()`.
 // Nessun import da Astro: questo file lo leggono anche i test sul sito generato.
 import type { RegolaLimite } from '../comune/limite';

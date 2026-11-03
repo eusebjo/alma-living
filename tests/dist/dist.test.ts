@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
-import { messaggioDisponibilita } from '../../src/prova/comune/contatti';
-import { ORARI_PROVA } from '../../src/prova/comune/orari';
-import { durataFoto } from '../../src/prova/comune/sequenza';
+import { messaggioDisponibilita } from '../../src/sito/comune/contatti';
+import { ORARI_PROVA } from '../../src/sito/comune/orari';
+import { durataFoto } from '../../src/sito/comune/sequenza';
 import {
   articoli,
   categorie,
@@ -22,8 +22,8 @@ import {
   storie,
   testoColori,
   vetrina,
-} from '../../src/prova/salvia-social/dati';
-import { VARIANTI } from '../../src/prova/varianti';
+} from '../../src/sito/componenti/dati';
+import { VARIANTI } from '../../src/sito/varianti';
 
 // Questi test guardano la build locale (`npm run build` senza SITE_LAUNCHED né
 // WORKERS_CI_BRANCH), che non è indicizzabile: niente JSON-LD, niente sitemap,
@@ -307,7 +307,7 @@ function quanti(testo: string, attributo: string): number {
 }
 
 /**
- * Rimandi dei protocolli di markup (`src/prova/comune/interazioni.ts`) che non
+ * Rimandi dei protocolli di markup (`src/sito/comune/interazioni.ts`) che non
  * hanno la destinazione: un messaggio per ogni valore, anche se il rimando si
  * ripete. Lo script non può segnalarli (sta zitto), quindi li cerca la build.
  */

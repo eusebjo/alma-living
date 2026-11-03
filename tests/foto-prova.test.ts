@@ -527,7 +527,7 @@ describe('elenco.json', () => {
 
 describe('foto()', () => {
   it('lancia un errore chiaro per una foto che non c\'è', async () => {
-    const { foto } = await import('../src/prova/comune/foto');
+    const { foto } = await import('../src/sito/comune/foto');
 
     expect(() => foto('non-esiste')).toThrow('Foto di prova non trovata: non-esiste');
   });

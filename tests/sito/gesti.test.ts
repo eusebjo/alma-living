@@ -6,7 +6,7 @@ import {
   SOGLIA_CHIUDI_PX,
   SOGLIA_INVITO_PX,
   SOGLIA_MOVIMENTO_PX,
-} from '../../src/prova/comune/gesti';
+} from '../../src/sito/comune/gesti';
 
 describe('azioneDelTocco', () => {
   it('il 25% sinistro torna indietro, il resto va avanti (niente pausa al centro)', () => {

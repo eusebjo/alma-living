@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import { getSiteConfig } from './src/config/site';
 import { rehypePlugins } from './src/lib/markdown';
 import { includiInSitemap } from './src/lib/sitemap';
-import { CARATTERI_PROVA } from './src/prova/comune/caratteri-config';
+import { CARATTERI_PROVA } from './src/sito/comune/caratteri-config';
 
 const { siteUrl, indexable } = getSiteConfig(process.env);
 

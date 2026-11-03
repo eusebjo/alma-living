@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { limiteAttivo, quanteMostrare, testoMostraTutti } from '../../src/prova/comune/limite';
+import { limiteAttivo, quanteMostrare, testoMostraTutti } from '../../src/sito/comune/limite';
 
 const REGOLE = [
   { media: '(max-width: 767px)', limite: 4 },

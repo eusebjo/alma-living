@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Negozio } from '../../src/content/schemas';
-import { datiNegozio } from '../../src/prova/comune/negozio';
-import { ORARI_PROVA } from '../../src/prova/comune/orari';
+import { datiNegozio } from '../../src/sito/comune/negozio';
+import { ORARI_PROVA } from '../../src/sito/comune/orari';
 
 const negozio: Negozio = {
   nome: 'Alma Living',

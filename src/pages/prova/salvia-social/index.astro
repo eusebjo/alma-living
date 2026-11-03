@@ -4,26 +4,26 @@
 // salvia, storie sotto l'header solo sul telefono, apertura con le foto dei
 // prodotti che scorrono da sole, selezione, diario del negozio con griglia di post
 // e fascia Instagram.
-// Componenti e dati in src/prova/salvia-social/.
+// Componenti e dati in src/sito/componenti/.
 import { getImage } from 'astro:assets';
 import { getEntry } from 'astro:content';
-import Interazioni from '../../../prova/comune/Interazioni.astro';
-import LayoutProva from '../../../prova/comune/LayoutProva.astro';
-import { CARATTERI_PER_VARIANTE } from '../../../prova/comune/caratteri';
-import grana from '../../../prova/comune/grana.png';
-import { datiNegozio } from '../../../prova/comune/negozio';
-import Apertura from '../../../prova/salvia-social/Apertura.astro';
-import BarraTelefono from '../../../prova/salvia-social/BarraTelefono.astro';
-import DialogStorie from '../../../prova/salvia-social/DialogStorie.astro';
-import Diario from '../../../prova/salvia-social/Diario.astro';
-import FasciaInstagram from '../../../prova/salvia-social/FasciaInstagram.astro';
-import FilaStorie from '../../../prova/salvia-social/FilaStorie.astro';
-import Negozio from '../../../prova/salvia-social/Negozio.astro';
-import Piede from '../../../prova/salvia-social/Piede.astro';
-import Selezione from '../../../prova/salvia-social/Selezione.astro';
-import Testata from '../../../prova/salvia-social/Testata.astro';
-import { storie } from '../../../prova/salvia-social/dati';
-import '../../../prova/salvia-social/tema.css';
+import Interazioni from '../../../sito/comune/Interazioni.astro';
+import LayoutProva from '../../../sito/comune/LayoutProva.astro';
+import { CARATTERI_PER_VARIANTE } from '../../../sito/comune/caratteri';
+import grana from '../../../sito/comune/grana.png';
+import { datiNegozio } from '../../../sito/comune/negozio';
+import Apertura from '../../../sito/componenti/Apertura.astro';
+import BarraTelefono from '../../../sito/componenti/BarraTelefono.astro';
+import DialogStorie from '../../../sito/componenti/DialogStorie.astro';
+import Diario from '../../../sito/componenti/Diario.astro';
+import FasciaInstagram from '../../../sito/componenti/FasciaInstagram.astro';
+import FilaStorie from '../../../sito/componenti/FilaStorie.astro';
+import Negozio from '../../../sito/componenti/Negozio.astro';
+import Piede from '../../../sito/componenti/Piede.astro';
+import Selezione from '../../../sito/componenti/Selezione.astro';
+import Testata from '../../../sito/componenti/Testata.astro';
+import { storie } from '../../../sito/componenti/dati';
+import '../../../sito/componenti/tema.css';
 
 const voce = await getEntry('negozio', 'negozio');
 if (!voce) throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');

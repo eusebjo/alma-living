@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ORARI_PROVA, type Fascia } from '../../src/prova/comune/orari';
-import { orariInBreve, settimana } from '../../src/prova/salvia-social/settimana';
+import { ORARI_PROVA, type Fascia } from '../../src/sito/comune/orari';
+import { orariInBreve, settimana } from '../../src/sito/componenti/settimana';
 
 describe('settimana (Salvia social)', () => {
   it('riassume gli orari della prova in giorni consecutivi con le stesse ore', () => {

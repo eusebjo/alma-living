@@ -3,7 +3,7 @@ import {
   linkTelefono,
   linkWhatsApp,
   messaggioDisponibilita,
-} from '../../src/prova/comune/contatti';
+} from '../../src/sito/comune/contatti';
 
 describe('messaggioDisponibilita', () => {
   it('usa la frase esatta, anche con virgolette nel nome', () => {

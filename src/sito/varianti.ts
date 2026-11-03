@@ -1,6 +1,6 @@
 // Le varianti di design in prova (vedi docs/superpowers/specs/
 // 2026-10-29-varianti-di-prova-design.md). Questo elenco alimenta la pagina
-// /prova/: una variante nuova è una cartella in più in `src/prova/` e una voce qui.
+// /prova/: una variante nuova è una cartella in più in `src/sito/` e una voce qui.
 // Delle tre varianti pensate si costruisce solo Salvia social (decisione del
 // 2026-10-30): Salvia bianca e Cipria app non si realizzano.
 export type VarianteId = 'salvia-social';

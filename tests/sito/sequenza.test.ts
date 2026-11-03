@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avanti, durataFoto, indietro } from '../../src/prova/comune/sequenza';
+import { avanti, durataFoto, indietro } from '../../src/sito/comune/sequenza';
 
 // Due gruppi di storie: il primo con due foto, il secondo con una.
 const FOTO = [2, 1];

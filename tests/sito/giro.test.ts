@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fotoDelGiro, passoDelGiro } from '../../src/prova/comune/giro';
+import { fotoDelGiro, passoDelGiro } from '../../src/sito/comune/giro';
 
 describe('passoDelGiro', () => {
   it('fermo non conta il tempo', () => {

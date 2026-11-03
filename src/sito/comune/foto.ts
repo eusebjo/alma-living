@@ -1,5 +1,5 @@
 // Le foto delle pagine di prova. Non sono in git: `npm run build` e `npm run dev`
-// le preparano in `src/prova/foto/` con `scripts/foto-prova/prepara.mjs`. Qui
+// le preparano in `src/sito/foto/` con `scripts/foto-prova/prepara.mjs`. Qui
 // Vite le importa come immagini, così Astro le ottimizza (AVIF, WebP, misure
 // adatte) e le serve dal sito stesso.
 import type { ImageMetadata } from 'astro';

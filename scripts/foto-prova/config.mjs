@@ -14,9 +14,9 @@ export const FOTO_PROVA_BASE = 'https://pub-02e2834056a84517a87c5431c6904c14.r2.
 export const FOTO_PROVA_BUCKET = 'alma-living-prova';
 export const FOTO_PROVA_PREFISSO = 'prova';
 
-// Cartella (esclusa da git, vedi `.gitignore`) da cui `src/prova/comune/foto.ts`
+// Cartella (esclusa da git, vedi `.gitignore`) da cui `src/sito/comune/foto.ts`
 // legge le foto che Astro ottimizza.
-export const FOTO_PROVA_DESTINAZIONE = 'src/prova/foto';
+export const FOTO_PROVA_DESTINAZIONE = 'src/sito/foto';
 
 // Cartella locale con gli originali, anch'essa fuori da git (`.gitignore`).
 export const FOTO_PROVA_LOCALE = 'foto/prova';

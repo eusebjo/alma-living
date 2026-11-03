@@ -139,7 +139,8 @@ src/lib/                schemaOrg, robots, llms, markdown, sitemap
 src/components/         SeoHead (title, canonical, Open Graph, noindex, JSON-LD)
 src/layouts/            BaseLayout
 src/pages/              index, admin (pannello), prova (varianti di prova), robots.txt, llms.txt
-src/prova/              varianti di prova: comune (logica, script del browser, layout), salvia-social
+src/sito/comune/        logica, script del browser, layout e dati condivisi (Salvia social)
+src/sito/componenti/    componenti, dati e tema di Salvia social
 scripts/foto-prova/     prepara le foto di prova prima della build (da foto/prova o dal bucket R2); carica.mjs manda nel bucket quelle nuove
-tests/                  test unitari; tests/dist sui file generati
+tests/                  test unitari (tests/sito: logica e dati del sito); tests/dist sui file generati
 ```

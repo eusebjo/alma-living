@@ -4,7 +4,7 @@ import {
   righeOrari,
   statoNegozio,
   testoStato,
-} from '../../src/prova/comune/orari';
+} from '../../src/sito/comune/orari';
 
 describe('statoNegozio e testoStato', () => {
   // Date in UTC, attese sull'ora di Roma (CEST fino al 25 ottobre 2026, poi CET).
