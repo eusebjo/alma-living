@@ -141,6 +141,10 @@ Sulla tela (dodicesima proposta, versione 55) ha scelto la versione 7, "Scheda a
 - **La pausa** non si vede più: resta solo per chi usa la tastiera, e compare quando riceve il focus.
 - **Chiudere la scheda toccando fuori** (chiesto da eusebjo lo stesso giorno: viene spontaneo). Un tocco in un punto qualsiasi del velo chiude la scheda e fa ripartire la storia: sopra e sotto, ai lati, sulla miniatura e sul soggetto. Non chiudono i tre link e gli spazi tra loro (chi manca di poco un link non perde la scheda), né la X. Un trascinamento non vale come tocco. Con la scheda aperta, un tocco sulle strisce scure ai lati della scena (telefono in orizzontale) chiude solo la scheda, come Esc. "Torna alla storia" resta per la tastiera e i lettori di schermo.
 
+**Aggiornamento del 2026-11-03: una scala dei caratteri e il menu del telefono.** Dall'analisi dei caratteri: l'h1 dell'apertura era più piccolo degli h2 delle sezioni (30 contro 34 px sul telefono, 38 contro 53 sul computer), il voto di Google era la scritta più grande del telefono (44 px), c'erano 22 grandezze diverse e le voci del menu del telefono erano grandi quanto l'h1. eusebjo ha detto di procedere e di guardare il risultato nell'anteprima.
+- **La scala** sta in `tema.css`, dal telefono (390 px) al computer (1440 px): `--h1` 34-52 px (apertura), `--h2` 30-44 px (sezioni), `--titolo-medio` 24-32 px (fascia Instagram, finestra degli scaffali, voto di Google, nome nella scheda rapida, motto del piè di pagina), `--h3` 18-22 px (nomi dei prodotti, "Post dal negozio"). Le frasi sotto i titoli usano tutte `--testo-sezione` (16-17 px). Le scritte più piccole stanno ad almeno 11 px; 12,5 px diventa 13.
+- **Il menu del telefono** copre la pagina sotto l'header fino in fondo allo schermo, e la pagina sotto non scorre. Porta solo alle sezioni, con le voci a 22 px su righe di 52 px. Il riquadro con stato, indirizzo, WhatsApp e Chiama non c'è più: lo stato è nella barra in alto, i contatti nella barra in basso, che resta sopra il menu.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:

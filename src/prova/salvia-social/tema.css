@@ -115,7 +115,15 @@
   --margine: clamp(20px, 4vw, 56px);
   --sezione: clamp(72px, 4.6vw + 54px, 120px);
   --fascia: clamp(64px, 3.8vw + 49px, 104px);
-  --h2: clamp(34px, 2.1vw + 26px, 56px);
+  /* La scala dei titoli, dal telefono (390 px) al computer (1440 px): l'h1
+     dell'apertura è il più grande, poi gli h2 delle sezioni, poi i titoli medi
+     (fascia Instagram, finestra degli scaffali, voto di Google, nome nella
+     scheda rapida, motto del piè di pagina), poi gli h3 (nomi dei prodotti,
+     "Post dal negozio"). */
+  --h1: clamp(34px, 1.714vw + 27.31px, 52px);
+  --h2: clamp(30px, 1.333vw + 24.8px, 44px);
+  --titolo-medio: clamp(24px, 0.762vw + 21.03px, 32px);
+  --h3: clamp(18px, 0.381vw + 16.51px, 22px);
   --occhiello: 12px;
   --testo-sezione: 16px;
 

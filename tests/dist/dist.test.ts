@@ -939,6 +939,35 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
   });
 
+  it('la scala dei titoli: l’h1 è il più grande, poi gli h2, i titoli medi e gli h3, sul telefono e sul computer', () => {
+    const css = cssDellaPagina();
+    const scala = (nome: string) => {
+      const m = new RegExp(`--${nome}:clamp\\((\\d+)px,[^,]+,\\s*(\\d+)px\\)`).exec(css);
+      expect(m, nome).not.toBeNull();
+      return [Number(m![1]), Number(m![2])] as const;
+    };
+    const [h1, h2, medio, h3] = ['h1', 'h2', 'titolo-medio', 'h3'].map(scala);
+    for (const i of [0, 1] as const) {
+      expect(h1![i]).toBeGreaterThan(h2![i]);
+      expect(h2![i]).toBeGreaterThan(medio![i]);
+      expect(medio![i]).toBeGreaterThan(h3![i]);
+    }
+    // L'h1 dell'apertura usa la sua misura, senza valori scritti a mano.
+    expect(css).toMatch(/(?:^|[}\s,])h1\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:var\(--h1\)/);
+    expect(css).not.toMatch(/(?:^|[}\s,])h1\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:\d/);
+  });
+
+  it('il menu del telefono porta solo alle tre sezioni, con le voci a 22 px, e copre la pagina', () => {
+    const menu = contenutiCon(html(), 'id', 'menu-telefono')[0] ?? '';
+    const link = tagIn(menu, 'a', 'href');
+    expect(link.map((t) => valore(t, 'href'))).toEqual(sezioni.map((s) => s.href));
+    expect(link.every((t) => /\sclass="menu-voce[\s"]/.test(t))).toBe(true);
+    expect(menu).not.toContain('data-stato-negozio');
+    const css = cssDellaPagina();
+    expect(css).toMatch(/\.menu-voce\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:22px/);
+    expect(css).toMatch(/html:has\(#menu-telefono:not\(\[hidden\]\)\)\{overflow:hidden\}/);
+  });
+
   it('le frecce del lettore: ritagliate sul telefono, sempre visibili con il mouse', () => {
     const css = cssDellaPagina();
     const { apertura } = dialogCon('data-storie')[0] ?? { apertura: '' };

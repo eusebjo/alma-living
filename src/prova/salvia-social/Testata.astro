@@ -1,8 +1,9 @@
 ---
 // Barra in alto (indirizzo, stato del negozio, telefono) e header fisso: sul
 // computer navigazione, logo e contatti; sul telefono "Menu", logo e WhatsApp,
-// con il menu a tendina (protocollo "Menu" dello script comune). Senza
-// JavaScript il menu resta chiuso: le sezioni sono anche nel piè di pagina.
+// con il menu che copre la pagina e porta solo alle sezioni (protocollo "Menu"
+// dello script comune). Senza JavaScript il menu resta chiuso: le sezioni sono
+// anche nel piè di pagina.
 import { Image } from 'astro:assets';
 import type { DatiNegozio } from '../comune/negozio';
 import { linkWhatsApp } from '../comune/contatti';
@@ -74,14 +75,6 @@ const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
   <nav id="menu-telefono" class="menu" data-menu hidden aria-label="Sezioni della pagina">
     <div class="menu-dentro">
       {sezioni.map(({ nome, href }) => <a class="menu-voce" href={href}>{nome}</a>)}
-      <div class="menu-negozio">
-        <p class="menu-stato"><StatoNegozio orari={negozio.orari} /></p>
-        <p class="menu-indirizzo">{negozio.indirizzo}</p>
-        <div class="menu-azioni">
-          <a class="pieno" href={whatsapp}><Icona nome="whatsapp" misura={18} />WhatsApp</a>
-          <a class="filo" href={negozio.telefonoHref}><Icona nome="telefono" misura={18} />Chiama</a>
-        </div>
-      </div>
     </div>
   </nav>
 </header>
@@ -336,13 +329,26 @@ const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
     }
   }
 
-  /* --- Menu del telefono --- */
-  /* Con il telefono ruotato il menu può essere più alto dello schermo: scorre. */
+  /* --- Menu del telefono: copre la pagina sotto l'header, fino in fondo allo
+     schermo, su fondo bianco, e la pagina sotto non scorre. Solo le sezioni:
+     stato e indirizzo sono nella barra in alto, WhatsApp, Chiama e Indicazioni
+     nella barra in basso (`BarraTelefono.astro`), che resta sopra il menu. Le
+     voci stanno un gradino sotto i titoli della pagina (22 px): il menu guida,
+     non fa concorrenza all'h1. --- */
+  .menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+  }
+
+  /* Alto fino in fondo allo schermo (l'header è alto 64 px). Con il telefono
+     ruotato scorre; in basso lascia il posto alla barra dei contatti. */
   .menu-dentro {
-    max-height: calc(100dvh - 64px);
+    height: calc(100dvh - 64px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 4px 20px 24px;
+    padding: 4px 20px calc(96px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--linea);
     background: var(--bianco);
   }
@@ -350,62 +356,21 @@ const whatsapp = linkWhatsApp(negozio.whatsapp, messaggi.generico);
   .menu-voce {
     display: flex;
     align-items: center;
-    min-height: 60px;
+    min-height: 52px;
     border-bottom: 1px solid var(--linea);
     color: var(--nero);
     text-decoration: none;
     font-family: var(--titoli);
-    font-size: 30px;
-    line-height: 1.1;
+    font-size: 22px;
+    line-height: 1.2;
   }
 
-  .menu-negozio {
-    margin-top: 20px;
-    padding: 18px;
-    border-radius: var(--raggio-telefono);
-    background: var(--latte);
-  }
-
-  .menu-stato {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.35;
-  }
-
-  .menu-indirizzo {
-    margin: 4px 0 0;
-    font-size: 14px;
-    color: var(--grigio-testo);
-  }
-
-  .menu-azioni {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 14px;
-  }
-
-  .menu-azioni a {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 46px;
-    border-radius: var(--pillola);
-    text-decoration: none;
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  .pieno {
-    background: var(--salvia-scura);
-    color: var(--bianco);
-  }
-
-  .filo {
-    box-shadow: inset 0 0 0 1px var(--nero);
-    color: var(--nero);
+  /* Con il menu aperto la pagina sotto non scorre (solo dove il menu c'è: se la
+     finestra si allarga con il menu aperto, la pagina torna a scorrere). */
+  @media (max-width: 959px) {
+    :global(html:has(#menu-telefono:not([hidden]))) {
+      overflow: hidden;
+    }
   }
 
   @media (min-width: 960px) {

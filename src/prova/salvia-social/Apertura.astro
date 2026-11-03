@@ -152,7 +152,7 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
   h1 {
     margin: 0;
     font-family: var(--titoli);
-    font-size: 30px;
+    font-size: var(--h1);
     font-weight: 400;
     line-height: 1.08;
     letter-spacing: -0.01em;
@@ -161,7 +161,7 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
 
   .frase {
     margin: 8px 0 0;
-    font-size: 15px;
+    font-size: var(--testo-sezione);
     line-height: 1.45;
     color: var(--testo-morbido);
     text-wrap: pretty;
@@ -426,14 +426,9 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
       padding: 20px 40px 0;
     }
 
-    h1 {
-      font-size: 34px;
-    }
-
     .frase {
       max-width: 40em;
       margin-top: 10px;
-      font-size: 17px;
       line-height: 1.5;
     }
 
@@ -460,10 +455,6 @@ const SALTA_SUL_COMPUTER = '(width > 1023px)';
   @media (width > 1023px) {
     .apertura {
       padding: 28px var(--margine) 0;
-    }
-
-    h1 {
-      font-size: 38px;
     }
 
     .palco {

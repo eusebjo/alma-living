@@ -132,7 +132,7 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
   .descrizione {
     max-width: 32em;
     margin: 14px 0 0;
-    font-size: 16px;
+    font-size: var(--testo-sezione);
     line-height: 1.55;
     text-wrap: pretty;
   }
@@ -183,7 +183,7 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
 
   .google-media {
     font-family: var(--titoli);
-    font-size: 44px;
+    font-size: var(--titolo-medio);
     line-height: 1;
   }
 
@@ -360,7 +360,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
 
     .descrizione {
       margin-top: 18px;
-      font-size: 18px;
     }
 
     .foto {
@@ -388,9 +387,6 @@ const stelle = Number.parseFloat(negozio.google.media.replace(',', '.'));
       margin-top: 8px;
     }
 
-    .google-media {
-      font-size: 52px;
-    }
 
     .stelle :global(svg) {
       width: 17px;
