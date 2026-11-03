@@ -28,7 +28,10 @@ import { BASE_SHA, HEAD_SHA, chiave, creaOctokitFinto } from './octokitFinto';
 /** JSON come lo scrive Sveltia: due spazi e riga finale. */
 const comeSveltia = (dati: Record<string, unknown>): string => `${JSON.stringify(dati, null, 2)}\n`;
 
-/** Una foto caricata dal pannello, con il nome che le dà (minuscole, trattini, `.webp`). */
+/**
+ * Una foto caricata dal pannello, con il nome che le dà: il nome originale reso
+ * adatto agli URL, un codice casuale, `.webp`.
+ */
 const fotoCaricata = (nome: string, alt: string, inquadratura = 'centro') => ({
   src: `${FOTO_BASE}/cms/${nome}.webp`,
   alt,
@@ -44,7 +47,7 @@ function prodottoSveltia(modifica: (p: Record<string, unknown>) => void = () => 
     novita: true,
     data: '2026-11-03',
     foto: fotoCaricata(
-      'whatsapp-image-2026-11-03-at-10-10-10',
+      'whatsapp-image-2026-11-03-at-10-10-10-3fa9c2e1',
       'Plaid verde con la scritta Abbracciami ricamata',
     ),
   };
@@ -58,8 +61,8 @@ function postSveltia(modifica: (p: Record<string, unknown>) => void = () => {}):
     data: '2026-11-03',
     testo: 'Sono arrivati i cuscini di Natale.',
     foto: [
-      fotoCaricata('img_1234', 'Divano con cuscini natalizi rossi e verdi'),
-      fotoCaricata('img_1235', 'Cuscini con baite innevate', 'centro-alto'),
+      fotoCaricata('img_1234-0b7c41d2', 'Divano con cuscini natalizi rossi e verdi'),
+      fotoCaricata('img_1235-9e8d7c6b', 'Cuscini con baite innevate', 'centro-alto'),
     ],
   };
   modifica(dati);
@@ -74,7 +77,7 @@ function storiaSveltia(modifica: (s: Record<string, unknown>) => void = () => {}
     invito: 'whatsapp',
     foto: [
       {
-        ...fotoCaricata('scaffale', 'Uno scaffale con i plaid nuovi'),
+        ...fotoCaricata('scaffale-5a4b3c2d', 'Uno scaffale con i plaid nuovi'),
         frase: 'Sono arrivati i plaid delle feste.',
         soggetto: 'i plaid delle feste',
       },
@@ -138,7 +141,7 @@ describe('prodotto scritto da Sveltia', () => {
   it('aggiungere la seconda foto e i colori con le loro foto è una modifica consentita', async () => {
     const prima = prodottoSveltia();
     const dopo = prodottoSveltia((p) => {
-      const seconda = fotoCaricata('plaid-rosso', 'Plaid rosso appeso', 'centro-alto');
+      const seconda = fotoCaricata('plaid-rosso-1f2e3d4c', 'Plaid rosso appeso', 'centro-alto');
       p.secondaFoto = seconda;
       p.colori = [
         { nome: 'verde', tinta: '#5e654f', foto: p.foto },
@@ -178,7 +181,7 @@ describe('post scritto da Sveltia', () => {
     const prima = postSveltia();
     const dopo = postSveltia((p) => {
       p.soggetto = 'sui cuscini di Natale';
-      (p.foto as unknown[]).push(fotoCaricata('img_1236', 'Cuscini con i gattini'));
+      (p.foto as unknown[]).push(fotoCaricata('img_1236-7c6b5a49', 'Cuscini con i gattini'));
     });
     expect(valuta(modificato(NUOVO, prima, dopo))).toMatchObject({ esito: 'consentito', livello: 1 });
     expect(validaConSchemi([modificato(NUOVO, prima, dopo)], rules)).toEqual([]);

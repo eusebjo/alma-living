@@ -29,24 +29,25 @@ describe('indirizzi delle foto', () => {
   });
 
   // I nomi che dà il pannello alle foto caricate (Sveltia 0.248.0 con
-  // `slugify_filename` e lo `slug` globale di config.yml: ASCII, senza accenti,
-  // minuscole). Restano lettere, cifre, `_`, `-` e `~`; i punti del nome
-  // diventano trattini, l'estensione è quella della conversione (`.webp`) e un
-  // nome già usato riceve `-1`, `-2`…
+  // `filename_template: '{{filename}}-{{uuid_shorter}}'`, `slugify_filename` e
+  // lo `slug` globale di config.yml: ASCII, senza accenti, minuscole). Il nome
+  // originale resta riconoscibile: lettere, cifre, `_`, `-` e `~`, con i punti
+  // diventati trattini. Poi un trattino e 8 caratteri esadecimali casuali, perché
+  // una foto con lo stesso nome non ne sovrascriva un'altra nel bucket.
+  // L'estensione è quella della conversione (`.webp`).
   it.each([
     // "WhatsApp Image 2026-11-03 at 10.10.10.jpeg"
-    'whatsapp-image-2026-11-03-at-10-10-10.webp',
+    'whatsapp-image-2026-11-03-at-10-10-10-3fa9c2e1.webp',
     // "IMG_1234.HEIC"
-    'img_1234.webp',
+    'img_1234-0b7c41d2.webp',
     // "Città di notte (1).jpg"
-    'citta-di-notte-1.webp',
-    // "foto~1.png", e un nome già usato
-    'foto~1.webp',
-    'plaid-1.webp',
-    // Un nome fatto solo di caratteri tolti diventa un codice casuale.
-    '3f9a2c1e4b5d.webp',
+    'citta-di-notte-1-9e8d7c6b.webp',
+    // "foto~1.png"
+    'foto~1-5a4b3c2d.webp',
+    // Un nome fatto solo di caratteri tolti diventa un codice casuale anch'esso.
+    '3f9a2c1e4b5d-0b7c41d2.webp',
     // Se il browser non sa scrivere WebP, la foto resta PNG.
-    'plaid.png',
+    'plaid-1f2e3d4c.png',
   ])('eIndirizzoFoto accetta il nome che il pannello dà a una foto caricata: %s', (nome) => {
     expect(eIndirizzoFoto(indirizzoFoto('cms', nome))).toBe(true);
   });

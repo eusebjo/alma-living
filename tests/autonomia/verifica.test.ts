@@ -465,6 +465,43 @@ describe('eseguiVerifica', () => {
       expect(corpoDelRapporto(stato)).toMatch(/La foto va caricata dal pannello\./);
     });
 
+    it.each([
+      ['src/content/post/Plaid_Rosso.json', /usa solo lettere minuscole, numeri e trattini/],
+      ['src/content/post/articolo-sabbia.json', /non può cominciare con «articolo-»/],
+    ])('un post nuovo che si chiama %s è respinto, con un messaggio in italiano', async (path, testo) => {
+      const { octokit, stato } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: path, status: 'added' }],
+          contenuti: { [chiave(HEAD_SHA, path)]: { testo: postJson() } },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(false);
+      expect(esito.verdict).toMatchObject({ ruolo: 'redazione', esito: 'respinto' });
+      expect(esito.verdict?.violazioni.map((v) => [v.file, v.azione])).toEqual([[path, 'formato']]);
+      const corpo = corpoDelRapporto(stato);
+      expect(corpo).toMatch(testo);
+      expect(corpo).not.toMatch(GERGO);
+      expect(stato.etichette).not.toContain(ETICHETTA_LIVELLO_1);
+    });
+
+    it('un post nuovo che si chiama con la data è consentito, livello 1', async () => {
+      const path = 'src/content/post/2026-11-03-1.json';
+      const { octokit } = creaOctokitFinto(
+        modificaConsentita({
+          files: [{ filename: path, status: 'added' }],
+          contenuti: { [chiave(HEAD_SHA, path)]: { testo: postJson() } },
+        }),
+      );
+
+      const esito = await eseguiVerifica(octokit, ref, rules);
+
+      expect(esito.superato).toBe(true);
+      expect(esito.verdict).toMatchObject({ esito: 'consentito', livello: 1 });
+    });
+
     it('una bozza resta in bozza: il contenuto si controlla quando la proposta viene inviata', async () => {
       const { octokit, chiamate } = creaOctokitFinto(orariSbagliati({ bozza: true }));
 

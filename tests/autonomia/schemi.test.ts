@@ -364,6 +364,82 @@ describe('validaConSchemi, prodotti, post e storie', () => {
   });
 });
 
+describe('validaConSchemi, nomi dei file nuovi di prodotti e post', () => {
+  // Il nome del file è l'id della voce nella pagina: la build legge solo
+  // minuscole, cifre e trattini, e un post `articolo-…` si confonderebbe con gli
+  // articoli degli scaffali (`articolo-<id>`). Il pannello scrive nomi validi
+  // (la data); un nome diverso arriva solo da un file scritto a mano.
+  const NOME_NON_VALIDO =
+    'Il nome del file non è valido: usa solo lettere minuscole, numeri e trattini.';
+  const POST_ARTICOLO = 'Il nome di un post non può cominciare con «articolo-».';
+
+  it.each([
+    ['src/content/post/Plaid_Rosso.json', postJson(), NOME_NON_VALIDO],
+    ['src/content/post/articolo-sabbia.json', postJson(), POST_ARTICOLO],
+    ['src/content/prodotti/plaid rosso.json', prodottoJson(), NOME_NON_VALIDO],
+    ['src/content/prodotti/città.json', prodottoJson(), NOME_NON_VALIDO],
+    ['src/content/post/2026.11.03.json', postJson(), NOME_NON_VALIDO],
+  ])('un file aggiunto %s è respinto', (path, testo, messaggio) => {
+    const violazioni = validaConSchemi([aggiunto(path, testo)], rules);
+
+    expect(violazioni).toEqual([{ file: path, azione: 'formato', messaggio }]);
+    expect(messaggio).not.toMatch(GERGO);
+  });
+
+  it('un nome con caratteri non validi e che comincia con articolo- dà entrambi i messaggi', () => {
+    const path = 'src/content/post/articolo-Plaid.json';
+    expect(validaConSchemi([aggiunto(path, postJson())], rules).map((v) => v.messaggio)).toEqual([
+      NOME_NON_VALIDO,
+      POST_ARTICOLO,
+    ]);
+  });
+
+  it.each([
+    ['src/content/post/2026-11-03-1.json', postJson()],
+    ['src/content/post/2026-11-03.json', postJson()],
+    ['src/content/prodotti/2026-11-03.json', prodottoJson()],
+    // Solo i post non possono chiamarsi `articolo-…`.
+    ['src/content/prodotti/articolo-sabbia.json', prodottoJson()],
+  ])('un file aggiunto %s passa', (path, testo) => {
+    expect(validaConSchemi([aggiunto(path, testo)], rules)).toEqual([]);
+  });
+
+  it('una rinomina verso un nome non valido è respinta', () => {
+    const rinomina: ChangedFile = {
+      path: 'src/content/post/Post Nuovo.json',
+      previousPath: POST,
+      status: 'renamed',
+      before: postJson(),
+      after: postJson(),
+    };
+    expect(validaConSchemi([rinomina], rules)).toEqual([
+      { file: 'src/content/post/Post Nuovo.json', azione: 'formato', messaggio: NOME_NON_VALIDO },
+    ]);
+  });
+
+  it('il nome si controlla anche se il contenuto non è stato letto', () => {
+    const nonLetto: ChangedFile = {
+      path: 'src/content/post/Plaid_Rosso.json',
+      status: 'added',
+      before: null,
+      after: null,
+    };
+    expect(validaConSchemi([nonLetto], rules).map((v) => v.messaggio)).toEqual([NOME_NON_VALIDO]);
+  });
+
+  it('i file già esistenti (modificati o tolti) e le altre collection non si controllano per nome', () => {
+    const file: ChangedFile[] = [
+      modificato('src/content/post/Vecchio_Nome.json', postJson(), postJson()),
+      { path: 'src/content/prodotti/Vecchio.json', status: 'removed', before: prodottoJson(), after: null },
+      // Una storia nuova la respinge già `evaluate` (azione crea).
+      aggiunto('src/content/storie/Nuova_Storia.json', storiaJson()),
+      // Fuori dalle collection: lo segnala `evaluate` (perimetro).
+      aggiunto('src/content/post/sotto/Plaid_Rosso.json', postJson()),
+    ];
+    expect(validaConSchemi(file, rules)).toEqual([]);
+  });
+});
+
 describe('validaConSchemi, cosa si controlla', () => {
   it('salta i file rimossi e quelli senza testo letto', () => {
     const rimosso: ChangedFile = { path: POST, status: 'removed', before: postJson(), after: null };

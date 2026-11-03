@@ -34,6 +34,40 @@ const SCHEMI: Record<string, z.ZodType> = {
 const OPZIONI_GLOB = { windows: false, dot: false } as const;
 
 /**
+ * Il nome di un file nuovo (aggiunto o rinominato) di prodotti e post è l'id
+ * della voce nella pagina: la build legge solo minuscole, cifre e trattini
+ * (vedi `tests/dist`). Il pannello scrive nomi così (la data, `AAAA-MM-GG`); un
+ * nome diverso arriva solo da un file scritto a mano. Un post non può chiamarsi
+ * `articolo-…`: nella pagina gli articoli degli scaffali sono `articolo-<id>`,
+ * accanto ai post.
+ */
+const NOME_VOCE = /^[a-z0-9-]+\.json$/;
+const NOMI_CONTROLLATI = new Set(['prodotti', 'post']);
+const PREFISSO_POST_VIETATO = 'articolo-';
+
+// Per una persona che non conosce Git: niente gergo, niente percorsi (il
+// rapporto mostra già il file accanto al messaggio).
+const MESSAGGI_NOME = {
+  caratteri: 'Il nome del file non è valido: usa solo lettere minuscole, numeri e trattini.',
+  articolo: `Il nome di un post non può cominciare con «${PREFISSO_POST_VIETATO}».`,
+} as const;
+
+/** Le violazioni sul nome di un file nuovo della collection `collezione`. */
+function controllaNome(file: ChangedFile, collezione: string): Violazione[] {
+  if (file.status !== 'added' && file.status !== 'renamed') return [];
+  if (!NOMI_CONTROLLATI.has(collezione)) return [];
+  const nome = file.path.slice(file.path.lastIndexOf('/') + 1);
+  const violazioni: Violazione[] = [];
+  if (!NOME_VOCE.test(nome)) {
+    violazioni.push({ file: file.path, azione: 'formato', messaggio: MESSAGGI_NOME.caratteri });
+  }
+  if (collezione === 'post' && nome.startsWith(PREFISSO_POST_VIETATO)) {
+    violazioni.push({ file: file.path, azione: 'formato', messaggio: MESSAGGI_NOME.articolo });
+  }
+  return violazioni;
+}
+
+/**
  * Messaggio per i problemi che lo schema non descrive da sé (campo mancante,
  * tipo sbagliato): quelli predefiniti di Zod sono in inglese. I messaggi
  * scritti negli schemi hanno la precedenza e restano com'erano.
@@ -61,13 +95,16 @@ function paraDelProblema(problema: z.core.$ZodIssue): { campo?: string; messaggi
 
 /**
  * Valida con lo schema della sua collection la nuova versione di ogni file di
- * contenuto della proposta. Salta i file senza testo letto (rimossi, o non
- * letti), quelli che non si leggono come JSON o frontmatter (li segnala già
- * `evaluate`), quelli fuori dalle collection e le collection senza schema.
- * Ogni problema è una violazione con azione `formato`, in italiano.
+ * contenuto della proposta, e il nome dei file nuovi (aggiunti o rinominati) di
+ * prodotti e post. Lo schema non si applica ai file senza testo letto (rimossi,
+ * o non letti), a quelli che non si leggono come JSON o frontmatter (li segnala
+ * già `evaluate`) e alle collection senza schema; i file fuori dalle collection
+ * si saltano del tutto. Ogni problema è una violazione con azione `formato`, in
+ * italiano.
  */
 export function validaConSchemi(files: ChangedFile[], rules: Rules): Violazione[] {
   const collezioni = Object.entries(rules.contenuti).map(([nome, regola]) => ({
+    nome,
     regola,
     schema: SCHEMI[nome],
     corrisponde: picomatch(regola.file, OPZIONI_GLOB),
@@ -75,9 +112,11 @@ export function validaConSchemi(files: ChangedFile[], rules: Rules): Violazione[
 
   const violazioni: Violazione[] = [];
   for (const file of files) {
-    if (file.status === 'removed' || file.after === null) continue;
+    if (file.status === 'removed') continue;
     const collezione = collezioni.find((c) => c.corrisponde(file.path));
-    if (!collezione?.schema) continue;
+    if (!collezione) continue;
+    violazioni.push(...controllaNome(file, collezione.nome));
+    if (file.after === null || !collezione.schema) continue;
 
     let dati: Record<string, unknown>;
     try {

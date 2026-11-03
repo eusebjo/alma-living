@@ -66,6 +66,11 @@ media_libraries:
         height: 2400
     # Niente spazi, maiuscole o accenti nei nomi dei file (con lo `slug` qui sopra).
     slugify_filename: true
+    # Ogni foto caricata tiene il suo nome e riceve 8 caratteri casuali, nuovi per
+    # ogni file: "IMG_1234.HEIC" diventa per esempio `img_1234-3fa9c2e1.webp`. R2
+    # sovrascrive senza chiedere un oggetto con lo stesso nome: senza il codice,
+    # una foto nuova potrebbe cambiare quella di un contenuto già approvato.
+    filename_template: '{{filename}}-{{uuid_shorter}}'
   # Le foto caricate dal pannello vanno nel bucket `alma-living-prova`, nella
   # cartella `cms/`, e nei contenuti finisce il loro indirizzo pubblico
   # (https://foto.almalivingviaricasoli.it/cms/<nome>). Access Key ID e Account ID

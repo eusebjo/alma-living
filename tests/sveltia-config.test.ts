@@ -71,6 +71,7 @@ interface Config {
   media_libraries: {
     all?: {
       slugify_filename?: boolean;
+      filename_template?: string;
       transformations?: Record<string, Record<string, unknown>>;
     };
     default?: false | Record<string, unknown>;
@@ -640,6 +641,17 @@ describe('foto: solo su Cloudflare R2', () => {
 
   it('i nomi dei file diventano adatti agli URL (niente spazi, maiuscole, accenti)', () => {
     expect(config.media_libraries.all?.slugify_filename).toBe(true);
+  });
+
+  it('una foto caricata non sovrascrive mai un’altra: nome originale più un codice casuale', () => {
+    // R2 sovrascrive senza chiedere un oggetto con lo stesso nome: due "IMG_1234"
+    // da telefoni diversi cambierebbero anche la foto di un contenuto già
+    // approvato. `{{filename}}` è il nome originale (poi reso adatto agli URL),
+    // `{{uuid_shorter}}` 8 caratteri esadecimali casuali, nuovi per ogni file.
+    expect(config.media_libraries.all?.filename_template).toBe('{{filename}}-{{uuid_shorter}}');
+    // L'opzione vale per tutti: nessun campo la cambia (vedi sotto, niente
+    // `media_libraries` nei campi), e R2 non ne ha una sua.
+    expect(config.media_libraries.cloudflare_r2).not.toHaveProperty('filename_template');
   });
 
   it('niente foto di stock da servizi esterni', () => {

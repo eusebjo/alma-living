@@ -64,7 +64,7 @@ Il login a `/admin/` passa da GitHub tramite il Worker Cloudflare [`sveltia-cms-
 
 ## Foto del sito
 
-Le foto di prodotti, post e storie stanno nel bucket R2 `alma-living-prova`, servito da `https://foto.almalivingviaricasoli.it` (`FOTO_BASE` in `src/content/foto.ts`): `prova/` per quelle di oggi, `cms/` per quelle caricate dal pannello (`media_libraries.cloudflare_r2` in `public/admin/config.yml`, senza `media_folder`; `autonomia.yml` non lascia caricare file nel repository). Nel repository ci sono solo Access Key ID e Account ID del token R2, che non sono segreti; la chiave segreta la inserisce ogni persona nel pannello e resta nel suo browser. Per caricare, il pannello contatta anche l'API di R2 (`<account_id>.r2.cloudflarestorage.com`) e l'indirizzo delle foto.
+Le foto di prodotti, post e storie stanno nel bucket R2 `alma-living-prova`, servito da `https://foto.almalivingviaricasoli.it` (`FOTO_BASE` in `src/content/foto.ts`): `prova/` per quelle di oggi, `cms/` per quelle caricate dal pannello (`media_libraries.cloudflare_r2` in `public/admin/config.yml`, senza `media_folder`; `autonomia.yml` non lascia caricare file nel repository). Una foto caricata tiene il suo nome, reso adatto agli URL, più 8 caratteri casuali (`filename_template`), così non sovrascrive mai una foto già nel bucket. Nel repository ci sono solo Access Key ID e Account ID del token R2, che non sono segreti; la chiave segreta la inserisce ogni persona nel pannello e resta nel suo browser. Per caricare, il pannello contatta anche l'API di R2 (`<account_id>.r2.cloudflarestorage.com`) e l'indirizzo delle foto.
 
 CORS del bucket (dashboard Cloudflare, a cura di eusebjo, salvato il 2026-11-03):
 
