@@ -554,7 +554,7 @@ describe('docs/onboarding-redazione.md', () => {
   it('copre i passi della prima volta', () => {
     expect(testo()).toMatch(/Two-factor authentication/);
     expect(testo()).toMatch(/Accept invitation/);
-    expect(testo()).toContain('https://alma-living.sebjomuho.workers.dev/admin/');
+    expect(testo()).toContain('https://almalivingviaricasoli.it/admin/');
     expect(testo()).toContain('Accedi con GitHub');
     expect(testo()).toContain('"Authorize"');
   });

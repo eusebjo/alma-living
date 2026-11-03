@@ -38,7 +38,8 @@ Negli script npm non usare la sintassi `VAR=x comando` (non funziona su Windows)
 
 ## Indirizzi
 
-- **Produzione:** https://alma-living.sebjomuho.workers.dev (Worker `alma-living`, ramo `main`)
+- **Produzione:** https://almalivingviaricasoli.it (Worker `alma-living`, ramo `main`). È un Custom Domain del Worker, collegato dal dashboard Cloudflare il 2026-11-02: `wrangler.jsonc` non ha `routes`, quindi i deploy non lo tolgono. `http://` e `www.` portano al dominio principale con un 301, percorso e parametri compresi (Always Use HTTPS e una Redirect Rule della zona). Resta attivo anche https://alma-living.sebjomuho.workers.dev, dove fino al lancio puntano canonical, Open Graph e `llms.txt` (vedi "Stato di lancio").
+- **Dominio:** registrato su IONOS (Cloudflare Registrar non vende `.it`), DNS su Cloudflare (piano Free). Nella zona il Bot Preference Sync resta spento: aggiungerebbe righe a `robots.txt` e annullerebbe il `Disallow: /` pre-lancio. I record della posta (MX, SPF, `autodiscover`, `_dmarc`) sono quelli di IONOS: l'uso dell'email è ancora da decidere.
 - **Repository:** https://github.com/eusebjo/alma-living (pubblico)
 - **Anteprima di un branch:** `https://<branch con "/" sostituito da "-">-alma-living.sebjomuho.workers.dev`, per esempio il branch `fase1/2-anteprime` diventa `https://fase1-2-anteprime-alma-living.sebjomuho.workers.dev`. Il link affidabile è nei dettagli del controllo Cloudflare della pull request.
 
@@ -55,13 +56,14 @@ Oggi ogni proposta della redazione richiede l'approvazione di eusebjo (livello 1
 Il login a `/admin/` passa da GitHub tramite il Worker Cloudflare [`sveltia-cms-auth`](https://github.com/sveltia/sveltia-cms-auth), che custodisce il segreto OAuth fuori dal repository e dal browser.
 
 - **Worker:** https://sveltia-cms-auth.sebjomuho.workers.dev (endpoint `/auth` e `/callback`). È l'unico `backend.base_url` in `public/admin/config.yml`, senza barra finale; `auth_endpoint` non si imposta (il predefinito `auth` coincide col Worker). Un test (`tests/sveltia-config.test.ts`) fissa l'indirizzo.
-- **GitHub OAuth App:** Homepage `https://alma-living.sebjomuho.workers.dev`, Authorization callback URL `https://sveltia-cms-auth.sebjomuho.workers.dev/callback`. Si gestisce da GitHub, Settings → Developer settings → OAuth Apps, a cura di eusebjo.
-- **Variabili del Worker** (dashboard Cloudflare, a cura di eusebjo): `GITHUB_CLIENT_ID` e `GITHUB_CLIENT_SECRET` (segreto), mai nel repository né in chat; `ALLOWED_DOMAINS` = `*.sebjomuho.workers.dev`, che copre produzione e anteprime del sito (`*` vale per qualunque sottodominio, ma non per il dominio nudo). Quando il sito avrà un dominio proprio, va aggiunto qui: altrimenti il Worker rifiuta l'accesso.
-- **Chi entra:** serve un account GitHub con accesso al repository `eusebjo/alma-living`; i permessi sul repository decidono chi può salvare.
+- **GitHub OAuth App:** Homepage `https://alma-living.sebjomuho.workers.dev`, Authorization callback URL `https://sveltia-cms-auth.sebjomuho.workers.dev/callback`. Si gestisce da GitHub, Settings → Developer settings → OAuth Apps, a cura di eusebjo. La Homepage è solo un'etichetta (il login non la usa); la callback resta quella del Worker anche con il dominio del sito.
+- **Variabili del Worker** (dashboard Cloudflare, a cura di eusebjo): `GITHUB_CLIENT_ID` e `GITHUB_CLIENT_SECRET` (segreto), mai nel repository né in chat; `ALLOWED_DOMAINS` = `*.sebjomuho.workers.dev, almalivingviaricasoli.it`. La prima voce copre il `workers.dev` di produzione e le anteprime (`*` vale per qualunque sottodominio, ma non per il dominio nudo), la seconda il dominio del sito; `www` non serve, perché porta al dominio principale prima di arrivare al pannello. Se il sito cambia dominio, va aggiunto qui: altrimenti il Worker rifiuta l'accesso.
+- **Deploy del Worker:** il repository `eusebjo/sveltia-cms-auth` (importato, non un fork) si pubblica con Workers Builds a ogni push. Il suo `wrangler.toml` ha `keep_vars = true`: senza, un deploy cancellerebbe le variabili di testo del dashboard (`ALLOWED_DOMAINS`, `GITHUB_CLIENT_ID`) e nessuno entrerebbe più nel pannello. Dopo un deploy si controlla che `https://sveltia-cms-auth.sebjomuho.workers.dev/auth?provider=github&site_id=almalivingviaricasoli.it` risponda con un redirect (302) verso GitHub.
+- **Chi entra:** serve un account GitHub con accesso al repository `eusebjo/alma-living`; i permessi sul repository decidono chi può salvare. La redazione entra da https://almalivingviaricasoli.it/admin/ (provato da eusebjo il 2026-11-03); il pannello funziona anche su `workers.dev` e nelle anteprime.
 
 ## Stato di lancio
 
-Fino al lancio vero il sito vive su `workers.dev` ed è escluso dai motori di ricerca. Lo decide `getSiteConfig` in `src/config/site.ts`, unica fonte per `astro.config.mjs`, `SeoHead`, `robots.txt` e `llms.txt`.
+Fino al lancio vero il sito è escluso dai motori di ricerca, anche sul dominio `almalivingviaricasoli.it`, che è già collegato ma da solo non rende il sito indicizzabile. Lo decide `getSiteConfig` in `src/config/site.ts`, unica fonte per `astro.config.mjs`, `SeoHead`, `robots.txt` e `llms.txt`.
 
 Variabili di build. Quelle impostate su Cloudflare valgono per la build di produzione (ramo `main`); **le anteprime (build degli altri rami) non le ricevono**:
 
@@ -98,7 +100,7 @@ Remove-Item Env:SITE_LAUNCHED, Env:WORKERS_CI_BRANCH, Env:SITE_URL
 
 Atteso in `dist/`: `index.html` con JSON-LD e senza `noindex`, `sitemap-index.xml` presente, `robots.txt` con `Sitemap:`. `npm run test:dist` verifica solo la build locale e fallisce su una build di lancio.
 
-Il lancio vero (dominio di produzione collegato, `SITE_URL` aggiornato, `SITE_LAUNCHED=true` su Cloudflare) lo decide eusebjo.
+Il lancio vero (`SITE_URL` = `https://almalivingviaricasoli.it` e `SITE_LAUNCHED=true` su Cloudflare) lo decide eusebjo.
 
 ## Vincoli globali
 
