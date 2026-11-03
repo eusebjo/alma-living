@@ -159,7 +159,7 @@ I limiti numerici stanno **solo** in `src/content/limits.ts` (oggetto `LIMITI`):
 
 ## Cosa è generato (non va scritto a mano)
 
-`robots.txt`, `llms.txt`, la sitemap e i dati strutturati JSON-LD sono generati in build da `negozio.json` e dalla pagina. Prima del lancio e nelle anteprime il sito è escluso dai motori di ricerca (`noindex`): è voluto.
+`robots.txt`, `llms.txt`, la sitemap e i dati strutturati JSON-LD sono generati in build da `negozio.json` e dalla pagina. Le anteprime sono escluse dai motori di ricerca (`noindex`): è voluto. Il sito pubblicato è indicizzabile dal lancio del 2026-11-03.
 
 ## Controllare una modifica in locale
 
