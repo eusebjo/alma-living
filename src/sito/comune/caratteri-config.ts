@@ -1,6 +1,6 @@
-// Famiglie di caratteri delle varianti di prova, per `fonts` di
-// astro.config.mjs: Astro le scarica alla build e le serve dal sito stesso (da
-// /_astro/fonts/), senza richieste a Google a pagina aperta.
+// Famiglie di caratteri del sito, per `fonts` di astro.config.mjs: Astro le
+// scarica alla build e le serve dal sito stesso (da /_astro/fonts/), senza
+// richieste a Google a pagina aperta.
 //
 // Questo file importa `astro/config`, quindi lo legge solo la configurazione:
 // una pagina o un componente che lo importasse porterebbe Astro dentro il
@@ -10,7 +10,7 @@ import { fontProviders } from 'astro/config';
 
 const google = fontProviders.google();
 
-export const CARATTERI_PROVA: NonNullable<AstroUserConfig['fonts']> = [
+export const FAMIGLIE_CARATTERI: NonNullable<AstroUserConfig['fonts']> = [
   {
     provider: google,
     name: 'Libre Caslon Display',

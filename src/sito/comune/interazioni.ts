@@ -1,16 +1,16 @@
-// Script comune delle pagine di prova. Le varianti non hanno JavaScript proprio:
+// Script del sito. Le pagine non hanno JavaScript proprio:
 // scrivono il markup con attributi `data-*` (i "protocolli" qui sotto) e questo
 // script lo fa funzionare, per delega sulla radice (un ascoltatore per tipo di
 // evento, quanti che siano i pulsanti). Nessuna libreria.
 //
-// Lo stato sta nel DOM (`hidden`, `aria-*`, `data-*`): il CSS delle varianti lo
+// Lo stato sta nel DOM (`hidden`, `aria-*`, `data-*`): il CSS della pagina lo
 // legge da lì. Miglioramento progressivo: senza JavaScript la pagina si legge
 // (i dialog restano chiusi, ma il loro contenuto è nell'HTML; fa eccezione il
 // contenuto di `data-altro`, che è `hidden` finché lo script non lo mostra).
 // Gli elementi nascosti con `hidden` non devono avere un `display` che lo vinca
 // (`Interazioni.astro` aggiunge `[hidden] { display: none !important }`).
 //
-// Protocolli. Ogni `<x>` è un nome scelto dalla variante, uguale sui due lati.
+// Protocolli. Ogni `<x>` è un nome scelto dalla pagina, uguale sui due lati.
 //
 // - Menu: `button[data-menu-apri][aria-controls]` apre e chiude il pannello
 //   `[data-menu]` (con `hidden`) e aggiorna `aria-expanded`. Si chiude con Esc o
@@ -27,9 +27,9 @@
 //   voci. Un filtro diverso da `tutti` mostra anche le voci piegate da "Mostra
 //   altri" e ne nasconde il pulsante.
 // - Interruttore: `button[data-interruttore]` con `aria-pressed="true|false"`: un
-//   clic ne inverte il valore. Il resto lo fa il CSS della variante, che legge lo
+//   clic ne inverte il valore. Il resto lo fa il CSS della pagina, che legge lo
 //   stato (per esempio con `:has()` sul contenitore): lo script non sposta nulla.
-//   Senza JavaScript il pulsante non fa nulla, e la variante lo nasconde con
+//   Senza JavaScript il pulsante non fa nulla, e la pagina lo nasconde con
 //   `@media (scripting: none)`.
 // - Galleria: `[data-galleria]` con `[data-galleria-foto]` (una alla volta, le
 //   altre `hidden`), `button[data-galleria-prec|succ]` (a giro),
@@ -76,10 +76,10 @@
 //   `button[data-galleria-pausa]` alterna con un clic. È il controllo di rotazione
 //   del carosello W3C APG: niente `aria-pressed`, cambia il testo ("Metti in
 //   pausa" / "Riprendi"); lo stato sta solo in `data-galleria-ferma` sulla
-//   galleria. Lo script non scrive testi: la variante mette nel pulsante i due
+//   galleria. Lo script non scrive testi: la pagina mette nel pulsante i due
 //   testi e mostra con il CSS quello giusto secondo `data-galleria-ferma`
 //   (l'altro con `display: none`, perché non si legga). `[data-galleria-annuncio]`
-//   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira; la variante
+//   riceve `aria-live="polite"` a galleria ferma e `"off"` mentre gira; la pagina
 //   lo scrive già nell'HTML con `aria-live="off"`, perché alcuni lettori di schermo
 //   registrano le regioni live solo al caricamento.
 //   Comandi, con il giro. `[data-galleria-prec|succ]` e
@@ -94,7 +94,7 @@
 //   ricevono come testo il valore corrispondente, e ogni `a[data-colore-dove="link"]`
 //   riceve `data-colore-href` come `href`. Con `data-colore-foto="<n>"` la galleria
 //   del contenitore (`[data-galleria]`) mostra la foto n, contando da 0. Lo script
-//   non compone testi: li copia da questi attributi, e li scrive la variante.
+//   non compone testi: li copia da questi attributi, e li scrive la pagina.
 // - Storie: `button[data-storia-apri="<g>"]` apre `dialog[data-storie]`, che ha i
 //   gruppi `[data-storia-gruppo="<g>"]` (uno visibile alla volta), in ognuno le
 //   foto `[data-storia-foto]` e, nello stesso ordine, le barre
@@ -112,13 +112,13 @@
 //   riprende con quel pulsante).
 //   Frase. In ogni foto `[data-storia-frase]`, con dentro il testo visibile
 //   `[data-storia-frase-testo]` e, dopo, `button[data-storia-altro]`
-//   (`aria-expanded="false"` e `hidden` nell'HTML). La variante limita l'altezza
+//   (`aria-expanded="false"` e `hidden` nell'HTML). La pagina limita l'altezza
 //   della frase chiusa (per esempio a due righe, con `overflow: hidden`). Quando
 //   la foto diventa attuale, se la frase non ci sta tutta (`scrollHeight` oltre
 //   `clientHeight` + 1) lo script mostra "altro" e accorcia il testo visibile a
 //   parole intere, con «…» (`fraseTagliata`, in `frase.ts`), finché testo e
 //   "altro" ci stanno; il testo intero lo legge la prima volta dal testo visibile.
-//   Per i lettori di schermo la variante lascia il testo intero fuori da
+//   Per i lettori di schermo la pagina lascia il testo intero fuori da
 //   `[data-storia-frase-testo]`. Dalla frase non deve uscire in basso nulla di
 //   posizionato (un velo in `::before`): `scrollHeight` lo conterebbe. Un clic su
 //   "altro" alterna `data-aperta` sulla frase della sua foto e `aria-expanded`:
@@ -130,12 +130,12 @@
 //   `[data-storia-invito]` quante le foto, nello stesso ordine: lo script mostra
 //   quello della foto attuale (gli altri `hidden`), con i suoi link e un
 //   `button[data-storia-invito-chiudi]`. La pillola apre la scheda e, se è
-//   aperta, la chiude (serve alle varianti in cui la scheda non copre la
+//   aperta, la chiude (serve a un design in cui la scheda non copre la
 //   pillola: Salvia social la nasconde). La apre anche un trascinamento in su che
 //   parte dalla zona dei tocchi o dalla pillola (qui sotto). Aperta, il dialog
-//   riceve `data-storia-invito-aperto` (la variante la mostra con il CSS), le
+//   riceve `data-storia-invito-aperto` (la pagina la mostra con il CSS), le
 //   pillole `aria-expanded="true"` e il focus va subito al primo `a[href]` o
-//   `button` della scheda. Per questo la variante rende la scheda focalizzabile
+//   `button` della scheda. Per questo la pagina rende la scheda focalizzabile
 //   appena c'è l'attributo (niente `visibility` ritardata da una transizione) e,
 //   chiusa, la tiene fuori dal tab e dai lettori di schermo (per esempio con
 //   `display: none`). La chiudono anche `[data-storia-invito-chiudi]`, Esc
@@ -163,13 +163,13 @@
 //   `[data-storia-prec]`, nel resto come `[data-storia-succ]`: la pausa non è un
 //   punto della zona, è il pulsante `[data-storia-pausa]`, che riflette lo stato
 //   con `aria-pressed`. A scheda aperta un tocco sulla zona chiude la scheda e non
-//   cambia foto (serve alle varianti in cui la scheda non copre la zona: in Salvia
+//   cambia foto (serve a un design in cui la scheda non copre la zona: in Salvia
 //   social la copre).
 //   Tenere premuto. La storia si ferma alla pressione del puntatore primario e
 //   riprende al suo rilascio (o annullamento): gli altri puntatori non contano.
 //   Oltre 300 ms la pressione non è un tocco, e il rilascio
 //   non cambia foto. Dopo 500 ms di pressione sulla zona dei tocchi il dialog
-//   riceve `data-storia-nascosta` (la variante nasconde testata, frase e pillola:
+//   riceve `data-storia-nascosta` (la pagina nasconde testata, frase e pillola:
 //   resta la foto), che il rilascio o l'annullamento tolgono. Un trascinamento
 //   non nasconde nulla: appena si sposta oltre 10 px su un asse, il timer si
 //   ferma e l'attributo se ne va. A scheda aperta la pressione non nasconde nulla.
@@ -178,23 +178,23 @@
 //   mouse, solo con il tasto principale). Al rilascio `gestoDellaStoria` (in
 //   `gesti.ts`) dice cosa fare. Dalla zona dei tocchi, in giù chiude il dialog e
 //   in su apre la scheda; a scheda aperta in giù chiude solo la scheda e in su non
-//   fa nulla (anche questo serve alle varianti in cui la scheda non copre la
+//   fa nulla (anche questo serve a un design in cui la scheda non copre la
 //   zona). Dalla pillola, in su apre la scheda: la pressione sulla pillola non
 //   ferma la storia e non nasconde nulla. Dalla scheda, in giù la chiude. Un
 //   trascinamento che si è spostato oltre 10 px su un asse non è un tocco: il clic
 //   che lo segue (entro mezzo secondo dal rilascio; uno più tardi conta) non fa
 //   nulla, né sulla zona, né sulla pillola, né sulla scheda (che
 //   così non si richiude appena aperta, né dopo un trascinamento in su o di
-//   lato). Il dito arriva al rilascio solo dove la variante
+//   lato). Il dito arriva al rilascio solo dove la pagina
 //   toglie lo scorrimento al browser (`touch-action: none` sulla zona dei tocchi,
 //   sulla pillola, e sulla scheda se non deve scorrere): altrimenti il browser si
-//   prende il trascinamento e lo annulla con `pointercancel`. La variante lascia
+//   prende il trascinamento e lo annulla con `pointercancel`. La pagina lascia
 //   passare i tocchi attraverso ciò che sta sopra la zona e non si usa
 //   (`pointer-events: none`).
 //   Menu del browser. Tenendo premuto su una foto il browser aprirebbe il menu
 //   dell'immagine: lo script annulla `contextmenu` in tutto `dialog[data-storie]`,
 //   tranne che su link e pulsanti. Su iPhone `contextmenu` non arriva: lì basta la
-//   variante, con `pointer-events: none` e `-webkit-touch-callout: none` sulle
+//   pagina, con `pointer-events: none` e `-webkit-touch-callout: none` sulle
 //   `img`.
 // - Post: `[data-post-apri="<id>"]` apre `dialog[data-post="<id>"]`; dentro può
 //   esserci una galleria; `button[data-post-chiudi]` lo chiude. Chi apre è un
@@ -694,7 +694,7 @@ function aggiornaOrologio(c: Contesto, galleria: HTMLElement): void {
 
 /**
  * Ferma (o fa ripartire) il giro di una galleria e lo scrive nella pagina: lo
- * stato (`data-galleria-ferma`, da cui la variante sceglie il testo della pausa) e
+ * stato (`data-galleria-ferma`, da cui la pagina sceglie il testo della pausa) e
  * l'annuncio. Poi spegne o riaccende l'orologio.
  */
 function impostaFerma(c: Contesto, galleria: HTMLElement, ferma: boolean): void {

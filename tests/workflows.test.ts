@@ -525,9 +525,11 @@ describe('CLAUDE.md', () => {
     expect(testo).toMatch(/imitare/);
     expect(testo).toMatch(/GitHub App dedicata/);
     expect(testo).toMatch(/integration_id/);
-    // La libreria dei file multimediali non si usa per i caricamenti.
+    // La libreria dei file multimediali (oggi quella di R2) non si usa: le foto
+    // si caricano solo dal campo "Foto" della voce.
     expect(testo).toMatch(/File Multimediali/);
-    expect(testo).toMatch(/non deve usarla/);
+    expect(testo).toMatch(/non deve usare/);
+    expect(testo).toMatch(/Sostituisci/);
     // I segreti futuri stanno in ambienti limitati ai rami consentiti.
     expect(testo).toMatch(/Environments/);
   });
@@ -536,6 +538,37 @@ describe('CLAUDE.md', () => {
     const testo = leggiTesto('CLAUDE.md');
     expect(testo).toMatch(/sempre con le regole della redazione/);
     expect(testo).toMatch(/account che non sono in `autonomia.yml` sono sempre respinte/);
+  });
+
+  it('non descrive più la prova di design né le foto preparate dagli script', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).not.toMatch(/src\/prova|foto:carica|foto-prova|Prova delle varianti|LayoutProva/);
+    expect(testo).not.toMatch(/`create: false`/);
+  });
+
+  it('spiega le foto su R2: bucket, prefissi, token e comando per una foto fissa', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    expect(testo).toMatch(/## Foto del sito/);
+    expect(testo).toContain('alma-living-prova');
+    expect(testo).toContain('https://foto.almalivingviaricasoli.it');
+    expect(testo).toContain('`prova/`');
+    expect(testo).toContain('`cms/`');
+    expect(testo).toContain('alma-living-pannello');
+    expect(testo).toContain(
+      'npx wrangler r2 object put alma-living-prova/prova/<nome>.jpg --file=<file> --remote',
+    );
+  });
+
+  it('il CORS del bucket non ammette DELETE: le cancellazioni dal browser sono bloccate', () => {
+    const testo = leggiTesto('CLAUDE.md');
+    const blocco = /## Foto del sito[\s\S]*?```json\n([\s\S]*?)\n```/.exec(testo)?.[1];
+    expect(blocco).toBeDefined();
+    const [cors] = JSON.parse(blocco!) as Array<{
+      AllowedOrigins: string[];
+      AllowedMethods: string[];
+    }>;
+    expect(cors!.AllowedMethods).toEqual(['GET', 'PUT', 'HEAD']);
+    expect(cors!.AllowedOrigins).toContain('https://almalivingviaricasoli.it');
   });
 });
 
@@ -574,10 +607,92 @@ describe('docs/onboarding-redazione.md', () => {
 
   it('dice di non usare la sezione dei file multimediali per i caricamenti', () => {
     expect(testo()).toMatch(/Non usare la sezione "File Multimediali"/);
-    expect(testo()).toMatch(/campo "Immagine"/);
+    // Il campo che la redattrice vede nel pannello si chiama "Foto" (config.yml).
+    expect(testo()).toMatch(/campo "Foto"/);
   });
 
   it('è in italiano e senza gergo di Git (branch, merge, commit)', () => {
     expect(testo()).not.toMatch(/\b(branch|merge|commit)\b/i);
+  });
+});
+
+// Le etichette che la guida cita tra virgolette sono quelle che la redattrice
+// legge nel pannello: vengono da `public/admin/config.yml`.
+interface CampoConfig {
+  name: string;
+  label?: string;
+}
+
+interface CollezioneConfig {
+  name: string;
+  label: string;
+  fields?: CampoConfig[];
+  files?: Array<{ name: string; fields?: CampoConfig[] }>;
+}
+
+const configurazione = (): { collections: CollezioneConfig[] } =>
+  parse(leggiTesto('public/admin/config.yml')) as { collections: CollezioneConfig[] };
+
+const campiDi = (nome: string): CampoConfig[] => {
+  const collezione = configurazione().collections.find((voce) => voce.name === nome);
+  return collezione?.fields ?? collezione?.files?.[0]?.fields ?? [];
+};
+
+describe('AGENTS.md: prodotti, post e storie', () => {
+  const testo = () => leggiTesto('AGENTS.md');
+
+  it('elenca le cartelle dei contenuti e non parla più di pagine', () => {
+    expect(testo()).toContain('src/content/prodotti/<id>.json');
+    expect(testo()).toContain('src/content/post/<id>.json');
+    expect(testo()).toContain('src/content/storie/<nome>.json');
+    expect(testo()).not.toMatch(/src\/content\/pagine|immagini\//);
+  });
+
+  it.each(['prodotti', 'post', 'storie'])('descrive ogni campo del pannello di %s', (nome) => {
+    for (const campo of campiDi(nome)) {
+      expect(testo(), `${nome}.${campo.name}`).toContain(`\`${campo.name}\``);
+    }
+  });
+
+  it('dice che le foto stanno su R2 e non si caricano con una proposta', () => {
+    expect(testo()).toContain('https://foto.almalivingviaricasoli.it/cms/<nome>');
+    expect(testo()).toMatch(/non si caricano con una proposta/);
+  });
+});
+
+describe('docs/onboarding-redazione.md: prodotti, post, storie e chiave delle foto', () => {
+  const testo = () => leggiTesto('docs/onboarding-redazione.md');
+
+  it('cita le voci del menu e i campi con le etichette del pannello', () => {
+    for (const collezione of configurazione().collections) {
+      expect(testo(), collezione.label).toContain(`"${collezione.label}"`);
+    }
+    for (const nome of ['prodotti', 'post', 'storie']) {
+      for (const campo of campiDi(nome)) {
+        if (campo.label === undefined) continue;
+        expect(testo(), `${nome}.${campo.name}`).toContain(`"${campo.label}"`);
+      }
+    }
+  });
+
+  it('spiega come aggiungere un prodotto o un post e cambiare una storia', () => {
+    expect(testo()).toMatch(/## Aggiungere un prodotto/);
+    expect(testo()).toMatch(/## Aggiungere un post/);
+    expect(testo()).toMatch(/## Cambiare una storia/);
+    expect(testo()).toContain('"(Nessuna)"');
+  });
+
+  it('spiega la chiave delle foto con le parole che il pannello mostra', () => {
+    expect(testo()).toMatch(/## La chiave delle foto, la prima volta su ogni dispositivo/);
+    expect(testo()).toContain('"Impostazioni"');
+    expect(testo()).toContain('"Chiavi API dei Servizi di Cloud Storage"');
+    expect(testo()).toContain('"Cloudflare R2"');
+    expect(testo()).toContain('"Inserisci la tua Secret Access Key per Cloudflare R2."');
+  });
+
+  it('dice di non cancellare, rinominare, sostituire né creare cartelle nella libreria', () => {
+    expect(testo()).toMatch(/non cancellare né rinominare le foto/);
+    expect(testo()).toContain('"Sostituisci"');
+    expect(testo()).toMatch(/non creare cartelle/);
   });
 });

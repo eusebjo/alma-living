@@ -72,7 +72,7 @@ describe('astro.config: caratteri del sito', { timeout: 30_000 }, () => {
     const config = await caricaConfig({});
     const nomi = (config.fonts ?? []).map((f: { name: string }) => f.name);
     // Elenco esatto: un carattere in più sarebbe scaricato a ogni build senza
-    // che nessuna pagina lo usi (come i due delle varianti annullate).
+    // che nessuna pagina lo usi.
     expect([...nomi].sort()).toEqual(
       ['Libre Caslon Display', 'Libre Caslon Text', 'Instrument Sans'].sort(),
     );

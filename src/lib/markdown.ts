@@ -63,9 +63,10 @@ export function rimuoviImmaginiEsterne() {
   };
 }
 
-// Plugin rehype applicati al testo Markdown delle pagine. Lo schema di default
-// di rehype-sanitize toglie `<script>`, `<iframe>`, gli attributi `style` e
-// `on*`, e gli URL `javascript:`. Subito dopo `rimuoviImmaginiEsterne` toglie
-// le immagini che non sono del sito. Si collega in astro.config.mjs tramite
+// Plugin rehype applicati a ogni testo Markdown del sito (oggi nessun contenuto
+// ne usa: prodotti, post e storie sono JSON). Lo schema di default di
+// rehype-sanitize toglie `<script>`, `<iframe>`, gli attributi `style` e `on*`,
+// e gli URL `javascript:`. Subito dopo `rimuoviImmaginiEsterne` toglie le
+// immagini che non sono del sito. Si collega in astro.config.mjs tramite
 // `markdown.processor`.
 export const rehypePlugins: RehypePlugins = [rehypeSanitize, rimuoviImmaginiEsterne];

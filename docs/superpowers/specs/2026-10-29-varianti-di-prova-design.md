@@ -5,6 +5,8 @@
 - **Ambito:** portare in codice, dentro l'architettura esistente, le tre varianti di design scelte da eusebjo, per provarle e correggerle finché una convince. La messa in produzione della variante scelta è un passo successivo con un suo documento (§12).
 - **Riferimenti:** architettura in `docs/superpowers/specs/2026-10-19-architettura-alma-living-design.md`; regole di sviluppo in `CLAUDE.md`.
 
+**Aggiornamento del 2026-11-03:** la prova è finita. Salvia social è diventata il sito vero (la pagina `/`), con prodotti, post e storie nel pannello e le foto su Cloudflare R2: vedi `docs/superpowers/specs/2026-11-03-messa-in-produzione-design.md` (è il seguito del §12). Le pagine `/prova/` e il codice sotto `src/prova/` non esistono più; questo documento resta come storia della prova.
+
 **Aggiornamento del 2026-10-30:** su decisione di eusebjo si costruisce solo la variante Salvia social; Salvia bianca e Cipria app non si realizzano. Il resto del documento vale per Salvia social.
 
 **Aggiornamento del 2026-11-01 (ciclo di prova, §11):** dopo la prova sull'anteprima, eusebjo ha rivisto Salvia social sulla tela (sesta, settima e ottava proposta) e ha scelto la versione 3, la tavola `DiarioFascia.dc.html` (con `DiarioFasciaTelefono.dc.html`). Da qui è il disegno di riferimento di Salvia social al posto di `SalviaSocial.dc.html`. Cambia rispetto alla versione in codice:

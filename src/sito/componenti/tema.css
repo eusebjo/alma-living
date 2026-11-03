@@ -1,7 +1,8 @@
-/* Gettoni della variante Salvia social: colori, raggi, caratteri e misure, con
-   i valori della tavola `SalviaSocial.dc.html`, aggiornati alla versione 3 (la
-   tavola `DiarioFascia.dc.html`). Tutti i componenti della
-   variante usano solo queste proprietà: per cambiare la palette basta questo file.
+/* Gettoni del tema Salvia social, quello del sito: colori, raggi, caratteri e
+   misure, con i valori della tavola `SalviaSocial.dc.html`, aggiornati alla
+   versione 3 (la tavola `DiarioFascia.dc.html`). Valgono dove il `body` ha
+   `data-variante="salvia-social"` (lo mette `LayoutSito`). Tutti i componenti
+   usano solo queste proprietà: per cambiare la palette basta questo file.
    Le variabili `--font-…` le scrive il componente Font di Astro (LayoutSito). */
 [data-variante='salvia-social'] {
   /* Colori della tavola */
@@ -172,7 +173,7 @@ html:has(> body[data-variante='salvia-social']) {
    dove la barra di scorrimento occupa spazio (Windows) la sua striscia resta
    riservata e mostra lo sfondo della radice: senza queste regole sarebbe una
    striscia bianca accanto al velo scuro. Le tinte sono i fondi dei dialog: per
-   le storie il fondo pieno (`--fondo-storie`, che qui fuori dalla variante non
+   le storie il fondo pieno (`--fondo-storie`, che qui fuori dal tema non
    si legge), per post e schede rapide i veli (`--sfondo-post`, `--velo-scheda`)
    sopra il bianco della pagina; il `body` continua a dipingere il suo bianco,
    quindi la pagina non cambia. La scheda rapida è anche un `dialog[data-post]`:

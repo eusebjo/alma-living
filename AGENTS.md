@@ -1,12 +1,12 @@
 # AGENTS.md: come si modificano i contenuti di Alma Living
 
-Questa guida è per chi propone modifiche ai **contenuti** del sito (persone e agenti). Alma Living è un negozio di biancheria per la casa a Livorno; il sito è statico (Astro) e i contenuti sono file nel repository.
+Questa guida è per chi propone modifiche ai **contenuti** del sito (persone e agenti). Alma Living è un negozio di biancheria per la casa a Livorno; il sito è statico (Astro) e i contenuti sono file JSON nel repository. Le foto no: stanno su Cloudflare R2 e i contenuti ne citano l'indirizzo.
 
 Per lo sviluppo (codice, layout, configurazioni) vedi `CLAUDE.md`.
 
 ## Regole d'oro
 
-1. **Si modificano solo contenuti e immagini**, nelle cartelle indicate sotto. Codice, layout, componenti, stili, configurazioni, workflow e configurazione del pannello non si toccano.
+1. **Si modificano solo i contenuti**, nelle cartelle indicate sotto. Codice, layout, componenti, stili, configurazioni, workflow e configurazione del pannello non si toccano. Le foto non si aggiungono al repository (è pubblico): si caricano nel bucket R2 dal pannello (vedi "Foto").
 2. **Le regole di autonomia sono in `autonomia.yml`; codice e layout non si toccano.** Lì si legge chi può fare cosa e a quale livello. Il file si cambia solo con una proposta di sviluppo approvata da eusebjo.
 3. **Ogni modifica è una proposta** (branch e pull request), mai un push su `main`. Prima di andare online passa da `build`, da `verifica-autonomia` e dall'approvazione di eusebjo.
 4. **Solo gli account elencati in `autonomia.yml` (sezione `ruoli`) possono proporre modifiche.** Una proposta di qualunque altro account, o da un fork, è sempre respinta, qualunque cosa contenga.
@@ -18,13 +18,18 @@ Per lo sviluppo (codice, layout, configurazioni) vedi `CLAUDE.md`.
 | Percorso | Cosa contiene |
 |---|---|
 | `src/content/negozio/negozio.json` | Le impostazioni del negozio: un solo file |
-| `src/content/pagine/<id>.md` | Una pagina per file (`home.md` è la home) |
-| `src/content/pagine/immagini/` | Le immagini delle pagine |
+| `src/content/prodotti/<id>.json` | I prodotti degli scaffali: un prodotto per file |
+| `src/content/post/<id>.json` | I post del diario: un post per file |
+| `src/content/storie/<nome>.json` | Le otto storie fisse: `oggi`, `arrivi`, `vetrina`, `casette`, `candele`, `bimbi`, `tavola`, `lenzuola` |
+
+Il nome di un file (senza `.json`) è l'id della voce nella pagina: solo **lettere minuscole, cifre e trattini**. Il pannello dà ai file nuovi di `prodotti` e `post` il nome della data della voce (`2026-11-03.json`, poi `2026-11-03-1.json`…); un file nuovo con un altro nome fa respingere la proposta della redazione, e un post non può chiamarsi `articolo-…` (nella pagina gli articoli degli scaffali sono `articolo-<id>`). Le storie non si creano né si eliminano.
 
 Sola lettura (non si modificano con una proposta di contenuti):
 
 - `src/content/schemas.ts`: lo schema di ogni campo;
-- `src/content/limits.ts`: i limiti numerici, nell'oggetto `LIMITI`.
+- `src/content/limits.ts`: i limiti numerici, nell'oggetto `LIMITI`;
+- `src/content/categorie.ts`: le sette categorie dei prodotti;
+- `src/content/foto.ts`: l'indirizzo del bucket delle foto e le inquadrature.
 
 ## `negozio.json`
 
@@ -33,7 +38,7 @@ Un oggetto JSON piatto. Gli stessi dati alimentano la pagina, i dati strutturati
 | Campo | Obbligatorio | Regole |
 |---|---|---|
 | `nome` | sì | massimo `LIMITI.negozio.nome.max` caratteri |
-| `descrizione` | sì | tra `LIMITI.negozio.descrizione.min` e `LIMITI.negozio.descrizione.max` caratteri |
+| `descrizione` | sì | tra `LIMITI.negozio.descrizione.min` e `LIMITI.negozio.descrizione.max` caratteri. È anche la descrizione della pagina nei risultati di ricerca |
 | `indirizzo.via` | sì | testo |
 | `indirizzo.civico` | sì | massimo `LIMITI.negozio.civico.max` caratteri (es. `51-53`) |
 | `indirizzo.cap` | sì | 5 cifre |
@@ -69,40 +74,84 @@ Una riga per fascia: un giorno con mattina e pomeriggio ha due righe. Un giorno 
 }
 ```
 
-## Pagine (`src/content/pagine/<id>.md`)
+## Foto
 
-Frontmatter YAML più il testo in Markdown.
+Ogni foto di prodotti, post e storie è un oggetto con questi campi:
 
 | Campo | Obbligatorio | Regole |
 |---|---|---|
-| `titolo` | sì | massimo `LIMITI.pagina.titolo.max` caratteri. È il titolo della pagina nei motori di ricerca |
-| `descrizione` | sì | tra `LIMITI.pagina.descrizione.min` e `LIMITI.pagina.descrizione.max` caratteri. È la descrizione nei risultati di ricerca |
-| `immagine` | sì | percorso relativo a un file in `immagini/`: `immagini/home.webp` (come lo scrive il pannello) oppure `./immagini/home.webp`, entrambi validi |
-| `immagine_alt` | sì | testo alternativo che descrive l'immagine, tra `LIMITI.pagina.immagine_alt.min` e `LIMITI.pagina.immagine_alt.max` caratteri |
-| corpo | sì | Markdown dopo il frontmatter |
+| `src` | sì | l'indirizzo di una foto del bucket: `https://foto.almalivingviaricasoli.it/cms/<nome>` (caricate dal pannello) o `https://foto.almalivingviaricasoli.it/prova/<nome>` (foto fisse e foto migrate). Nessun altro sito, nessuna sottocartella, niente `..`, query o frammento |
+| `alt` | sì | testo alternativo che descrive la foto per chi non la vede, tra `LIMITI.foto.alt.min` e `LIMITI.foto.alt.max` caratteri |
+| `inquadratura` | no | quale parte della foto resta in vista quando è tagliata: `alto`, `centro-alto`, `centro` (predefinita), `centro-basso` o `basso` |
 
-```markdown
----
-titolo: Titolo della pagina
-descrizione: Una descrizione della pagina lunga abbastanza da rispettare il minimo previsto.
-immagine: immagini/home.webp
-immagine_alt: Descrizione dell'immagine per chi non la vede
----
-
-Testo della pagina in **Markdown**.
+```json
+{
+  "src": "https://foto.almalivingviaricasoli.it/cms/img_1234-0b7c41d2.webp",
+  "alt": "Lenzuola color sabbia in primo piano",
+  "inquadratura": "centro"
+}
 ```
 
-Il testo si scrive solo in Markdown: l'HTML grezzo (`<script>`, `<iframe>`, `style`, ecc.) la build lo toglie, quindi non serve e non funziona. Nel testo non si inseriscono immagini (il pannello non lo offre): la build toglie quelle con un indirizzo esterno (`https://...`, `//...`, `data:`...), perché il sito non carica risorse di terzi. L'immagine della pagina è il campo `immagine`.
+- Le foto **non si caricano con una proposta**: `autonomia.yml` non ammette file multimediali, e un file aggiunto al repository fa respingere la proposta della redazione. Si caricano dal pannello, dal campo "Foto" della voce (serve la chiave del bucket, che ha chi cura i contenuti): il pannello le converte in WebP, le riduce dentro un riquadro di 2400 x 2400 px (larghezza e altezza massime insieme), porta la qualità a circa 85, toglie i dati Exif e dà loro il nome originale reso adatto agli URL più 8 caratteri casuali (`img_1234-0b7c41d2.webp`), così una foto nuova non sovrascrive mai una già online.
+- Chi non ha il pannello (un agente) non può caricare foto: cita foto già presenti nel bucket oppure chiede a eusebjo di caricarle. Come si caricano a mano, la chiave e il CORS del bucket sono in `CLAUDE.md`, "Foto del sito".
+- Una foto non si toglie dal bucket finché un contenuto la cita: la build non la trova più e fallisce.
 
-Creare o eliminare pagine non rientra nei contenuti modificabili in fase 1. Una pagina nuova richiede anche una rotta nel codice, quindi è lavoro di sviluppo.
+## Prodotti (`src/content/prodotti/<id>.json`)
 
-## Immagini
+Un prodotto degli scaffali.
 
-- Stanno in `src/content/pagine/immagini/`, accanto alle pagine che le usano.
-- Formato **WebP**. Il pannello converte in WebP, riduce la foto dentro un riquadro di 2400 x 2400 px (larghezza e altezza massime: una foto verticale non supera i 2400 px in altezza), porta la qualità a circa 85 e toglie i dati Exif. Se aggiungi un file senza il pannello, fai lo stesso.
-- Nomi dei file in minuscolo, con trattini al posto degli spazi.
-- Il testo alternativo (`immagine_alt`) è obbligatorio.
-- Le foto troppo pesanti vengono respinte da `verifica-autonomia`: il peso massimo è in `autonomia.yml`. Vengono respinti anche i file di un tipo diverso da quelli elencati in `media.estensioni` (webp, jpg, jpeg, png, avif): niente SVG né HTML.
+| Campo | Obbligatorio | Regole |
+|---|---|---|
+| `nome` | sì | massimo `LIMITI.prodotto.nome.max` caratteri. Il nome sulla scheda |
+| `dettaglio` | sì | massimo `LIMITI.prodotto.dettaglio.max` caratteri. La riga sotto il nome |
+| `categorie` | sì | elenco di almeno una categoria, senza ripetizioni, tra gli id di `src/content/categorie.ts`: `letto`, `bagno`, `bimbi`, `tavola`, `profumi`, `natale`, `mare`. La prima dà il nome mostrato sulla scheda |
+| `novita` | no | `true` o `false` (predefinito `false`): con `true` la scheda dice «Novità» al posto della categoria |
+| `data` | sì | `AAAA-MM-GG`, un giorno che esiste. Gli scaffali mostrano prima i prodotti più recenti |
+| `foto` | sì | la foto principale (vedi "Foto") |
+| `secondaFoto` | no | una foto. Se manca, la scheda mostra un dettaglio ingrandito della foto principale: in quel caso **ometti il campo** |
+| `colori` | no | elenco di al massimo `LIMITI.prodotto.colori.max` colori; se non ce ne sono, **ometti il campo** |
+
+Ogni colore ha `nome` (massimo `LIMITI.prodotto.colore.max` caratteri), `tinta` (il pallino, `#RRGGBB`) e, facoltativa, `foto`: o la hanno **tutti** i colori o **nessuno**.
+
+```json
+{
+  "nome": "Lenzuola color sabbia",
+  "dettaglio": "Cotone con balza bianca · matrimoniale",
+  "categorie": ["letto"],
+  "novita": true,
+  "data": "2026-10-28",
+  "foto": {
+    "src": "https://foto.almalivingviaricasoli.it/prova/lenzuola-beige.jpg",
+    "alt": "Lenzuola color sabbia in primo piano",
+    "inquadratura": "centro-alto"
+  }
+}
+```
+
+## Post (`src/content/post/<id>.json`)
+
+Un post del diario.
+
+| Campo | Obbligatorio | Regole |
+|---|---|---|
+| `data` | sì | `AAAA-MM-GG`, un giorno che esiste. La griglia mostra prima i post più recenti |
+| `testo` | sì | da 1 a `LIMITI.post.testo.max` caratteri |
+| `foto` | sì | elenco di foto, da 1 a `LIMITI.post.foto.max`. La prima è quella della griglia; con più foto il post è una galleria |
+| `soggetto` | no | massimo `LIMITI.post.soggetto.max` caratteri. Di cosa parla il post, per il messaggio WhatsApp (per esempio «sui cuscini di Natale»); se manca, il messaggio dice solo la data. Se non c'è, **ometti il campo** |
+
+## Storie (`src/content/storie/<nome>.json`)
+
+Le otto storie della fila, nell'ordine di `ORDINE_STORIE` (`src/sito/contenuti.ts`). Si cambia il contenuto, non il nome del file, e non se ne aggiungono né se ne tolgono.
+
+| Campo | Obbligatorio | Regole |
+|---|---|---|
+| `nome` | sì | fisso: il nome sotto il cerchio della storia. Non si cambia (livello 0 in `autonomia.yml`) |
+| `data` | sì | `AAAA-MM-GG`, un giorno che esiste. Il giorno scritto in cima alla storia |
+| `etichetta` | no | `Oggi` o `Nuovo`, sul cerchio. Senza etichetta **ometti il campo**: una stringa vuota fa fallire la build |
+| `invito` | sì | `whatsapp`, `chiama` o `indicazioni`: il pulsante in evidenza nella scheda della storia |
+| `foto` | sì | elenco di foto, da 1 a `LIMITI.storia.foto.max`. La prima è anche la copertina del cerchio |
+
+Oltre ai campi della foto, ogni foto di una storia ha `frase` (da 1 a `LIMITI.storia.frase.max` caratteri: il testo mostrato su quella foto) e `soggetto` (da 1 a `LIMITI.storia.soggetto.max` caratteri, con l'articolo e in minuscolo, per esempio «i plaid delle feste»: lo usano la scheda e il messaggio WhatsApp).
 
 ## Limiti
 
@@ -110,7 +159,7 @@ I limiti numerici stanno **solo** in `src/content/limits.ts` (oggetto `LIMITI`):
 
 ## Cosa è generato (non va scritto a mano)
 
-`robots.txt`, `llms.txt`, la sitemap e i dati strutturati JSON-LD sono generati in build da `negozio.json` e dalle pagine. Prima del lancio e nelle anteprime il sito è escluso dai motori di ricerca (`noindex`): è voluto.
+`robots.txt`, `llms.txt`, la sitemap e i dati strutturati JSON-LD sono generati in build da `negozio.json` e dalla pagina. Prima del lancio e nelle anteprime il sito è escluso dai motori di ricerca (`noindex`): è voluto.
 
 ## Controllare una modifica in locale
 
@@ -119,4 +168,4 @@ npm test          # test unitari e di contenuto
 npm run build     # la build fallisce se un contenuto non rispetta lo schema
 ```
 
-Poi apri la proposta: l'anteprima del sito è nel controllo di Cloudflare della pull request.
+La build ha bisogno della rete (Google Fonts e `foto.almalivingviaricasoli.it`, da cui scarica le foto). Poi apri la proposta: l'anteprima del sito è nel controllo di Cloudflare della pull request.

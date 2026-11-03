@@ -1,5 +1,5 @@
 // La settimana riassunta in gruppi di giorni consecutivi con gli stessi orari,
-// per i testi brevi della variante ("Lunedì–sabato 9:30–13:00 e 16:00–19:30",
+// per i testi brevi della pagina ("Lunedì–sabato 9:30–13:00 e 16:00–19:30",
 // "Domenica chiuso"). Logica pura, senza Astro.
 import { righeOrari, type Fascia } from '../comune/orari';
 

@@ -1,6 +1,5 @@
-// Orari di apertura e stato "aperto ora" per le pagine di prova. Logica pura:
-// la usano lo script del browser (`interazioni.ts`) e le pagine, quindi non
-// dipende da Astro. L'ora è sempre quella di Roma, qualunque sia il fuso del
+// Orari di apertura e stato "aperto ora" del sito. Logica pura: la usano lo
+// script del browser (`interazioni.ts`) e la pagina, quindi non dipende da Astro. L'ora è sempre quella di Roma, qualunque sia il fuso del
 // visitatore.
 import { GIORNI } from '../../content/limits';
 
