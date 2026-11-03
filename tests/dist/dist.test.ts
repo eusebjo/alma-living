@@ -957,20 +957,20 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(css).not.toMatch(/(?:^|[}\s,])h1\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:\d/);
   });
 
-  it('il menu del telefono: le tre sezioni a 22 px, poi WhatsApp e Chiama, e copre la pagina', () => {
+  it('il menu del telefono: le tre sezioni a 22 px, poi il riquadro con stato, indirizzo, WhatsApp e Chiama', () => {
     const menu = contenutiCon(html(), 'id', 'menu-telefono')[0] ?? '';
     const link = tagIn(menu, 'a', 'href');
     const voci = link.filter((t) => /\sclass="menu-voce[\s"]/.test(t));
     expect(voci.map((t) => valore(t, 'href'))).toEqual(sezioni.map((s) => s.href));
-    // Sotto le sezioni i due contatti, come prima: niente stato né indirizzo (sono nella barra in alto).
     const azioni = link.filter((t) => !/\sclass="menu-voce[\s"]/.test(t)).map((t) => valore(t, 'href') ?? '');
     expect(azioni).toHaveLength(2);
     expect(azioni[0]).toMatch(/^https:\/\/wa\.me\/393345205451/);
     expect(azioni[1]).toBe('tel:+393345205451');
-    expect(menu).not.toContain('data-stato-negozio');
+    expect(menu).toContain('data-stato-negozio');
+    expect(decodifica(menu)).toContain('Via Ricasoli 51-53, 57125 Livorno');
+    // Le voci un gradino sotto i titoli della pagina, non grandi quanto l'h1.
     const css = cssDellaPagina();
     expect(css).toMatch(/\.menu-voce\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:22px/);
-    expect(css).toMatch(/html:has\(#menu-telefono:not\(\[hidden\]\)\)\{overflow:hidden\}/);
   });
 
   it('le frecce del lettore: ritagliate sul telefono, sempre visibili con il mouse', () => {
