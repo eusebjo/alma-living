@@ -42,7 +42,7 @@ Per cambiare i contenuti usi quattro voci del menu del pannello:
 
 ## Aggiungere un prodotto
 
-1. Scegli "Prodotti degli scaffali" e premi il pulsante per creare una voce nuova ("Crea Nuova Voce", con la matita).
+1. Scegli "Prodotti degli scaffali" e premi "Nuovo", il pulsante blu con la matita in alto a destra.
 2. Compila i campi:
    - **"Nome"**: il nome che compare sulla scheda, per esempio "Plaid Abbracciami".
    - **"Dettaglio"**: la riga sotto il nome.
@@ -58,7 +58,7 @@ Non devi scegliere un nome per il prodotto nel sito: lo dà il pannello da solo,
 
 ## Aggiungere un post
 
-1. Scegli "Post" e premi il pulsante per creare una voce nuova.
+1. Scegli "Post" e premi "Nuovo".
 2. Compila i campi:
    - **"Data"**: il giorno del post. Di solito è già quella di oggi.
    - **"Testo"**: il testo del post.

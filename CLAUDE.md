@@ -39,8 +39,8 @@ Negli script npm non usare la sintassi `VAR=x comando` (non funziona su Windows)
 
 ## Indirizzi
 
-- **Produzione:** https://almalivingviaricasoli.it (Worker `alma-living`, ramo `main`). È un Custom Domain del Worker, collegato dal dashboard Cloudflare il 2026-11-02: `wrangler.jsonc` non ha `routes`, quindi i deploy non lo tolgono. `http://` e `www.` portano al dominio principale con un 301, percorso e parametri compresi (Always Use HTTPS e una Redirect Rule della zona). Resta attivo anche https://alma-living.sebjomuho.workers.dev, dove fino al lancio puntano canonical, Open Graph e `llms.txt` (vedi "Stato di lancio").
-- **Dominio:** registrato su IONOS (Cloudflare Registrar non vende `.it`), DNS su Cloudflare (piano Free). Nella zona il Bot Preference Sync resta spento: aggiungerebbe righe a `robots.txt` e annullerebbe il `Disallow: /` pre-lancio. I record della posta (MX, SPF, `autodiscover`, `_dmarc`) sono quelli di IONOS: l'uso dell'email è ancora da decidere.
+- **Produzione:** https://almalivingviaricasoli.it (Worker `alma-living`, ramo `main`). È un Custom Domain del Worker, collegato dal dashboard Cloudflare il 2026-11-02: `wrangler.jsonc` non ha `routes`, quindi i deploy non lo tolgono. `http://` e `www.` portano al dominio principale con un 301, percorso e parametri compresi (Always Use HTTPS e una Redirect Rule della zona). Resta attivo anche https://alma-living.sebjomuho.workers.dev; dal lancio del 2026-11-03 canonical, Open Graph, `llms.txt` e sitemap puntano al dominio (vedi "Stato di lancio").
+- **Dominio:** registrato su IONOS (Cloudflare Registrar non vende `.it`), DNS su Cloudflare (piano Free). Nella zona il Bot Preference Sync resta spento: aggiungerebbe a `robots.txt` righe che non vengono dal sito (prima del lancio avrebbe annullato anche il `Disallow: /`). I record della posta (MX, SPF, `autodiscover`, `_dmarc`) sono quelli di IONOS: l'uso dell'email è ancora da decidere.
 - **Foto:** https://foto.almalivingviaricasoli.it, dominio personalizzato del bucket R2 `alma-living-prova` (vedi "Foto del sito").
 - **Repository:** https://github.com/eusebjo/alma-living (pubblico)
 - **Anteprima di un branch:** `https://<branch con "/" sostituito da "-">-alma-living.sebjomuho.workers.dev`, per esempio il branch `fase1/2-anteprime` diventa `https://fase1-2-anteprime-alma-living.sebjomuho.workers.dev`. Il link affidabile è nei dettagli del controllo Cloudflare della pull request.
@@ -100,14 +100,14 @@ Niente `DELETE`, apposta: una foto cancellata dal pannello mentre un prodotto o 
 
 ## Stato di lancio
 
-Fino al lancio vero il sito è escluso dai motori di ricerca, anche sul dominio `almalivingviaricasoli.it`, che è già collegato ma da solo non rende il sito indicizzabile. Lo decide `getSiteConfig` in `src/config/site.ts`, unica fonte per `astro.config.mjs`, `SeoHead`, `robots.txt` e `llms.txt`.
+Il sito è lanciato dal 2026-11-03, per decisione di eusebjo: su Cloudflare `SITE_URL` = `https://almalivingviaricasoli.it` e `SITE_LAUNCHED=true`, quindi la build di produzione è indicizzabile. Lo decide `getSiteConfig` in `src/config/site.ts`, unica fonte per `astro.config.mjs`, `SeoHead`, `robots.txt` e `llms.txt`.
 
 Variabili di build. Quelle impostate su Cloudflare valgono per la build di produzione (ramo `main`); **le anteprime (build degli altri rami) non le ricevono**:
 
 | Variabile | Significato |
 |---|---|
 | `SITE_URL` | URL pubblico del sito. Se manca o è vuota vale `http://localhost:4321`; la barra finale viene tolta |
-| `SITE_LAUNCHED` | `true` solo dopo il lancio vero; oggi è `false` |
+| `SITE_LAUNCHED` | `true` dal lancio del 2026-11-03; con `false` la produzione torna non indicizzabile |
 | `WORKERS_CI_BRANCH` | Ramo della build, impostata da Cloudflare Workers Builds (assente nelle build locali). Non va impostata a mano su Cloudflare |
 
 Una build è **indicizzabile** solo se `SITE_LAUNCHED=true` **e** `WORKERS_CI_BRANCH=main`. Le anteprime e le build locali non lo sono mai.
@@ -137,7 +137,7 @@ Remove-Item Env:SITE_LAUNCHED, Env:WORKERS_CI_BRANCH, Env:SITE_URL
 
 Atteso in `dist/`: `index.html` con JSON-LD e senza `noindex`, `sitemap-index.xml` presente, `robots.txt` con `Sitemap:`. `npm run test:dist` verifica solo la build locale e fallisce su una build di lancio.
 
-Il lancio vero (`SITE_URL` = `https://almalivingviaricasoli.it` e `SITE_LAUNCHED=true` su Cloudflare) lo decide eusebjo.
+Le variabili si cambiano dal dashboard Cloudflare (Worker `alma-living`, Settings → Build → Variables and secrets) e valgono dalla build successiva di `main`. Per togliere di nuovo il sito dai motori di ricerca: `SITE_LAUNCHED=false` e una nuova build di `main`; lo decide eusebjo.
 
 ## Vincoli globali
 
@@ -148,7 +148,7 @@ Il lancio vero (`SITE_URL` = `https://almalivingviaricasoli.it` e `SITE_LAUNCHED
 - Il pannello contatta solo questi host esterni: `api.github.com` (e gli indirizzi degli avatar di GitHub) per leggere e salvare i contenuti, `www.githubstatus.com` (stato del servizio, già dalla schermata di accesso, non si disattiva), il Worker di autenticazione (`sveltia-cms-auth.sebjomuho.workers.dev`, vedi "Accesso al pannello") e, per le foto, l'API di R2 (`<account_id>.r2.cloudflarestorage.com`) e `foto.almalivingviaricasoli.it` (vedi "Foto del sito"). Font, traduzioni, decoder delle immagini e librerie sono locali. Dopo un aggiornamento di `@sveltia/cms` si ricontrollano le richieste di rete di `/admin/` nel browser: `tests/dist` guarda gli indirizzi scritti nei file ma non può provare cosa il pacchetto carica a runtime.
 - Per provare il pannello sul computer: `npm run build` e `npm run preview`, poi `/admin/` (`http://localhost:4321` è tra le origini del CORS del bucket, quindi si prova anche il caricamento di una foto). Con `npm run dev` funziona, ma la documentazione di Sveltia sconsiglia una pagina Astro perché il server di sviluppo la ricarica a ogni modifica di un file e un salvataggio con "Work with Local Repository" può restare a metà.
 - Nessun tracciamento. Nessuna risorsa da CDN di terzi sul sito. Sul pannello nessuna risorsa da CDN (jsDelivr, unpkg): vedi gli host elencati sopra. Caratteri: li scarica la build con la Fonts API di Astro (provider Google, famiglie in `FAMIGLIE_CARATTERI` di `src/sito/comune/caratteri-config.ts`) e il sito li serve da `/_astro/fonts`, quindi ogni build (locale, di Cloudflare e delle anteprime) ha bisogno della rete verso Google Fonts, mentre a pagina aperta non parte nessuna richiesta a terzi. `caratteri-config.ts` importa `astro/config` e lo legge solo `astro.config.mjs`: la pagina usa `src/sito/comune/caratteri.ts` (`CARATTERI_SITO`, le variabili CSS). Il pannello non usa questi caratteri.
-- Anteprime e sito pre-lancio con `noindex`; robots, sitemap e JSON-LD solo con `SITE_LAUNCHED=true` e build del ramo `main`.
+- Anteprime e build non di lancio con `noindex`; robots, sitemap e JSON-LD solo con `SITE_LAUNCHED=true` e build del ramo `main`.
 - Oggi nessun contenuto usa Markdown (prodotti, post e storie sono JSON, e la collection `pagine` non c'è più). Il sanitizer resta collegato in `astro.config.mjs` per un testo Markdown futuro: passa da `rehype-sanitize`, quindi l'HTML grezzo non finisce nella pagina, e subito dopo `rimuoviImmaginiEsterne` (`src/lib/markdown.ts`) toglie ogni immagine il cui indirizzo ha uno schema (`https:`, `data:`...) o comincia con `//`: nessuna risorsa di terzi nel testo. I test in `tests/dist` cercano nelle pagine generate anche gli indirizzi senza schema (`//host`).
 - Messaggi verso la redattrice in italiano, senza gergo di Git (niente "branch", "commit", "merge").
 - Nessun segreto nel repository.
