@@ -1,5 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
+import { escapeHTML } from 'astro/runtime/server/escape.js';
+import { toAttributeString } from 'astro/runtime/server/render/util.js';
 import { describe, expect, it } from 'vitest';
 import { GIORNI } from '../../src/content/limits';
 import { negozioSchema, postSchema, prodottoSchema, storiaSchema } from '../../src/content/schemas';
@@ -31,6 +33,7 @@ import {
   elencoPost,
   elencoStorie,
 } from '../../src/sito/contenuti';
+import { elencoCartella } from '../elenco-cartella';
 
 // Questi test guardano la build locale (`npm run build` senza SITE_LAUNCHED né
 // WORKERS_CI_BRANCH), che non è indicizzabile: niente JSON-LD, niente sitemap,
@@ -74,7 +77,8 @@ const NOME_FILE_CONTENUTO = /^[a-z0-9-]+$/;
 /** Le voci di una collection: l'id è il nome del file senza `.json`. */
 function vociDi<T>(cartella: string, schema: { parse(dati: unknown): T }): { id: string; data: T }[] {
   const dove = join(CONTENUTI, cartella);
-  return readdirSync(dove)
+  // Senza più voci la cartella non c'è (Git toglie quelle vuote): nessuna voce.
+  return elencoCartella(dove)
     .filter((file) => file.endsWith('.json'))
     .map((file) => {
       const id = file.slice(0, -'.json'.length);
@@ -384,8 +388,10 @@ function quanti(testo: string, attributo: string): number {
  * Rimandi dei protocolli di markup (`src/sito/comune/interazioni.ts`) che non
  * hanno la destinazione: un messaggio per ogni valore, anche se il rimando si
  * ripete. Lo script non può segnalarli (sta zitto), quindi li cerca la build.
+ * Con `senzaVoci` un limite senza voci filtrabili non è una mancanza: succede quando
+ * la redazione ha tolto tutti i prodotti, e non c'è niente da contare.
  */
-function incoerenzeProtocolli(html: string): string[] {
+function incoerenzeProtocolli(html: string, senzaVoci = false): string[] {
   const problemi = new Set<string>();
   const manca = (attributo: string, valore: string, serve: string) =>
     problemi.add(`${attributo}="${valore}" senza ${serve}="${valore}"`);
@@ -436,7 +442,7 @@ function incoerenzeProtocolli(html: string): string[] {
     if (!limiti.has(valore)) manca('data-limite-mostra', valore, 'data-limite');
   }
   for (const valore of limiti) {
-    if (!filtrabili.has(valore)) manca('data-limite', valore, 'data-filtrabile');
+    if (!senzaVoci && !filtrabili.has(valore)) manca('data-limite', valore, 'data-filtrabile');
     if (!mostraTutti.has(valore)) manca('data-limite', valore, 'data-limite-mostra');
   }
   // Galleria: pausa, foto saltate, didascalie e annuncio valgono
@@ -599,6 +605,17 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
     expect(incoerenzeProtocolli(doppio)).toEqual(['data-post-apri="x" senza dialog data-post="x"']);
   });
 
+  it('un limite senza voci filtrabili si segnala, tranne se i prodotti sono stati tolti tutti', () => {
+    const limite =
+      '<ul data-limite="s" data-limite-regole="[]"></ul><button data-limite-mostra="s" hidden></button>';
+    expect(incoerenzeProtocolli(limite)).toEqual(['data-limite="s" senza data-filtrabile="s"']);
+    expect(incoerenzeProtocolli(limite, true)).toEqual([]);
+    // Il "Mostra tutti" resta richiesto anche senza voci.
+    expect(incoerenzeProtocolli('<ul data-limite="s"></ul>', true)).toEqual([
+      'data-limite="s" senza data-limite-mostra="s"',
+    ]);
+  });
+
   it.each([
     '<p>niente da collegare</p>',
     '<button data-post-apri="x">Apri</button><dialog data-post="x"><p>Post</p></dialog>',
@@ -680,7 +697,8 @@ describe.each(pagineDelSito)('pagina %s', (file) => {
   });
 
   it('ogni rimando dei protocolli di markup ha la sua destinazione', () => {
-    expect(incoerenzeProtocolli(html())).toEqual([]);
+    // Senza prodotti la griglia non ha voci filtrabili da contare.
+    expect(incoerenzeProtocolli(html(), articoli.length === 0)).toEqual([]);
   });
 });
 
@@ -785,6 +803,14 @@ describe('home: Salvia social (/)', () => {
   /** Il testo decodificato, con gli spazi (a capo compresi) ridotti a uno. */
   const normalizza = (s: string) => decodifica(s).replace(/\s+/g, ' ');
 
+  /**
+   * Un testo scritto dalla redazione come lo legge `soloTesto`: spazi (a capo e spazi
+   * doppi compresi) ridotti a uno e tolti ai lati. Il campo "Frase" è su più righe e il
+   * pannello ne tiene a capo e spazi interni: la pagina li riduce, quindi il confronto
+   * col file va fatto sul testo ridotto allo stesso modo.
+   */
+  const spaziRidotti = (testo: string) => testo.replace(/\s+/g, ' ').trim();
+
   /** I tag di apertura `<nome …>` di `testo` che hanno l'attributo `attributo`. */
   const tagIn = (testo: string, nome: string, attributo: string) =>
     [
@@ -805,6 +831,17 @@ describe('home: Salvia social (/)', () => {
     return decodifica(trovato[1] ?? trovato[2] ?? trovato[3] ?? '');
   };
 
+  // I tag si leggono dall'HTML come lo scrive Astro (con `&quot;` e simili nei valori) e
+  // poi `valore` li decodifica. Cercarli nell'HTML già decodificato spezzerebbe un
+  // attributo al primo `"` di un nome come `Plaid "Abbracciami"`.
+
+  /** Il primo tag di apertura `<a>` o `<button>` di `grezzo`. */
+  const primoLinkOPulsante = (grezzo: string) =>
+    new RegExp(`<(?:a|button)\\b${ATTRIBUTI}>`, 'i').exec(grezzo)?.[0] ?? '';
+
+  /** Il tag di apertura dell'interruttore della seconda foto (`data-interruttore`) di `grezzo`. */
+  const interruttoreDi = (grezzo: string) => tagIn(grezzo, 'button', 'data-interruttore')[0] ?? '';
+
   /** Il tag di apertura e il contenuto di ogni `<dialog>` con l'attributo `attributo`. */
   const dialogCon = (attributo: string) =>
     [
@@ -814,11 +851,17 @@ describe('home: Salvia social (/)', () => {
     ].map((m) => ({ apertura: m[0].slice(0, m[0].indexOf('>') + 1), contenuto: m[1]! }));
 
   /**
-   * I testi che scrive la redazione (prodotti, post, storie), così come sono e
-   * come stanno in un link WhatsApp. Dal più lungo: un testo che ne contiene un
-   * altro si toglie intero.
+   * I testi di una redazione da togliere dalla pagina: così come sono e come stanno in
+   * un link WhatsApp. Dal più lungo: un testo che ne contiene un altro si toglie intero.
    */
-  const TESTI_DELLA_REDAZIONE = [
+  const preparaTesti = (testi: string[]): string[] =>
+    testi
+      .filter((testo) => testo.trim() !== '')
+      .flatMap((testo) => [testo, encodeURIComponent(testo)])
+      .sort((a, b) => b.length - a.length);
+
+  /** I testi che scrive la redazione (prodotti, post, storie), pronti da togliere. */
+  const TESTI_DELLA_REDAZIONE = preparaTesti([
     ...articoli.flatMap((a) => [
       a.nome,
       a.dettaglio,
@@ -827,12 +870,30 @@ describe('home: Salvia social (/)', () => {
     ]),
     ...post.flatMap((p) => [p.testo, p.chiedi ?? '', ...p.foto.map((f) => f.alt)]),
     ...storie.flatMap((s) => s.foto.flatMap((f) => [f.testo, f.soggetto, f.alt])),
-  ]
-    .filter((testo) => testo.trim() !== '')
-    .flatMap((testo) => [testo, encodeURIComponent(testo)])
-    .sort((a, b) => b.length - a.length);
+  ]);
 
   let testiDellaPagina: string | undefined;
+
+  /**
+   * Il testo di `frammento` (decodificato) senza i testi di `redazione` (già preparati
+   * da `preparaTesti`). Con `conAttributi` ci sono anche i valori degli attributi dei
+   * tag; senza, solo il testo che si legge nella pagina.
+   */
+  const testiSenza = (frammento: string, redazione: string[], conAttributi: boolean): string => {
+    const tag = new RegExp(`<\\/?[a-z][a-z0-9-]*\\b${ATTRIBUTI}>`, 'gi');
+    const valori = conAttributi
+      ? [...frammento.matchAll(tag)].flatMap((m) =>
+          [...m[0].matchAll(/\s[^\s=>]+=(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)].map(
+            (a) => a[1] ?? a[2] ?? a[3] ?? '',
+          ),
+        )
+      : [];
+    return [...frammento.split(tag), ...valori]
+      .map((pezzo) =>
+        redazione.reduce((resto, testo) => resto.split(testo).join(' '), decodifica(pezzo)),
+      )
+      .join('\n');
+  };
 
   /**
    * I testi e i valori degli attributi di `frammento` (decodificati; senza
@@ -842,18 +903,15 @@ describe('home: Salvia social (/)', () => {
    */
   const testiDelCodice = (frammento?: string): string => {
     if (frammento === undefined) return (testiDellaPagina ??= testiDelCodice(html()));
-    const tag = new RegExp(`<\\/?[a-z][a-z0-9-]*\\b${ATTRIBUTI}>`, 'gi');
-    const valori = [...frammento.matchAll(tag)].flatMap((m) =>
-      [...m[0].matchAll(/\s[^\s=>]+=(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)].map(
-        (a) => a[1] ?? a[2] ?? a[3] ?? '',
-      ),
-    );
-    return [...frammento.split(tag), ...valori]
-      .map((pezzo) =>
-        TESTI_DELLA_REDAZIONE.reduce((resto, testo) => resto.split(testo).join(' '), decodifica(pezzo)),
-      )
-      .join('\n');
+    return testiSenza(frammento, TESTI_DELLA_REDAZIONE, true);
   };
+
+  /**
+   * Come `testiDelCodice`, ma solo il testo che si legge: senza i valori degli attributi
+   * (`id="diario"`, classi, link), che il codice può chiamare come vuole.
+   */
+  const testoLettoDelCodice = (frammento: string): string =>
+    testiSenza(frammento, TESTI_DELLA_REDAZIONE, false);
 
   it('i controlli sul testo del codice ignorano i testi della redazione, non il resto', () => {
     // Le storie ci sono sempre (otto, fisse), e ogni foto ha la sua frase.
@@ -862,6 +920,84 @@ describe('home: Salvia social (/)', () => {
       testo.slice(0, 20),
     );
     expect(testiDelCodice(`<p title="Ogni settimana">Ogni settimana</p>`).match(/Ogni settimana/g)).toHaveLength(2);
+  });
+
+  // Prova dei controlli sui testi con ciò che la redazione può scrivere davvero. Le
+  // stringhe sono inventate (i file dei contenuti non si toccano) e passano dagli stessi
+  // aiuti dei test sulla pagina. L'HTML di prova lo scrivono le funzioni di Astro:
+  // `comeTesto` per il testo (`&`, `<`, `>`, `'` e `"` diventano entità) e `comeAttributo`
+  // per i valori degli attributi (solo `&` e `"`: `'`, `<` e `>` restano come sono). Sono
+  // percorsi interni di Astro: se un aggiornamento li sposta, qui si cambia l'import. Ogni
+  // prova mostra anche che il confronto di prima si sarebbe fermato.
+  describe('i controlli sui testi reggono quello che scrive la redazione', () => {
+    const FRASE = '  Poi tornano i plaid.  Chiuso per inventario,\n  riapriamo lunedì.';
+    const SOGGETTO = "i plaid dell'inverno";
+    const ALT = 'Il diario del negozio con i plaid sul banco';
+    const DIDASCALIA = 'Dal nostro diario di bottega: arrivati i plaid delle feste.';
+    const NOME = 'Plaid "Abbracciami" <morbido> & l\'inverno';
+    const redazione = preparaTesti([FRASE, SOGGETTO, ALT, DIDASCALIA, NOME]);
+    const comeTesto = (valore: string) => escapeHTML(valore);
+    const comeAttributo = (valore: string) => toAttributeString(valore);
+
+    const lettore =
+      '<dialog data-storie>' +
+      `<p class="solo-lettori">${comeTesto(FRASE)}</p>` +
+      `<p data-storia-frase-testo aria-hidden="true">${comeTesto(FRASE)}</p>` +
+      `<img src="/_astro/a.jpg" alt="${comeAttributo(ALT)}">` +
+      `<a href="${comeAttributo(whatsapp(`Buongiorno, ho visto la storia «Casette» sul sito: ${SOGGETTO}. `))}">Scrivici su WhatsApp</a>` +
+      '</dialog>';
+
+    it('lettore delle storie: "Poi" e "Chiuso" scritti dalla redazione non contano, quelli del codice sì', () => {
+      expect(frasiVietateNelLettore(testiSenza(lettore, redazione, true))).toEqual([]);
+      // Il controllo di prima leggeva anche le frasi della redazione e si sarebbe fermato.
+      expect(frasiVietateNelLettore(soloTesto(lettore))).toEqual(['Chiuso', 'Poi']);
+      // Il testo del codice, invece, si vede ancora.
+      const conTestiDelCodice = lettore.replace('</dialog>', '<p>Aperto ora</p><p>Poi</p></dialog>');
+      expect(frasiVietateNelLettore(testiSenza(conTestiDelCodice, redazione, true))).toEqual([
+        'Aperto ora',
+        'Poi',
+      ]);
+    });
+
+    it('frase con a capo e spazi doppi: pagina e file si confrontano con gli spazi ridotti allo stesso modo', () => {
+      const lettori = elementiDove(lettore, (a) => /\sclass="solo-lettori[\s"]/.test(a)).map((e) =>
+        soloTesto(e.contenuto),
+      );
+      expect(lettori).toEqual([spaziRidotti(FRASE)]);
+      const visibile = elementiDove(lettore, (a) => quanti(a, 'data-storia-frase-testo') > 0);
+      expect(soloTesto(visibile[0]!.contenuto)).toBe(spaziRidotti(FRASE));
+      // Il confronto di prima, con la frase com'è nel file, non tornava.
+      expect(lettori).not.toEqual([FRASE]);
+    });
+
+    it('il diario: la didascalia e il testo alternativo di un post possono dire "diario", il codice no', () => {
+      const diario =
+        '<section id="diario" aria-labelledby="diario-titolo"><h2 id="diario-titolo">Dal negozio</h2>' +
+        `<dialog data-post="p1"><img alt="${comeAttributo(ALT)}"><p class="didascalia">${comeTesto(DIDASCALIA)}</p></dialog></section>`;
+      expect(testiSenza(diario, redazione, false)).not.toMatch(/diario/i);
+      // Il controllo di prima toglieva solo i tag e leggeva anche la didascalia.
+      expect(decodifica(diario).replace(/<[^>]*>/g, ' ')).toMatch(/diario/i);
+      // Il testo del codice che dice "diario" si vede ancora.
+      expect(testiSenza(`${diario}<p>Il diario del negozio</p>`, redazione, false)).toMatch(/diario/i);
+    });
+
+    it('un nome con virgolette, apostrofo e simboli: il tag si legge intero e il valore si decodifica', () => {
+      const messaggio = messaggioDisponibilita(NOME);
+      const scheda =
+        '<li data-filtrabile="selezione">' +
+        `<a href="${comeAttributo(whatsapp(messaggio))}" aria-label="${comeAttributo(`Chiedi disponibilità: ${NOME}`)}"><img alt=""></a>` +
+        `<button type="button" data-interruttore aria-pressed="false" aria-label="${comeAttributo(`Seconda foto: ${NOME}`)}"></button></li>`;
+      const primo = primoLinkOPulsante(scheda);
+      expect(primo).toMatch(/^<a\b/);
+      expect(valore(primo, 'href')).toBe(whatsapp(messaggio));
+      expect(valore(primo, 'aria-label')).toBe(`Chiedi disponibilità: ${NOME}`);
+      expect(valore(interruttoreDi(scheda), 'aria-label')).toBe(`Seconda foto: ${NOME}`);
+      // Il tag cercato nell'HTML già decodificato si spezzava alla prima virgoletta.
+      const decodificato = /<(?:a|button)\b[^>]*>/.exec(decodifica(scheda))?.[0] ?? '';
+      expect(valore(decodificato, 'aria-label')).not.toBe(`Chiedi disponibilità: ${NOME}`);
+      // Il link, invece, si trova com'è: negli attributi l'apostrofo non è un'entità.
+      expect(scheda).toContain(`href="${whatsapp(messaggio)}"`);
+    });
   });
 
   it('esiste e il body porta data-variante="salvia-social"', () => {
@@ -982,11 +1118,11 @@ describe('home: Salvia social (/)', () => {
         const dove = `${storia.id}, foto ${i + 1}`;
         const frase = frasi[i]!.contenuto;
         const lettori = elementiDove(frase, (a) => /\sclass="solo-lettori[\s"]/.test(a));
-        expect(lettori.map((e) => soloTesto(e.contenuto)), dove).toEqual([foto.testo]);
+        expect(lettori.map((e) => soloTesto(e.contenuto)), dove).toEqual([spaziRidotti(foto.testo)]);
         const visibile = elementiDove(frase, (a) => quanti(a, 'data-storia-frase-testo') > 0);
         expect(visibile, dove).toHaveLength(1);
         expect(valore(visibile[0]!.apertura, 'aria-hidden'), dove).toBe('true');
-        expect(soloTesto(visibile[0]!.contenuto), dove).toBe(foto.testo);
+        expect(soloTesto(visibile[0]!.contenuto), dove).toBe(spaziRidotti(foto.testo));
         // "altro" sta dentro la frase, dopo il testo visibile, ed è nascosto finché lo script non misura.
         const altro = tagIn(frase, 'button', 'data-storia-altro');
         expect(altro, dove).toHaveLength(1);
@@ -1049,13 +1185,21 @@ describe('home: Salvia social (/)', () => {
     }
   });
 
+  /**
+   * Le frasi che il lettore delle storie non deve avere, tra quelle di `testoDelCodice`:
+   * il testo che scrive il codice, senza le frasi e i soggetti della redazione (una
+   * frase può dire "Poi" o "Chiuso per inventario").
+   */
+  const frasiVietateNelLettore = (testoDelCodice: string): string[] => [
+    ...['In negozio c’è molto di più', 'Aperto ora', 'Chiuso', 'Chiedi, chiama, vieni'].filter(
+      (frase) => testoDelCodice.includes(frase),
+    ),
+    ...(/\bPoi\b/.test(testoDelCodice) ? ['Poi'] : []),
+  ];
+
   it('nel lettore delle storie niente titolo, stato del negozio, "Poi" né azioni fisse', () => {
     const { contenuto } = dialogCon('data-storie')[0] ?? { contenuto: '' };
-    const testo = soloTesto(contenuto);
-    for (const frase of ['In negozio c’è molto di più', 'Aperto ora', 'Chiuso', 'Chiedi, chiama, vieni']) {
-      expect(testo).not.toContain(frase);
-    }
-    expect(testo).not.toMatch(/\bPoi\b/);
+    expect(frasiVietateNelLettore(testiDelCodice(contenuto))).toEqual([]);
     expect(contenuto).not.toMatch(/\sclass="[^"]*\bazioni\b/);
   });
 
@@ -1272,7 +1416,8 @@ describe('home: Salvia social (/)', () => {
     );
     // Il biglietto vale sempre: la firma non ha una data.
     expect(diario).toMatch(/>Alma Living<\/span> · Via Ricasoli<\/span>/);
-    expect(diario.replace(/<[^>]*>/g, ' ')).not.toMatch(/diario/i);
+    // Solo il testo del codice: didascalie e testi alternativi dei post li scrive la redazione, e può dire "diario".
+    expect(testoLettoDelCodice(contenutiCon(html(), 'id', 'diario')[0] ?? '')).not.toMatch(/diario/i);
   });
 
   it('un solo lettore di storie', () => {
@@ -1448,7 +1593,9 @@ describe('home: Salvia social (/)', () => {
     const mostra = griglia.indexOf(' data-limite-mostra=');
     const mare = griglia.indexOf(' data-filtro-vuoto=');
     const finestra = griglia.indexOf('Non lo trovi qui?');
-    expect(ultimaScheda).toBeGreaterThan(0);
+    // Senza prodotti non ci sono schede (la cartella `prodotti` può restare vuota): si parte da "Mostra tutti".
+    if (articoli.length > 0) expect(ultimaScheda).toBeGreaterThan(0);
+    else expect(ultimaScheda).toBe(-1);
     expect(mostra).toBeGreaterThan(ultimaScheda);
     expect(mare).toBeGreaterThan(mostra);
     expect(finestra).toBeGreaterThan(mare);
@@ -1519,14 +1666,13 @@ describe('home: Salvia social (/)', () => {
     expect(schede).toHaveLength(articoli.length);
     articoli.forEach((articolo, i) => {
       const scheda = decodifica(schede[i]!);
-      const primo = /<(?:a|button)\b[^>]*>/.exec(scheda)?.[0] ?? '';
+      const primo = primoLinkOPulsante(schede[i]!);
       expect(primo, articolo.id).toMatch(/^<a\b/);
       expect(valore(primo, 'href')).toBe(whatsapp(messaggioDisponibilita(articolo.nome)));
       expect(valore(primo, 'aria-label')).toBe(`Chiedi disponibilità: ${articolo.nome}`);
       expect(scheda.match(/<img\b/g) ?? [], articolo.id).toHaveLength(2);
       for (const s of articolo.scatti) expect(scheda, articolo.id).toContain(`alt="${s.alt}"`);
-      const interruttore =
-        /<button\b[^>]*\sdata-interruttore(?=[\s=>])[^>]*>/.exec(scheda)?.[0] ?? '';
+      const interruttore = interruttoreDi(schede[i]!);
       expect(valore(interruttore, 'aria-pressed')).toBe('false');
       expect(valore(interruttore, 'aria-label')).toBe(`Seconda foto: ${articolo.nome}`);
       expect(scheda).toContain(`>${occhielloArticolo(articolo)}</p>`);
@@ -1599,15 +1745,15 @@ describe('home: Salvia social (/)', () => {
       expect(testo).toMatch(/\sdata-colori="[^"]+"/);
       expect(testo).toContain(testoColori(colori));
       for (const dove of ['nome', 'testo', 'messaggio', 'link']) {
-        expect(tagIn(testo, '[a-z0-9]+', 'data-colore-dove').map((t) => valore(t, 'data-colore-dove'))).toContain(dove);
+        expect(tagIn(contenuto, '[a-z0-9]+', 'data-colore-dove').map((t) => valore(t, 'data-colore-dove'))).toContain(dove);
       }
       // E stanno sugli elementi giusti: il nome sull'h2, il messaggio sul fumetto, il link su «Invia su WhatsApp».
       for (const [dove, tag] of [['nome', 'h2'], ['testo', 'span'], ['messaggio', 'p'], ['link', 'a']] as const) {
-        const elementi = tagIn(testo, tag, 'data-colore-dove').filter((t) => valore(t, 'data-colore-dove') === dove);
+        const elementi = tagIn(contenuto, tag, 'data-colore-dove').filter((t) => valore(t, 'data-colore-dove') === dove);
         expect(elementi, `${articolo.id} ${dove}`).toHaveLength(1);
       }
-      expect(tagIn(testo, 'a', 'data-colore-dove')[0]).toMatch(/\sclass="invia\b/);
-      expect(tagIn(testo, 'p', 'data-colore-dove')[0]).toMatch(/\sclass="messaggio\b/);
+      expect(tagIn(contenuto, 'a', 'data-colore-dove')[0]).toMatch(/\sclass="invia\b/);
+      expect(tagIn(contenuto, 'p', 'data-colore-dove')[0]).toMatch(/\sclass="messaggio\b/);
       const conFoto = colori.every((c) => c.foto);
       // Con le foto dei colori: una galleria di quelle foto e niente interruttore; senza, i due scatti.
       expect((testo.match(/\sdata-galleria-foto(?=[\s=>])/g) ?? []).length, articolo.id).toBe(conFoto ? colori.length : 0);

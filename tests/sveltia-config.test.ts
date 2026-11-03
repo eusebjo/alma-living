@@ -14,6 +14,7 @@ import {
   storiaSchema,
 } from '../src/content/schemas';
 import { ORDINE_STORIE } from '../src/sito/contenuti';
+import { elencoCartella } from './elenco-cartella';
 
 // Il pannello Sveltia (public/admin/config.yml) e le regole di autonomia
 // (autonomia.yml) descrivono gli stessi campi: questi test li tengono allineati
@@ -221,7 +222,7 @@ describe('collection', () => {
       expect(`${c.folder}/*.${c.extension}`, nome).toBe(autonomia.contenuti[nome]!.file);
       expect(c.folder, nome).toBe(`src/content/${nome}`);
       expect(c.format, nome).toBe('json');
-      expect(existsSync(c.folder!), nome).toBe(true);
+      // La cartella può non esserci: senza più voci Git la toglie, e non è un errore.
     }
   });
 
@@ -271,7 +272,8 @@ describe('nomi dei file nuovi (prodotti e post)', () => {
   });
 
   it.each(['prodotti', 'post'])('%s: i file di oggi hanno nomi che la build sa leggere', (cartella) => {
-    for (const file of readdirSync(`src/content/${cartella}`)) {
+    // Senza più voci la cartella non c'è (Git toglie quelle vuote): niente file da controllare.
+    for (const file of elencoCartella(`src/content/${cartella}`)) {
       expect(file).toMatch(/^[a-z0-9-]+\.json$/);
       if (cartella === 'post') expect(file.startsWith('articolo-'), file).toBe(false);
     }

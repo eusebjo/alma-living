@@ -1,8 +1,9 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { negozioSchema, postSchema, prodottoSchema, storiaSchema } from '../src/content/schemas';
+import { elencoCartella } from './elenco-cartella';
 
 // I contenuti veri, letti dai file JSON così come li legge la build. Questi
 // test fissano solo ciò che vale dopo qualunque modifica legittima della
@@ -12,9 +13,12 @@ import { negozioSchema, postSchema, prodottoSchema, storiaSchema } from '../src/
 // una proposta della redazione farebbe fallire il controllo `build`.
 const RADICE = fileURLToPath(new URL('../src/content/', import.meta.url));
 
-/** Tutto ciò che sta nella cartella (file e sottocartelle), in ordine alfabetico. */
+/**
+ * Tutto ciò che sta nella cartella (file e sottocartelle), in ordine alfabetico. Senza
+ * più prodotti o post la cartella non c'è (Git toglie quelle vuote): elenco vuoto.
+ */
 function voci(cartella: string): string[] {
-  return readdirSync(join(RADICE, cartella)).sort();
+  return elencoCartella(join(RADICE, cartella));
 }
 
 function leggiGrezzo(cartella: string, file: string): unknown {
