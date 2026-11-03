@@ -110,15 +110,23 @@
 //   (`aria-pressed`, da mettere in ogni storia: ferma e riprende); e la tastiera,
 //   perché portare il focus su un controllo della storia la mette in pausa (si
 //   riprende con quel pulsante).
-//   Frase. In ogni foto `[data-storia-frase]` e `button[data-storia-altro]`, con
-//   `aria-expanded="false"` e `hidden` nell'HTML. Quando la foto diventa attuale,
-//   lo script mostra "altro" solo se la frase non ci sta tutta (`scrollHeight`
-//   oltre `clientHeight` + 1). Il taglio lo fa il CSS della variante, e dalla
-//   frase non deve uscire in basso nulla di posizionato (un velo in `::before`):
-//   `scrollHeight` lo conterebbe. Un clic su "altro" alterna `data-aperta` sulla
-//   frase della sua foto e `aria-expanded`. Al cambio di foto la frase si richiude.
+//   Frase. In ogni foto `[data-storia-frase]`, con dentro il testo visibile
+//   `[data-storia-frase-testo]` e, dopo, `button[data-storia-altro]`
+//   (`aria-expanded="false"` e `hidden` nell'HTML). La variante limita l'altezza
+//   della frase chiusa (per esempio a due righe, con `overflow: hidden`). Quando
+//   la foto diventa attuale, se la frase non ci sta tutta (`scrollHeight` oltre
+//   `clientHeight` + 1) lo script mostra "altro" e accorcia il testo visibile a
+//   parole intere, con «…» (`fraseTagliata`, in `frase.ts`), finché testo e
+//   "altro" ci stanno; il testo intero lo legge la prima volta dal testo visibile.
+//   Per i lettori di schermo la variante lascia il testo intero fuori da
+//   `[data-storia-frase-testo]`. Dalla frase non deve uscire in basso nulla di
+//   posizionato (un velo in `::before`): `scrollHeight` lo conterebbe. Un clic su
+//   "altro" alterna `data-aperta` sulla frase della sua foto e `aria-expanded`:
+//   aperta, la frase ha il testo intero; richiusa, di nuovo quello accorciato. Al
+//   cambio di foto la frase si richiude.
 //   Scheda degli inviti. In ogni gruppo la pillola
-//   `button[data-storia-invito-apri]` (`aria-expanded="false"`) e tanti
+//   `button[data-storia-invito-apri]` (in Salvia social il link "Chiedi
+//   informazioni" sotto la frase; `aria-expanded="false"`) e tanti
 //   `[data-storia-invito]` quante le foto, nello stesso ordine: lo script mostra
 //   quello della foto attuale (gli altri `hidden`), con i suoi link e un
 //   `button[data-storia-invito-chiudi]`. La pillola apre la scheda e, se è
@@ -211,6 +219,7 @@
 // sfondo: il `dialog` non deve avere un riempimento) e restituiscono il focus al
 // pulsante, o al link, da cui si sono aperti.
 import { filtra } from './filtra';
+import { fraseTagliata, paroleCheStanno } from './frase';
 import { azioneDelTocco, gestoDellaStoria, SOGLIA_MOVIMENTO_PX } from './gesti';
 import { fotoDelGiro, passoDelGiro } from './giro';
 import { limiteAttivo, quanteMostrare, testoMostraTutti, type RegolaLimite } from './limite';
@@ -955,7 +964,41 @@ function clicSullaPillola(c: Contesto): void {
   alternaInvito(c);
 }
 
-/** "altro" sotto una frase: la apre o la richiude. Aperta, la storia è ferma. */
+/** Il testo intero di ogni `[data-storia-frase-testo]`, letto la prima volta che lo si accorcia. */
+const testiInteri = new WeakMap<HTMLElement, string>();
+
+/** Il testo visibile di una frase e il suo testo intero. */
+function testoDellaFrase(frase: HTMLElement): { testo: HTMLElement; intero: string } | null {
+  const testo = frase.querySelector<HTMLElement>('[data-storia-frase-testo]');
+  if (!testo) return null;
+  const intero = testiInteri.get(testo) ?? testo.textContent ?? '';
+  testiInteri.set(testo, intero);
+  return { testo, intero };
+}
+
+/**
+ * La frase chiusa di una foto visibile: se il testo intero non ci sta, "altro" si
+ * mostra e il testo si accorcia a parole intere, con «…», finché ci stanno tutti e due.
+ */
+function accorciaFrase(frase: HTMLElement): void {
+  const letto = testoDellaFrase(frase);
+  const altro = frase.querySelector<HTMLElement>('[data-storia-altro]');
+  if (!letto || !altro) return;
+  const { testo, intero } = letto;
+  const ciSta = () => frase.scrollHeight <= frase.clientHeight + 1;
+  testo.textContent = intero;
+  altro.hidden = true;
+  if (ciSta()) return;
+  altro.hidden = false;
+  const parole = intero.trim().split(/\s+/).filter(Boolean).length;
+  const quante = paroleCheStanno(parole, (n) => {
+    testo.textContent = fraseTagliata(intero, n);
+    return ciSta();
+  });
+  testo.textContent = fraseTagliata(intero, quante);
+}
+
+/** "altro" in fondo a una frase: la apre (testo intero) o la richiude. Aperta, la storia è ferma. */
 function alternaFrase(c: Contesto, bottone: HTMLElement): void {
   const frase = bottone
     .closest<HTMLElement>('[data-storia-foto]')
@@ -965,6 +1008,9 @@ function alternaFrase(c: Contesto, bottone: HTMLElement): void {
   frase.toggleAttribute('data-aperta', aperta);
   bottone.setAttribute('aria-expanded', String(aperta));
   c.storia.fraseAperta = aperta;
+  const letto = testoDellaFrase(frase);
+  if (aperta && letto) letto.testo.textContent = letto.intero;
+  if (!aperta) accorciaFrase(frase);
 }
 
 /** Richiude la frase aperta da "altro", se c'è. */
@@ -1015,11 +1061,9 @@ function mostraStoria(c: Contesto, posizione: Posizione): void {
   corrente.inviti.forEach((invito, i) => {
     invito.hidden = i !== posizione.foto;
   });
-  // "altro" solo se la frase non ci sta tutta (il taglio lo fa il CSS): si misura a foto visibile.
-  const foto = corrente.foto[posizione.foto];
-  const frase = foto?.querySelector<HTMLElement>('[data-storia-frase]');
-  const altro = foto?.querySelector<HTMLElement>('[data-storia-altro]');
-  if (frase && altro) altro.hidden = !(frase.scrollHeight > frase.clientHeight + 1);
+  // "altro" e il testo accorciato solo se la frase non ci sta tutta: si misura a foto visibile.
+  const frase = corrente.foto[posizione.foto]?.querySelector<HTMLElement>('[data-storia-frase]');
+  if (frase) accorciaFrase(frase);
   // Il focus resta dov'è, se non era su qualcosa che si è nascosto: allora va alla pillola.
   if (focusDaSpostare) pillolaAttuale(s)?.focus();
   // Barre: le foto già viste piene, la corrente da riempire (o piena, se il

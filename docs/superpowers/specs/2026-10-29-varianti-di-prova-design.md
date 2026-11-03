@@ -132,6 +132,11 @@ Sulla tela (dodicesima proposta, versione 55) ha scelto la versione 7, "Scheda a
 - **Le frecce** non si vedono più sul telefono: restano come pulsanti per la tastiera e i lettori di schermo, visibili con il focus.
 - **I video** restano per dopo: servono una scelta su dove tenerli e il campo nel pannello.
 
+**Aggiornamento del 2026-11-03: frase centrata, "Chiedi informazioni", niente pausa visibile.** Guardando l'anteprima, eusebjo vuole la scrittura della tavola "Scheda finale" (`StorieFinale.dc.html`) e sotto un link che apra la scheda. La pausa in alto non serve più: la storia scorre, e chi vuole la ferma tenendo premuto.
+- **La frase** è centrata, a 16 px, a 48 px dai bordi. Chiusa sta in 2 righe: se è più lunga lo script la accorcia a parole intere e la chiude con "… altro" sulla stessa riga, come nella tavola. Il testo intero resta per i lettori di schermo.
+- **Sotto la frase**, nella fascia scura, al posto della pillola "Chiedi, chiama, vieni" c'è il link "Chiedi informazioni": icona del messaggio e testo sottolineato, senza fondo. Apre la stessa scheda a richiesta di prima, anche trascinando in su.
+- **La pausa** non si vede più: resta solo per chi usa la tastiera, e compare quando riceve il focus.
+
 ## 1. Intento
 
 eusebjo ha esplorato il design del sito su una tela di Claude Design, in cinque giri di proposte, e ha scelto tre varianti:

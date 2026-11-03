@@ -780,15 +780,39 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(durate).toEqual(storie.flatMap((s) => s.foto.map((f) => String(durataFoto(f.testo)))));
   });
 
-  it('in ogni storia una sola pillola "Chiedi, chiama, vieni", chiusa', () => {
+  it('in ogni storia un solo "Chiedi informazioni", chiuso, che apre la scheda', () => {
     const gruppi = gruppiStorie();
     for (const storia of storie) {
       const { contenuto } = gruppi.get(storia.id) ?? { contenuto: '' };
-      const pillole = elementiDove(contenuto, (a) => quanti(a, 'data-storia-invito-apri') > 0);
-      expect(pillole, storia.id).toHaveLength(1);
-      expect(pillole[0]!.apertura).toMatch(/^<button\b/);
-      expect(valore(pillole[0]!.apertura, 'aria-expanded')).toBe('false');
-      expect(soloTesto(pillole[0]!.contenuto)).toBe('Chiedi, chiama, vieni');
+      const apri = elementiDove(contenuto, (a) => quanti(a, 'data-storia-invito-apri') > 0);
+      expect(apri, storia.id).toHaveLength(1);
+      expect(apri[0]!.apertura).toMatch(/^<button\b/);
+      expect(valore(apri[0]!.apertura, 'aria-expanded')).toBe('false');
+      expect(soloTesto(apri[0]!.contenuto)).toBe('Chiedi informazioni');
+    }
+  });
+
+  it('ogni frase delle storie: il testo intero per i lettori di schermo, quello visibile da accorciare e "altro" in fondo', () => {
+    const gruppi = gruppiStorie();
+    for (const storia of storie) {
+      const { contenuto } = gruppi.get(storia.id) ?? { contenuto: '' };
+      const frasi = elementiDove(contenuto, (a) => quanti(a, 'data-storia-frase') > 0);
+      expect(frasi, storia.id).toHaveLength(storia.foto.length);
+      storia.foto.forEach((foto, i) => {
+        const dove = `${storia.id}, foto ${i + 1}`;
+        const frase = frasi[i]!.contenuto;
+        const lettori = elementiDove(frase, (a) => /\sclass="solo-lettori[\s"]/.test(a));
+        expect(lettori.map((e) => soloTesto(e.contenuto)), dove).toEqual([foto.testo]);
+        const visibile = elementiDove(frase, (a) => quanti(a, 'data-storia-frase-testo') > 0);
+        expect(visibile, dove).toHaveLength(1);
+        expect(valore(visibile[0]!.apertura, 'aria-hidden'), dove).toBe('true');
+        expect(soloTesto(visibile[0]!.contenuto), dove).toBe(foto.testo);
+        // "altro" sta dentro la frase, dopo il testo visibile, ed è nascosto finché lo script non misura.
+        const altro = tagIn(frase, 'button', 'data-storia-altro');
+        expect(altro, dove).toHaveLength(1);
+        expect(nascosto(altro[0]!), dove).toBe(true);
+        expect(frase.indexOf('data-storia-altro'), dove).toBeGreaterThan(frase.indexOf('data-storia-frase-testo'));
+      });
     }
   });
 
@@ -838,7 +862,7 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('nel lettore delle storie niente titolo, stato del negozio, "Poi" né azioni fisse', () => {
     const { contenuto } = dialogCon('data-storie')[0] ?? { contenuto: '' };
     const testo = soloTesto(contenuto);
-    for (const frase of ['In negozio c’è molto di più', 'Aperto ora', 'Chiuso']) {
+    for (const frase of ['In negozio c’è molto di più', 'Aperto ora', 'Chiuso', 'Chiedi, chiama, vieni']) {
       expect(testo).not.toContain(frase);
     }
     expect(testo).not.toMatch(/\bPoi\b/);
@@ -880,6 +904,29 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     );
     // Il fondo è un colore pieno: niente trasparenza, la pagina sotto non si vede.
     expect(css).toMatch(/--fondo-storie:#[0-9a-f]{6}(?=[;}])/i);
+  });
+
+  it('il CSS del lettore: la frase è centrata, la pausa si vede solo con il focus da tastiera', () => {
+    const css = cssDellaPagina();
+    const { apertura } = dialogCon('data-storie')[0] ?? { apertura: '' };
+    const cid = /\sdata-astro-cid-([a-z0-9]+)/.exec(apertura)?.[1];
+    expect(cid).toBeDefined();
+    const mio = `[data-astro-cid-${cid}]`;
+    // Fuori da ogni `@media`.
+    let base = css;
+    for (const b of [...blocchiMedia(css)].reverse()) base = base.slice(0, b.da) + base.slice(b.a);
+    const dichiarazioni = (selettore: string) =>
+      regole(base)
+        .filter((r) => r.selettore.split(',').map((s) => s.trim()).includes(selettore))
+        .map((r) => r.dichiarazioni);
+    expect(dichiarazioni(`.frase${mio}`)).toContainEqual(expect.stringMatching(/(?:^|;)text-align:center(?:;|$)/));
+    expect(dichiarazioni(`.frase${mio}`)).toContainEqual(expect.stringMatching(/(?:^|;)overflow:hidden(?:;|$)/));
+    expect(dichiarazioni(`.pausa${mio}`)).toContainEqual(
+      expect.stringMatching(/(?:^|;)clip-path:inset\(50%\)(?:;|$)/),
+    );
+    expect(dichiarazioni(`.pausa${mio}:focus-visible`)).toContainEqual(
+      expect.stringMatching(/(?:^|;)clip-path:none(?:;|$)/),
+    );
   });
 
   it('le frecce del lettore: ritagliate sul telefono, sempre visibili con il mouse', () => {
