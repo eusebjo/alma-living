@@ -957,11 +957,16 @@ describe('Salvia social (/prova/salvia-social/)', () => {
     expect(css).not.toMatch(/(?:^|[}\s,])h1\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:\d/);
   });
 
-  it('il menu del telefono porta solo alle tre sezioni, con le voci a 22 px, e copre la pagina', () => {
+  it('il menu del telefono: le tre sezioni a 22 px, poi WhatsApp e Chiama, e copre la pagina', () => {
     const menu = contenutiCon(html(), 'id', 'menu-telefono')[0] ?? '';
     const link = tagIn(menu, 'a', 'href');
-    expect(link.map((t) => valore(t, 'href'))).toEqual(sezioni.map((s) => s.href));
-    expect(link.every((t) => /\sclass="menu-voce[\s"]/.test(t))).toBe(true);
+    const voci = link.filter((t) => /\sclass="menu-voce[\s"]/.test(t));
+    expect(voci.map((t) => valore(t, 'href'))).toEqual(sezioni.map((s) => s.href));
+    // Sotto le sezioni i due contatti, come prima: niente stato né indirizzo (sono nella barra in alto).
+    const azioni = link.filter((t) => !/\sclass="menu-voce[\s"]/.test(t)).map((t) => valore(t, 'href') ?? '');
+    expect(azioni).toHaveLength(2);
+    expect(azioni[0]).toMatch(/^https:\/\/wa\.me\/393345205451/);
+    expect(azioni[1]).toBe('tel:+393345205451');
     expect(menu).not.toContain('data-stato-negozio');
     const css = cssDellaPagina();
     expect(css).toMatch(/\.menu-voce\[data-astro-cid-[a-z0-9]+\]\{[^}]*font-size:22px/);
