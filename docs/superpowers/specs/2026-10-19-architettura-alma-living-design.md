@@ -195,6 +195,7 @@ Netlify resta l'alternativa (anteprime più collaudate), ma sul piano gratuito o
 - **Anteprime:** build di anteprima attive per tutti i rami non di produzione. Cloudflare commenta la pull request con lo stato e l'URL dell'anteprima.
   - Le anteprime sono pubbliche per URL. Devono avere `noindex` e non essere linkate. Cloudflare Access sulle anteprime è un'opzione futura.
 - **Dominio:** dominio personalizzato con HTTPS automatico. Richiede che il DNS del dominio sia gestito da Cloudflare.
+  - *Aggiornamento del 2026-11-02:* `almalivingviaricasoli.it`, registrato su IONOS (Cloudflare Registrar non vende `.it`), con i nameserver delegati a Cloudflare e collegato come Custom Domain del Worker `alma-living`.
 - **Altri usi:** lo stesso account ospita il Worker di login di Sveltia (§5.5).
 - **Costo:** piano gratuito. L'uso commerciale è consentito. Le richieste agli asset statici sono gratuite e illimitate.
 - **Riserva:** se le anteprime dei Workers (lanciate a settembre 2026) creano problemi, si passa a Cloudflare Pages o a Netlify. Vercel è escluso: sul piano gratuito vieta l'uso commerciale.
@@ -256,6 +257,7 @@ Il file delle regole supporta da subito tutti i livelli 0–4, ma in fase 1 la v
 1. **GitHub:** repository, collaboratrice, protezioni su `main`, CODEOWNERS.
 2. **Cloudflare:** scheletro Astro deployato su Workers, produzione da `main`, anteprima per ogni pull request.
    - Fino a quando le pagine reali non sono pronte, il sito vive sull'indirizzo `workers.dev` con `noindex`. Il dominio di produzione si collega solo al lancio vero, e solo allora si pubblicano i dati schema.org reali del negozio. *(Scelta di Claude)*
+   - *Aggiornamento del 2026-11-02, decisione di eusebjo:* il dominio è collegato prima del lancio. L'indicizzazione e i dati schema.org restano legati al lancio vero, cioè a `SITE_URL` e `SITE_LAUNCHED` (vedi `CLAUDE.md`, "Stato di lancio"): fino ad allora anche il dominio ha `noindex` e `Disallow: /`.
 3. **Pannello:** modello dei contenuti minimo per collaudare il flusso (impostazioni del negozio e una pagina con testo e immagine); Sveltia configurato come in §5.4; Worker di login.
 4. **Regole:** `autonomia.yml` e controllo `verifica-autonomia`, entrambi obbligatori su `main`.
 5. **SEO e agenti:** dati strutturati, sitemap, robots, `llms.txt`, `AGENTS.md`, `CLAUDE.md`.
@@ -287,6 +289,7 @@ Il file delle regole supporta da subito tutti i livelli 0–4, ma in fase 1 la v
 
 **Già decise (2026-10-19)**
 - **Sito, dominio ed email:** non esistono. Il sito parte da zero: niente redirect da prevedere e nessuna email da preservare.
+  - *Correzione del 2026-11-02:* `almaliving.it` esiste già (registrato da Alma Living srl presso Aruba, con la posta attiva) e non è stato usato. Il sito usa un dominio nuovo, quindi resta vero che non ci sono redirect da prevedere né email da preservare.
 - **Repository:** pubblico, su [github.com/eusebjo](https://github.com/eusebjo), account personale di eusebjo.
 - **Hosting:** Cloudflare Workers (§5.8). L'account Cloudflare sarà di eusebjo.
 
@@ -299,6 +302,7 @@ Il file delle regole supporta da subito tutti i livelli 0–4, ma in fase 1 la v
    - quale nome acquistare e presso quale registrar;
    - il DNS va gestito da Cloudflare;
    - da verificare se Cloudflare Registrar vende domini `.it`; altrimenti si acquista presso un registrar italiano e si delegano i nameserver a Cloudflare.
+   - *Deciso il 2026-11-02:* `almalivingviaricasoli.it` su IONOS, DNS su Cloudflare (vedi §5.8). Restano aperti l'uso dell'email del dominio (la casella inclusa nel pacchetto IONOS, un inoltro con Cloudflare Email Routing o nessuna) e l'attivazione di DNSSEC.
 
 ## 11. Fuori da questo documento (passo successivo)
 
