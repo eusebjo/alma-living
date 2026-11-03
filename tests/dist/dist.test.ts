@@ -676,15 +676,32 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   const FILE = join('dist', 'prova', 'salvia-social', 'index.html');
   const html = () => readFileSync(FILE, 'utf8');
 
+  /** Il contenuto di ogni `<picture>` della pagina: le foto servite da /_astro/. */
+  const gruppiPicture = () =>
+    [...html().matchAll(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi)].map((m) => m[1]!);
+
+  it('ogni foto ha due <source> (AVIF e WebP) e un <img> di ripiego in JPEG, non PNG', () => {
+    // Le foto sono remote: Astro, da sé, ripiegherebbe su PNG (molto più pesante).
+    // `Foto.astro` lo evita con `formatoDiRipiego`: questo test lo tiene fermo.
+    const gruppi = gruppiPicture();
+    expect(gruppi.length).toBeGreaterThan(100);
+    for (const dentro of gruppi) {
+      const tipi = [...dentro.matchAll(/<source\b[^>]*\stype="([^"]*)"/gi)].map((m) => m[1]);
+      expect(tipi, dentro).toEqual(['image/avif', 'image/webp']);
+      const src = /<img\b[^>]*?\ssrc="([^"]*)"/i.exec(dentro)?.[1];
+      expect(src, dentro).toMatch(/^\/_astro\/[^"/]+\.jpg$/);
+    }
+  });
+
   it('nessuna foto dichiara una larghezza che l’originale non ha', () => {
     // Come per le foto importate, Astro non deve offrire `1000w` di una foto
     // larga 896 px: la larghezza dell'`<img>` è quella dell'originale.
-    const gruppi = [...html().matchAll(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi)];
+    const gruppi = gruppiPicture();
     expect(gruppi.length).toBeGreaterThan(100);
-    for (const [, dentro] of gruppi) {
-      const originale = Number(/\swidth="(\d+)"/.exec(dentro!)?.[1]);
+    for (const dentro of gruppi) {
+      const originale = Number(/\swidth="(\d+)"/.exec(dentro)?.[1]);
       expect(originale, dentro).toBeGreaterThan(0);
-      for (const [, srcset] of dentro!.matchAll(/\ssrcset="([^"]*)"/g)) {
+      for (const [, srcset] of dentro.matchAll(/\ssrcset="([^"]*)"/g)) {
         for (const [, larghezza] of srcset!.matchAll(/\s(\d+)w(?:,|$)/g)) {
           expect(Number(larghezza), dentro).toBeLessThanOrEqual(originale);
         }

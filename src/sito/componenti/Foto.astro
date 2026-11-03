@@ -9,6 +9,7 @@
 // punto di ingrandimento e la scala (`--scala`): chi lo mostra le usa nel suo CSS.
 import { inferRemoteSize, Picture } from 'astro:assets';
 import { limitaLarghezze } from '../comune/larghezze';
+import { formatoDiRipiego } from '../comune/ripiego';
 import type { Scatto, ScattoArticolo } from './dati';
 
 interface Props {
@@ -33,10 +34,10 @@ const { scatto, larghezze, sizes, principale = false, alt = scatto.alt, class: c
 const originale = await inferRemoteSize(scatto.src);
 const larghezzeFoto = limitaLarghezze(larghezze, originale.width);
 
-// Il ripiego (l'`<img>` dentro `<picture>`) tiene il formato della foto: per le
-// immagini importate lo fa Astro da sé, per quelle remote ripiegherebbe su PNG, che
-// per una foto pesa molte volte un JPEG.
-const ripiego = /\.jpe?g$/i.test(scatto.src) ? 'jpg' : undefined;
+// Il ripiego (l'`<img>` dentro `<picture>`) lo decide il formato vero della foto,
+// non l'estensione dell'indirizzo: per le remote Astro ripiegherebbe sempre su PNG,
+// che per una foto pesa molte volte un JPEG (vedi `formatoDiRipiego`).
+const ripiego = formatoDiRipiego(originale.format);
 
 const ingrandimento = 'ingrandimento' in scatto ? scatto.ingrandimento : undefined;
 const stile =
