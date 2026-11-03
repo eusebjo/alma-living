@@ -1,6 +1,6 @@
 import { z } from 'astro/zod';
 import { CATEGORIE } from './categorie';
-import { eIndirizzoFoto, INQUADRATURE } from './foto';
+import { eFotoInSottocartella, eIndirizzoFoto, INQUADRATURE } from './foto';
 import type { Inquadratura } from './foto';
 import { GIORNI, LIMITI } from './limits';
 
@@ -94,12 +94,18 @@ const NOMI_INQUADRATURA = Object.keys(INQUADRATURE) as Inquadratura[];
 /**
  * Una foto del bucket (vedi `foto.ts`), con il testo alternativo e il punto da
  * tenere in vista quando è tagliata. L'indirizzo lo scrive il pannello al
- * caricamento: uno scritto a mano o di un altro sito è rifiutato.
+ * caricamento: uno scritto a mano o di un altro sito è rifiutato. Una foto caricata
+ * in una cartella creata dal selettore del pannello ha un messaggio suo.
  */
 export const fotoSchema = z.object({
   src: z
     .string({ error: 'La foto è obbligatoria.' })
-    .refine((valore) => eIndirizzoFoto(valore), { error: 'La foto va caricata dal pannello.' }),
+    .refine((valore) => eIndirizzoFoto(valore), {
+      error: (problema) =>
+        eFotoInSottocartella(String(problema.input))
+          ? 'Carica la foto senza metterla in una cartella.'
+          : 'La foto va caricata dal pannello.',
+    }),
   alt: z
     .string({ error: 'Il testo alternativo è obbligatorio.' })
     .min(

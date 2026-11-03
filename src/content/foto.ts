@@ -52,6 +52,25 @@ export function eIndirizzoFoto(valore: string): boolean {
 }
 
 /**
+ * Vero per un indirizzo del bucket fatto bene ma con un livello in più,
+ * `/<cartella>/<sotto>/<nome>`, con una cartella di `CARTELLE_FOTO`: la foto è stata
+ * caricata in una cartella creata dal selettore del pannello. Non è un indirizzo
+ * valido (vedi `eIndirizzoFoto`), ma lo schema lo distingue dagli altri sbagliati per
+ * dire cosa fare. Ogni segmento dopo la cartella deve essere un nome di file: un `..`,
+ * una query o un indirizzo senza nome restano "foto non caricata dal pannello".
+ */
+export function eFotoInSottocartella(valore: string): boolean {
+  if (!valore.startsWith(`${FOTO_BASE}/`)) return false;
+  const [cartella, ...resto] = valore.slice(FOTO_BASE.length + 1).split('/');
+  return (
+    cartella !== undefined &&
+    (CARTELLE_FOTO as readonly string[]).includes(cartella) &&
+    resto.length >= 2 &&
+    resto.every((segmento) => NOME_FILE.test(segmento) && !segmento.includes('..'))
+  );
+}
+
+/**
  * Le inquadrature che la redazione sceglie dal pannello: ogni nome è un
  * `object-position` CSS. Si decide solo il punto verticale da tenere in vista
  * quando la foto è tagliata (in orizzontale resta al centro).

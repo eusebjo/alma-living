@@ -245,11 +245,14 @@ describe('validaConSchemi, prodotti, post e storie', () => {
     }
   });
 
-  it('la foto di un prodotto da un altro sito o da una sottocartella è rifiutata', () => {
-    for (const src of [
-      'https://example.com/plaid.webp',
-      'https://foto.almalivingviaricasoli.it/cms/estate/plaid.webp',
-    ]) {
+  it('la foto di un prodotto da un altro sito o da una sottocartella è rifiutata, con il messaggio giusto', () => {
+    for (const [src, messaggio] of [
+      ['https://example.com/plaid.webp', 'La foto va caricata dal pannello.'],
+      [
+        'https://foto.almalivingviaricasoli.it/cms/estate/plaid.webp',
+        'Carica la foto senza metterla in una cartella.',
+      ],
+    ] as const) {
       const violazioni = validaConSchemi(
         [
           prodotto((p) => {
@@ -259,7 +262,7 @@ describe('validaConSchemi, prodotti, post e storie', () => {
         rules,
       );
       expect(violazioni.map((v) => [v.campo, v.messaggio.split(' Correggi')[0]]), src).toEqual([
-        ['foto.src', 'La foto va caricata dal pannello.'],
+        ['foto.src', messaggio],
       ]);
     }
   });

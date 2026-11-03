@@ -328,6 +328,28 @@ describe('fotoSchema', () => {
     expect(errore(fotoSchema, { alt: 'Plaid verde' })).toBe('La foto è obbligatoria.');
   });
 
+  // Dal selettore del pannello si può creare una cartella dentro `cms/` e caricarci la
+  // foto: il messaggio dice cosa fare, invece di "va caricata dal pannello" (l'ha già
+  // caricata dal pannello).
+  it.each([
+    'https://foto.almalivingviaricasoli.it/cms/estate/plaid.webp',
+    'https://foto.almalivingviaricasoli.it/prova/estate/plaid.webp',
+  ])('una foto in una sottocartella, %j, va caricata senza cartella', (src) => {
+    expect(errore(fotoSchema, { src, alt: 'Plaid verde' })).toBe(
+      'Carica la foto senza metterla in una cartella.',
+    );
+    expect(percorso(fotoSchema, { src, alt: 'Plaid verde' })).toEqual(['src']);
+  });
+
+  it('la sottocartella ha il suo messaggio ovunque ci sia una foto: prodotto, colore, post, storia', () => {
+    const src = 'https://foto.almalivingviaricasoli.it/cms/estate/plaid.webp';
+    const sottocartella = 'Carica la foto senza metterla in una cartella.';
+    expect(errore(prodottoSchema, { ...PRODOTTO, foto: { ...FOTO, src } })).toBe(sottocartella);
+    expect(errore(prodottoSchema, { ...PRODOTTO, secondaFoto: { ...FOTO, src } })).toBe(sottocartella);
+    expect(errore(postSchema, { ...POST, foto: [{ ...FOTO, src }] })).toBe(sottocartella);
+    expect(errore(storiaSchema, { ...STORIA, foto: [{ ...FOTO_STORIA, src }] })).toBe(sottocartella);
+  });
+
   it("l'inquadratura vale «centro» se manca e deve essere una delle posizioni", () => {
     expect(fotoSchema.parse({ src: URL_OK, alt: 'Plaid verde' }).inquadratura).toBe('centro');
     for (const nome of Object.keys(INQUADRATURE)) {

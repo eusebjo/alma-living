@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CARTELLE_FOTO,
+  eFotoInSottocartella,
   eIndirizzoFoto,
   FOTO_BASE,
   indirizzoFoto,
@@ -75,5 +76,44 @@ describe('indirizzi delle foto', () => {
     '',
   ])('eIndirizzoFoto rifiuta %j', (no) => {
     expect(eIndirizzoFoto(no), no).toBe(false);
+  });
+
+  // Dal selettore del pannello si può creare una cartella dentro `cms/` e caricarci la
+  // foto: l'indirizzo è del bucket, ma ha un livello in più. Non è un indirizzo valido,
+  // e va distinto dagli altri sbagliati perché il messaggio possa dire cosa fare.
+  it.each([
+    'https://foto.almalivingviaricasoli.it/cms/estate/plaid.webp',
+    'https://foto.almalivingviaricasoli.it/prova/estate/plaid.webp',
+    'https://foto.almalivingviaricasoli.it/cms/estate/2026/plaid-3fa9c2e1.webp',
+  ])('eFotoInSottocartella riconosce %j', (src) => {
+    expect(eFotoInSottocartella(src), src).toBe(true);
+    expect(eIndirizzoFoto(src), src).toBe(false);
+  });
+
+  it.each([
+    // Giusti: una foto direttamente in `cms/` o `prova/`.
+    'https://foto.almalivingviaricasoli.it/cms/plaid.webp',
+    'https://foto.almalivingviaricasoli.it/prova/plaid.jpg',
+    // Sbagliati per un altro motivo: altro sito, altra cartella, `..`, query, nome strano, niente file.
+    'https://pub-02e2834056a84517a87c5431c6904c14.r2.dev/cms/estate/a.webp',
+    'https://example.com/cms/estate/a.webp',
+    'http://foto.almalivingviaricasoli.it/cms/estate/a.webp',
+    'https://foto.almalivingviaricasoli.it/altro/estate/a.webp',
+    'https://foto.almalivingviaricasoli.it/cms/../prova/a.jpg',
+    'https://foto.almalivingviaricasoli.it/cms/a~/../b.webp',
+    'https://foto.almalivingviaricasoli.it/cms/estate/../a.webp',
+    'https://foto.almalivingviaricasoli.it/cms/estate/a.webp?x=1',
+    'https://foto.almalivingviaricasoli.it/cms/estate/a.webp#x',
+    'https://foto.almalivingviaricasoli.it/cms/estate/a b.webp',
+    'https://foto.almalivingviaricasoli.it/cms/estate/%2e%2e/a.jpg',
+    'https://foto.almalivingviaricasoli.it/cms/',
+    'https://foto.almalivingviaricasoli.it/cms/estate/',
+    'https://foto.almalivingviaricasoli.it/cms//a.webp',
+    'https://foto.almalivingviaricasoli.it.altro.example/cms/estate/a.webp',
+    'https://utente@foto.almalivingviaricasoli.it/cms/estate/a.webp',
+    '/cms/estate/a.webp',
+    '',
+  ])('eFotoInSottocartella non riconosce %j', (src) => {
+    expect(eFotoInSottocartella(src), src).toBe(false);
   });
 });
