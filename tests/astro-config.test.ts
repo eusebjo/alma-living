@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FOTO_BASE } from '../src/content/foto';
-import { CARATTERI_PER_VARIANTE } from '../src/sito/comune/caratteri';
-import { VARIANTI } from '../src/sito/varianti';
+import { CARATTERI_SITO } from '../src/sito/comune/caratteri';
 
 // La configurazione di Astro legge le variabili d'ambiente quando viene
 // caricata: per provarla con valori diversi la si reimporta ogni volta.
@@ -68,8 +67,8 @@ describe('astro.config: site e sitemap', { timeout: 30_000 }, () => {
   });
 });
 
-describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
-  it('dichiara i caratteri della prova, dal provider Google', async () => {
+describe('astro.config: caratteri del sito', { timeout: 30_000 }, () => {
+  it('dichiara i caratteri del sito, dal provider Google', async () => {
     const config = await caricaConfig({});
     const nomi = (config.fonts ?? []).map((f: { name: string }) => f.name);
     // Elenco esatto: un carattere in più sarebbe scaricato a ogni build senza
@@ -79,29 +78,23 @@ describe('astro.config: caratteri della prova', { timeout: 30_000 }, () => {
     );
   });
 
-  it('ogni variante ha i suoi caratteri, e sono tutti dichiarati', async () => {
+  it('la pagina carica solo caratteri dichiarati', async () => {
     const config = await caricaConfig({});
     const dichiarati = (config.fonts ?? []).map(
       (f: { cssVariable: string }) => f.cssVariable,
     );
-    expect(Object.keys(CARATTERI_PER_VARIANTE).sort()).toEqual(
-      VARIANTI.map((variante) => variante.id).sort(),
-    );
-    for (const [id, variabili] of Object.entries(CARATTERI_PER_VARIANTE)) {
-      for (const variabile of variabili) {
-        expect(dichiarati, `${id}: ${variabile}`).toContain(variabile);
-      }
+    for (const variabile of CARATTERI_SITO) {
+      expect(dichiarati, variabile).toContain(variabile);
     }
   });
 
-  it('ogni carattere dichiarato è usato da almeno una variante', async () => {
+  it('ogni carattere dichiarato è usato dalla pagina', async () => {
     const config = await caricaConfig({});
     const dichiarati = (config.fonts ?? []).map(
       (f: { cssVariable: string }) => f.cssVariable,
     );
-    const usati = new Set(Object.values(CARATTERI_PER_VARIANTE).flat());
     for (const variabile of dichiarati) {
-      expect(usati, variabile).toContain(variabile);
+      expect(CARATTERI_SITO, variabile).toContain(variabile);
     }
   });
 });

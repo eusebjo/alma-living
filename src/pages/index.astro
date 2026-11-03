@@ -1,97 +1,69 @@
 ---
-import { Image } from 'astro:assets';
-import { getEntry, render } from 'astro:content';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { GIORNI } from '../content/limits';
+// Home del sito, nel design "Salvia social" (tavola DiarioFascia.dc.html, con
+// l'apertura "La foto grande" della tavola FotoGrande2.dc.html): bianco e verde
+// salvia, storie sotto l'header solo sul telefono, apertura con le foto dei
+// prodotti che scorrono da sole, selezione, diario del negozio con griglia di post
+// e fascia Instagram.
+// Componenti e dati fissi in src/sito/componenti/; prodotti, post e storie dalle
+// collection (src/content/), tradotti per i componenti da src/sito/contenuti.ts.
+import { getImage } from 'astro:assets';
+import { getCollection, getEntry } from 'astro:content';
+import Interazioni from '../sito/comune/Interazioni.astro';
+import LayoutSito from '../sito/comune/LayoutSito.astro';
+import grana from '../sito/comune/grana.png';
+import { datiNegozio } from '../sito/comune/negozio';
+import Apertura from '../sito/componenti/Apertura.astro';
+import BarraTelefono from '../sito/componenti/BarraTelefono.astro';
+import DialogStorie from '../sito/componenti/DialogStorie.astro';
+import Diario from '../sito/componenti/Diario.astro';
+import FasciaInstagram from '../sito/componenti/FasciaInstagram.astro';
+import FilaStorie from '../sito/componenti/FilaStorie.astro';
+import Negozio from '../sito/componenti/Negozio.astro';
+import Piede from '../sito/componenti/Piede.astro';
+import Selezione from '../sito/componenti/Selezione.astro';
+import Testata from '../sito/componenti/Testata.astro';
+import '../sito/componenti/tema.css';
+import { elencoArticoli, elencoPost, elencoStorie } from '../sito/contenuti';
 
-const negozioEntry = await getEntry('negozio', 'negozio');
-const homeEntry = await getEntry('pagine', 'home');
-if (!negozioEntry) {
-  throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
-}
-if (!homeEntry) {
-  throw new Error('Manca src/content/pagine/home.md (voce "home").');
-}
+// Il titolo è fisso nel codice; la descrizione è quella del negozio (negozio.json).
+const TITOLO = 'Alma Living, biancheria per la casa a Livorno';
 
-const negozio = negozioEntry.data;
-const home = homeEntry.data;
-const { Content } = await render(homeEntry);
+const voce = await getEntry('negozio', 'negozio');
+if (!voce) throw new Error('Manca src/content/negozio/negozio.json (voce "negozio").');
+const negozio = datiNegozio(voce.data);
 
-const { via, civico, cap, citta, provincia } = negozio.indirizzo;
-const telefonoHref = `tel:${negozio.telefono.replace(/[^\d+]/g, '')}`;
+const articoli = elencoArticoli(await getCollection('prodotti'));
+const post = elencoPost(await getCollection('post'));
+const storie = elencoStorie(await getCollection('storie'));
 
-const ETICHETTE_GIORNI: Record<(typeof GIORNI)[number], string> = {
-  lunedi: 'Lunedì',
-  martedi: 'Martedì',
-  mercoledi: 'Mercoledì',
-  giovedi: 'Giovedì',
-  venerdi: 'Venerdì',
-  sabato: 'Sabato',
-  domenica: 'Domenica',
-};
-
-// Una riga per giorno, in ordine di settimana; un giorno può avere più fasce
-// (per esempio mattina e pomeriggio). I giorni senza fasce non compaiono.
-const orari = GIORNI.map((giorno) => ({
-  etichetta: ETICHETTE_GIORNI[giorno],
-  fasce: negozio.orari
-    .filter((orario) => orario.giorno === giorno)
-    .sort((a, b) => a.apertura.localeCompare(b.apertura)),
-})).filter((giorno) => giorno.fasce.length > 0);
+// La grana delle fasce salvia, come sulla tavola: una tessera ripetuta in CSS.
+const tessera = await getImage({ src: grana, format: 'webp', quality: 40 });
 ---
 
-<BaseLayout title={home.titolo} description={home.descrizione}>
-  <main>
-    <h1>{home.titolo}</h1>
-    <Image
-      class="hero"
-      src={home.immagine}
-      alt={home.immagine_alt}
-      loading="eager"
-      fetchpriority="high"
-    />
+<LayoutSito title={TITOLO} description={voce.data.descrizione}>
+  <div class="pagina" id="inizio" style={`--grana: url('${tessera.src}')`}>
+    <Testata negozio={negozio} />
+    <FilaStorie storie={storie} />
+    <main>
+      <Apertura />
+      <Selezione articoli={articoli} negozio={negozio} />
+      <Diario post={post} negozio={negozio} />
+      <FasciaInstagram negozio={negozio} />
+      <Negozio negozio={negozio} />
+    </main>
+    <Piede negozio={negozio} />
+    <BarraTelefono negozio={negozio} />
+  </div>
 
-    <Content />
-
-    <section>
-      <h2>Dove siamo</h2>
-      <address>
-        {negozio.nome}<br />
-        {via} {civico}<br />
-        {cap} {citta} ({provincia})
-      </address>
-      <p>Telefono: <a href={telefonoHref}>{negozio.telefono}</a></p>
-    </section>
-
-    {
-      orari.length > 0 && (
-        <section>
-          <h2>Orari</h2>
-          <ul>
-            {orari.map(({ etichetta, fasce }) => (
-              <li>
-                {etichetta}:{' '}
-                {fasce
-                  .map((fascia) => `${fascia.apertura}–${fascia.chiusura}`)
-                  .join(', ')}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
-    }
-  </main>
-</BaseLayout>
+  <DialogStorie storie={storie} etichetta="Storie dal negozio" negozio={negozio} />
+  <Interazioni />
+</LayoutSito>
 
 <style>
-  main {
-    max-width: 48rem;
-    margin: 0 auto;
-  }
-
-  .hero {
-    display: block;
-    max-width: 100%;
-    height: auto;
+  /* `clip` e non `hidden`: le decorazioni che sbordano non allargano la pagina
+     e l'header resta `sticky`. */
+  .pagina {
+    position: relative;
+    overflow-x: clip;
   }
 </style>

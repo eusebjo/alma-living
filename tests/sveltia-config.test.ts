@@ -413,8 +413,8 @@ describe('src/pages/admin/index.astro', () => {
   });
 
   it('è una pagina a sé: né layout del sito né SeoHead', () => {
-    expect(pagina).not.toMatch(/^\s*import\b.*\b(BaseLayout|SeoHead)\b/m);
-    expect(pagina).not.toMatch(/<(BaseLayout|SeoHead)\b/);
+    expect(pagina).not.toMatch(/^\s*import\b.*\b(LayoutSito|SeoHead)\b/m);
+    expect(pagina).not.toMatch(/<(LayoutSito|SeoHead)\b/);
   });
 
   it('avvia il pannello dal pacchetto npm (build senza CDN), una sola volta', () => {

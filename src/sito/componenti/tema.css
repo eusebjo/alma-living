@@ -2,7 +2,7 @@
    i valori della tavola `SalviaSocial.dc.html`, aggiornati alla versione 3 (la
    tavola `DiarioFascia.dc.html`). Tutti i componenti della
    variante usano solo queste proprietà: per cambiare la palette basta questo file.
-   Le variabili `--font-…` le scrive il componente Font di Astro (LayoutProva). */
+   Le variabili `--font-…` le scrive il componente Font di Astro (LayoutSito). */
 [data-variante='salvia-social'] {
   /* Colori della tavola */
   --bianco: #ffffff;

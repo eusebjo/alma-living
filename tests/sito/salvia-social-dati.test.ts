@@ -234,8 +234,8 @@ function sorgenti(cartella: string): string[] {
 }
 
 describe('la voce del sito', () => {
-  it('nessun file della variante, dello script comune o delle pagine di prova nomina Martina', () => {
-    const file = [...sorgenti('src/sito'), ...sorgenti('src/pages/prova')];
+  it('nessun file del sito, dello script comune o delle pagine nomina Martina', () => {
+    const file = [...sorgenti('src/sito'), ...sorgenti('src/pages')];
     expect(file.length).toBeGreaterThan(20);
     for (const f of file) expect(readFileSync(f, 'utf8'), f).not.toMatch(/martina/i);
   });

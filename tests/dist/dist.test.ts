@@ -31,7 +31,6 @@ import {
   elencoPost,
   elencoStorie,
 } from '../../src/sito/contenuti';
-import { VARIANTI } from '../../src/sito/varianti';
 
 // Questi test guardano la build locale (`npm run build` senza SITE_LAUNCHED né
 // WORKERS_CI_BRANCH), che non è indicizzabile: niente JSON-LD, niente sitemap,
@@ -96,6 +95,9 @@ const voceNegozio = negozioSchema.parse(
 );
 const orariDelNegozio = voceNegozio.orari;
 
+/** Il titolo della home: fisso nel codice (la redazione non lo cambia). */
+const TITOLO_HOME = 'Alma Living, biancheria per la casa a Livorno';
+
 /** Il telefono del negozio come lo scrive la pagina: lo cambia la redazione. */
 const TELEFONO = voceNegozio.telefono;
 
@@ -113,7 +115,7 @@ function allaLettera(testo: string): string {
 }
 
 // Il pannello dei contenuti (/admin/) è una pagina Astro a sé, senza il
-// BaseLayout del sito: ha le sue regole (vedi "pannello dei contenuti").
+// LayoutSito: ha le sue regole (vedi "pannello dei contenuti").
 const PANNELLO = join('dist', 'admin', 'index.html');
 const pagineDelSito = pagine.filter((file) => file !== PANNELLO);
 
@@ -124,39 +126,6 @@ describe('nomi dei file delle collection', () => {
 
   it.each(['P1', 'nuovo post', 'caffè', 'a_b', 'a.b', ''])('"%s" è rifiutato', (nome) => {
     expect(NOME_FILE_CONTENUTO.test(nome)).toBe(false);
-  });
-});
-
-describe('build statica: dist/index.html', () => {
-  it('la home esiste ed è in italiano', () => {
-    const html = readFileSync('dist/index.html', 'utf8');
-    expect(html).toContain('<html lang="it"');
-  });
-
-  it('la home ha title e description', () => {
-    const html = readFileSync('dist/index.html', 'utf8');
-    expect(html).toMatch(/<title>[^<]+<\/title>/);
-    expect(html).toMatch(/<meta name="description" content="[^"]+"/);
-  });
-
-  it("la home ha un'immagine in evidenza ottimizzata da Astro: un file WebP di /_astro/", () => {
-    // Non si guarda quale foto sia né come si chiami: è un contenuto che la
-    // redazione può cambiare dal pannello (e `home.md` non si legge qui), la
-    // build deve restare verde con qualunque foto valida.
-    const html = readFileSync('dist/index.html', 'utf8');
-    const hero = [...html.matchAll(/<img\b[^>]*>/gi)]
-      .map((m) => m[0])
-      .filter((tag) => /\sclass="[^"]*\bhero\b[^"]*"/.test(tag));
-    expect(hero).toHaveLength(1);
-    expect(hero[0]).toMatch(/\ssrc="\/_astro\/[^"/]+\.webp"/);
-  });
-
-  it('la home ha canonical e Open Graph', () => {
-    const html = readFileSync('dist/index.html', 'utf8');
-    expect(html).toMatch(/<link rel="canonical" href="https?:\/\/[^"]+\/"/);
-    expect(html).toMatch(/<meta property="og:title" content="[^"]+"/);
-    expect(html).toMatch(/<meta property="og:description" content="[^"]+"/);
-    expect(html).toMatch(/<meta property="og:url" content="https?:\/\/[^"]+"/);
   });
 });
 
@@ -374,6 +343,22 @@ describe('llms.txt', () => {
 
   it('elenca la home con un URL assoluto', () => {
     expect(llms()).toMatch(/\]\(https?:\/\/[^)\s]+\/\):/);
+  });
+
+  it('elenca una sola pagina: la home, con il titolo e la descrizione del negozio', () => {
+    const voci = llms()
+      .split('\n')
+      .filter((riga) => riga.startsWith('- ['));
+    expect(voci).toHaveLength(1);
+    expect(voci[0]).toMatch(
+      new RegExp(
+        `^- \\[${allaLettera(TITOLO_HOME)}\\]\\(https?://[^)\\s]+/\\): ${allaLettera(voceNegozio.descrizione)}$`,
+      ),
+    );
+  });
+
+  it('non cita pagine che non esistono più', () => {
+    expect(llms()).not.toContain('/prova/');
   });
 });
 
@@ -652,65 +637,50 @@ describe('controllo dei rimandi tra i protocolli di markup', () => {
   });
 });
 
-// Le pagine di prova (/prova/…) sono un lavoro a parte, in un ramo di sviluppo:
-// ogni pagina deve restare fuori dai motori di ricerca e dal resto del sito, e
-// non deve chiedere nulla a terzi (vedi spec "varianti di prova", §8 e §10).
-describe('pagine di prova (/prova/)', () => {
-  const CARTELLA_PROVA = join('dist', 'prova');
-  const pagineProva = pagine.filter((file) => file.startsWith(CARTELLA_PROVA + sep));
-  const leggi = (file: string) => readFileSync(file, 'utf8');
+// Le pagine di prova (/prova/…) non esistono più: Salvia social è la home.
+describe('le pagine di prova sono sparite', () => {
+  it("non c'è dist/prova", () => {
+    expect(existsSync(join('dist', 'prova'))).toBe(false);
+  });
 
-  it('la pagina /prova/ esiste e ha un link per ogni variante', () => {
-    const indice = join(CARTELLA_PROVA, 'index.html');
-    expect(existsSync(indice)).toBe(true);
-    const html = leggi(indice);
-    expect(VARIANTI.length).toBeGreaterThan(0);
-    for (const { id } of VARIANTI) {
-      expect(html, id).toContain(`href="/prova/${id}/"`);
+  it('nessuna pagina HTML sta sotto /prova/', () => {
+    expect(pagine.filter((file) => file.startsWith(join('dist', 'prova') + sep))).toEqual([]);
+  });
+});
+
+// Le pagine del sito (tutte tranne il pannello): oggi è solo la home, ma i
+// controlli valgono per ogni pagina che si aggiungerà.
+describe.each(pagineDelSito)('pagina %s', (file) => {
+  const html = () => readFileSync(file, 'utf8');
+
+  it('è in italiano', () => {
+    expect(html()).toContain('<html lang="it"');
+  });
+
+  it('ha title, description, canonical e Open Graph', () => {
+    expect(html()).toMatch(/<title>[^<]+<\/title>/);
+    expect(html()).toMatch(/<meta name="description" content="[^"]+"/);
+    expect(html()).toMatch(/<link rel="canonical" href="https?:\/\/[^"]+\/"/);
+    expect(html()).toMatch(/<meta property="og:title" content="[^"]+"/);
+    expect(html()).toMatch(/<meta property="og:description" content="[^"]+"/);
+    expect(html()).toMatch(/<meta property="og:url" content="https?:\/\/[^"]+"/);
+  });
+
+  it('ha esattamente un h1', () => {
+    expect(html().match(/<h1[\s>]/gi) ?? []).toHaveLength(1);
+  });
+
+  it('ogni immagine ha un alt, e una foto servita da /_astro/', () => {
+    for (const [tag] of html().matchAll(new RegExp(`<img\\b${ATTRIBUTI}>`, 'gi'))) {
+      // Un'immagine decorativa ha l'alt vuoto, che Astro scrive senza valore (`alt`).
+      expect(tag, tag).toMatch(/\salt(?:=|(?=[\s/>]))/i);
+      const src = /\ssrc=["']?([^"'\s>]*)/i.exec(tag)?.[1];
+      if (src !== undefined) expect(src, tag).toMatch(/^\/_astro\//);
     }
   });
 
-  it('la pagina /prova/ non ha link a varianti che non sono in VARIANTI', () => {
-    const html = leggi(join(CARTELLA_PROVA, 'index.html'));
-    const attesi = VARIANTI.map(({ id }) => `/prova/${id}/`).sort();
-    const trovati = [...html.matchAll(/href="(\/prova\/[^"]*)"/g)]
-      .map((m) => m[1]!)
-      .sort();
-    expect(trovati).toEqual(attesi);
-  });
-
-  describe.each(pagineProva)('%s', (file) => {
-    const html = () => leggi(file);
-
-    it('è in italiano', () => {
-      expect(html()).toContain('<html lang="it"');
-    });
-
-    it('ha noindex e nessun JSON-LD', () => {
-      expect(html()).toContain('<meta name="robots" content="noindex, nofollow"');
-      expect(html()).not.toContain('application/ld+json');
-    });
-
-    it('ha esattamente un h1', () => {
-      expect(html().match(/<h1[\s>]/gi) ?? []).toHaveLength(1);
-    });
-
-    it('ogni immagine ha un alt, e una foto servita da /_astro/', () => {
-      for (const [tag] of html().matchAll(new RegExp(`<img\\b${ATTRIBUTI}>`, 'gi'))) {
-        // Un'immagine decorativa ha l'alt vuoto, che Astro scrive senza valore (`alt`).
-        expect(tag, tag).toMatch(/\salt(?:=|(?=[\s/>]))/i);
-        const src = /\ssrc=["']?([^"'\s>]*)/i.exec(tag)?.[1];
-        if (src !== undefined) expect(src, tag).toMatch(/^\/_astro\//);
-      }
-    });
-
-    it('ogni rimando dei protocolli di markup ha la sua destinazione', () => {
-      expect(incoerenzeProtocolli(html())).toEqual([]);
-    });
-  });
-
-  it('nessuna pagina di prova è in llms.txt', () => {
-    expect(readFileSync('dist/llms.txt', 'utf8')).not.toContain('/prova/');
+  it('ogni rimando dei protocolli di markup ha la sua destinazione', () => {
+    expect(incoerenzeProtocolli(html())).toEqual([]);
   });
 });
 
@@ -744,12 +714,24 @@ describe('caratteri: nessun indirizzo esterno, in nessuna pagina', () => {
   });
 });
 
-// La variante Salvia social (Task 5): oltre ai controlli comuni delle pagine di
-// prova, il markup che lo script comune fa funzionare e i contenuti che devono
-// restare leggibili anche senza JavaScript (didascalie, storie, orari, contatti).
-describe('Salvia social (/prova/salvia-social/)', () => {
-  const FILE = join('dist', 'prova', 'salvia-social', 'index.html');
+// La home (Salvia social): oltre ai controlli comuni delle pagine del sito, il
+// markup che lo script comune fa funzionare e i contenuti che devono restare
+// leggibili anche senza JavaScript (didascalie, storie, orari, contatti).
+describe('home: Salvia social (/)', () => {
+  const FILE = join('dist', 'index.html');
   const html = () => readFileSync(FILE, 'utf8');
+
+  /** Il contenuto dell'elemento `<title>`, come lo legge il browser. */
+  const titolo = (testo: string) => {
+    const scritto = /<title>([^<]*)<\/title>/.exec(testo)?.[1];
+    return scritto === undefined ? undefined : decodifica(scritto);
+  };
+
+  /** Il valore di `<meta name="description" content="…">`, come lo legge il browser. */
+  const metaDescrizione = (testo: string) => {
+    const scritto = /<meta name="description" content="([^"]*)"/.exec(testo)?.[1];
+    return scritto === undefined ? undefined : decodifica(scritto);
+  };
 
   /** Il contenuto di ogni `<picture>` della pagina: le foto servite da /_astro/. */
   const gruppiPicture = () =>
@@ -885,6 +867,24 @@ describe('Salvia social (/prova/salvia-social/)', () => {
   it('esiste e il body porta data-variante="salvia-social"', () => {
     expect(existsSync(FILE)).toBe(true);
     expect(html()).toMatch(/<body\b[^>]*\sdata-variante="salvia-social"/);
+  });
+
+  it('non resta nulla della prova né della home segnaposto', () => {
+    expect(existsSync(join('dist', 'prova'))).toBe(false);
+    expect(html()).not.toContain('Questo è un testo segnaposto');
+    expect(html()).not.toContain('Sito in costruzione');
+    expect(html()).not.toContain('prova di design');
+  });
+
+  it('il title è quello della home, la description quella del negozio', () => {
+    expect(titolo(html())).toBe(TITOLO_HOME);
+    // Il testo lo scrive la redazione (negozio.json): non si fissa qui.
+    expect(metaDescrizione(html())).toBe(voceNegozio.descrizione);
+  });
+
+  it('la build locale non è indicizzabile: noindex, nofollow', () => {
+    expect(html()).toContain('<meta name="robots" content="noindex, nofollow"');
+    expect(html()).not.toContain('application/ld+json');
   });
 
   it('il pulsante del menu ha un nome fisso: aperto o chiuso lo dice solo aria-expanded', () => {

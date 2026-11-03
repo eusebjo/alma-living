@@ -1,0 +1,41 @@
+---
+// Layout delle pagine del sito: `<head>` con `SeoHead` (indicizzabile solo nelle
+// build di lancio su `main`, vedi `getSiteConfig`) e i caratteri della pagina. Gli
+// stili, i colori e la struttura sono della pagina: qui non c'è nulla di grafico,
+// solo `body { margin: 0 }`.
+import { Font } from 'astro:assets';
+import SeoHead from '../../components/SeoHead.astro';
+import { CARATTERI_SITO } from './caratteri';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <SeoHead title={title} description={description} />
+    {
+      CARATTERI_SITO.map((cssVariable, indice) => (
+        // Solo il primo carattere si precarica: gli altri non bloccano la prima vista.
+        <Font cssVariable={cssVariable} preload={indice === 0} />
+      ))
+    }
+  </head>
+  <body data-variante="salvia-social">
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  body {
+    margin: 0;
+  }
+</style>
